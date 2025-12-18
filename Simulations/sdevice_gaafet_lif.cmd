@@ -18,7 +18,7 @@ File {
 *===================================================================
 Electrode {
   { Name="source_contact"     Voltage= 0.0 }
-  { Name="drain_contact"      Voltage= 0.05 }
+  { Name="drain_contact"      Voltage= 1.0 }
   { Name="gate_contact"   Voltage= 0.0 Workfunction=4.6 }
 }
 
@@ -103,20 +103,18 @@ Plot {
 *==          hysteresis loop.
 *===================================================================
 Solve {
- Transient (
-	InitialTime=0 FinalTime=1
-	) { Coupled (Iterations = 100) { Poisson FEPolarization } }	
-Transient (
-	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
-	InitialTime=1 FinalTime=2 
-	Goal { Name="gate_contact" Voltage= 2 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
-
-Transient (
-	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
-	InitialTime=1 FinalTime=2 
-	Goal { Name="gate_contact" Voltage= -2 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
-
-
+  * Initial equilibrium
+  Coupled { Poisson Electron Hole FEPolarization }
+  
+  * Forward sweep: V_SG from 0 to -0.5V
+  Quasistationary (
+    InitialStep=0.01 MaxStep=0.02 MinStep=1e-5
+    Goal { Name="source_contact" Voltage=-0.5 }
+  ) { Coupled { Poisson Electron Hole FEPolarization } }
+  
+  * Backward sweep: V_SG from -0.5V to 0V (for hysteresis)
+  Quasistationary (
+    InitialStep=0.01 MaxStep=0.02 MinStep=1e-5
+    Goal { Name="source_contact" Voltage=0 }
+  ) { Coupled { Poisson Electron Hole FEPolarization } }
 }

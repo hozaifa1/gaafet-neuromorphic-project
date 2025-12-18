@@ -108,82 +108,29 @@ Solve {
 
 ---
 
-## 4. SENTAURUS WORKBENCH PARAMETER SWEEP GUIDE (v2023.12)
-
-### 4.1 How to Create a Parameter Sweep (Step-by-Step Clicking Guide)
-
-1. **Open SWB Project:**
-   - Launch Sentaurus Workbench
-   - Open your project file (.swb)
-
-2. **Define a Variable in Your Input File:**
-   - Open `sdevice_gaafet_lif.cmd`
-   - Replace hardcoded value with `@VarName@` syntax
-   - Example: Change `Voltage= 1.0` to `Voltage= @VD@`
-
-3. **Add Variable Column in SWB:**
-   - In SWB main window, look at the spreadsheet-like interface
-   - Right-click on any column header → **Insert Column**
-   - Name it exactly as in your file (e.g., `VD`)
-   - Set the value in the cell (e.g., `1.0`)
-
-4. **Create Split for Sweep:**
-   - Select the tool node (e.g., `sdevice`)
-   - Right-click → **Experiments** → **Add Split**
-   - This creates multiple branches
-   - Enter different values in each branch's parameter cell:
-     - Branch 1: `VD = 0.8`
-     - Branch 2: `VD = 1.0`
-     - Branch 3: `VD = 1.2`
-
-5. **Run All Experiments:**
-   - Select parent node
-   - Press **Ctrl+R** or right-click → **Run**
-
-6. **Compare Results:**
-   - Select multiple completed nodes (Ctrl+Click)
-   - Right-click → **Inspect** → **Inspect Results**
-   - Curves will overlay automatically
-
-### 4.2 Recommended Sweep Sequence
-
-**Step 1: Fix V_D First (No Sweep Needed)**
-- Change V_D from 0.05V to 1.0V
-- Run single simulation
-- Verify kink effect appears
-
-**Step 2: Sweep V_D to Match Paper Figure 7(b)**
-| Experiment | V_D Value |
-|------------|----------|
-| 1 | 0.8 V |
-| 2 | 1.0 V |
-| 3 | 1.2 V |
-| 4 | 1.4 V |
-
-**Step 3: Sweep d0 to Match Paper Figure 7(a)**
-| Experiment | d0_e, d0_h Value |
-|------------|------------------|
-| 1 | 1×10^5 |
-| 2 | 5×10^5 |
-| 3 | 1×10^6 (target) |
-| 4 | 5×10^6 |
-
-**Step 4: Fine-tune Workfunction (if V_th is off)**
-| Experiment | Workfunction (eV) |
-|------------|------------------|
-| 1 | 4.5 |
-| 2 | 4.55 |
-| 3 | 4.6 (baseline) |
-| 4 | 4.65 |
-
 ---
 
-## 5. IMMEDIATE NEXT ACTIONS
+## 4. TO-DO CHECKLIST (Executable, no SWB sweeps yet)
 
-- [x] **Phase A Complete:** Identified target curve (Fig. 7 from Bhatawdekar et al.)
-- [x] **Root Cause Found:** V_D = 0.05V instead of 1.0V
-- [ ] **Action 1:** Edit `sdevice_gaafet_lif.cmd` Line 21: Change `Voltage= 0.05` to `Voltage= 1.0`
-- [ ] **Action 2:** Re-run simulation with corrected V_D
-- [ ] **Action 3:** Generate new log-scale I_D vs V_G plot
-- [ ] **Action 4:** Verify kink effect is now visible
-- [ ] **Action 5:** If kink is weak, sweep d0 values (1e5 to 5e6)
+- [x] Phase A complete: target curve identified (Fig. 7 of Bhatawdekar et al.), root cause found (V_D too low)
+
+- [x] Code change: set drain bias to 1.0 V  
+  - File: `Simulations/sdevice_gaafet_lif.cmd`  
+  - Line: drain_contact Voltage → **1.0**
+
+- [x] Code change: replace solve block with V_SG forward/backward sweep for hysteresis  
+  - File: `Simulations/sdevice_gaafet_lif.cmd`  
+  - Sweep: 0 → -0.5 V (forward), then -0.5 → 0 V (backward), using Quasistationary
+
+- [x] Confirm II parameters already correct  
+  - File: `Simulations/sdevice_gaafet_lif.par`  
+  - d0 (a_0, a_1) = 1e6
+
+- [ ] Run simulation (no SWB sweep yet): check for kink on log-scale Id–Vg
+
+- [ ] Regenerate plot with updated .plt  
+  - Script: `Simulations/py_scripts/plot_idvg_from_plt.py` (ylog default)
+
+- [ ] If kink still weak: plan d0 sweep and V_D sweep later (do NOT start now)
+
+- [ ] Document new results: update Phase A metrics after rerun
