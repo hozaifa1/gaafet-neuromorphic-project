@@ -109,12 +109,14 @@ Solve {
 Transient (
 	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
 	InitialTime=1 FinalTime=2 
-	Goal { Name="source_contact" Voltage= -0.5 }
+	Goal { Name="gate_contact" Voltage= 2 }
 	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
 Transient (
 	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
-	InitialTime=2 FinalTime=3 
-	Goal { Name="source_contact" Voltage= 0 }
+	InitialTime=1 FinalTime=2 
+	Goal { Name="gate_contact" Voltage= -2 }
 	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
+
+
 }

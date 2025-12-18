@@ -31,93 +31,7 @@ Authors: Bhatawdekar et al.
 | Channel Doping | N_ch | 1×10^16 /cm³ (Boron) | Table 1 |
 | S/D Doping | N_sd | 1×10^20 /cm³ (Arsenic) | Table 1 |
 
----
-
-## 2. PHASE A COMPLETE: ANALYSIS OF CURRENT SIMULATION
-
-### 2.1 Simulation Results (`n2_des.plt`)
-
-| Metric | Measured Value | Target Value | Status |
-|--------|----------------|--------------|--------|
-| V_g Range | -2.0 V to +2.0 V | -0.5 V to 0 V (V_SG) | ✅ Acceptable |
-| **V_D (Drain Bias)** | **0.05 V** | **1.0 V** | ❌ **CRITICAL ERROR** |
-| I_off | 1.95×10^-20 A | ~1×10^-9 A | ⚠️ Too ideal |
-| I_on | 91.5 µA | ~100 µA | ✅ Close |
-| V_th (@ 94nA) | +0.43 V | -0.244 V | ⚠️ Polarity convention |
-| Kink Effect | **NOT VISIBLE** | Sharp jump in I_D | ❌ **MISSING** |
-| Hysteresis | Not present | ~2V window | ❌ Single sweep |
-
-### 2.2 ROOT CAUSE IDENTIFICATION
-
-**PRIMARY ISSUE: V_D = 0.05 V (Line 21 of `sdevice_gaafet_lif.cmd`)**
-
-The simulation was run with drain voltage **V_D = 0.05 V**, but the paper requires **V_D = 1.0 V**.
-
-**Why this breaks the LIF neuron behavior:**
-1. Impact Ionization requires high electric field at drain-channel junction
-2. At V_D = 0.05 V, the field is ~20× too weak
-3. No avalanche generation → No hole accumulation → No floating body effect
-4. Result: Standard MOSFET curve with no neuromorphic "kink"
-
-**SECONDARY ISSUES:**
-- Hysteresis requires a double-sweep (forward + backward) which was not configured
-- The polarity convention uses V_G (gate-to-ground) instead of V_SG (source-to-gate)
-
----
-
-## 3. EXACT PARAMETER CHANGES REQUIRED (CHECKLIST)
-
-### 3.1 CRITICAL FIX: Drain Voltage
-- [x] **DONE:** Changed `Voltage= 0.05` to `Voltage= 1.0` in `sdevice_gaafet_lif.cmd` Line 21
-
-| Item | Value |
-|------|-------|
-| File | `Simulations/sdevice_gaafet_lif.cmd` |
-| Line | 21 |
-| Before | `{ Name="drain_contact" Voltage= 0.05 }` |
-| After | `{ Name="drain_contact" Voltage= 1.0 }` |
-
-**Why:** Without V_D = 1.0 V, Impact Ionization cannot occur and the LIF neuron will not fire.
-
-### 3.2 Sweep Configuration (Verified - NO CHANGE NEEDED)
-- [x] **VERIFIED:** Current `Transient` approach is CORRECT for FeFET simulations
-
-**Verification Notes:**
-- Web search confirmed: `Quasistationary` assumes steady-state (zero time derivatives)
-- `Transient` is required for Landau-Khalatnikov FE polarization dynamics (ρ·dP/dt term)
-- Reference working codes (`Reference_Codes/Working_Codes_MFMIS/sdevice_des.cmd`) use `Transient`
-- Current Solve block already has forward (+2V) and backward (-2V) sweeps for hysteresis
-
-**Current Solve Block (Lines 105-122) - KEEP AS IS:**
-```tcl
-Solve {
- Transient (
-	InitialTime=0 FinalTime=1
-	) { Coupled (Iterations = 100) { Poisson FEPolarization } }	
-Transient (
-	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
-	InitialTime=1 FinalTime=2 
-	Goal { Name="gate_contact" Voltage= 2 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
-
-Transient (
-	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
-	InitialTime=1 FinalTime=2 
-	Goal { Name="gate_contact" Voltage= -2 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
-}
-```
-
-### 3.3 Impact Ionization Parameters
-- [x] **VERIFIED:** `a_0 = 1.0e6` and `a_1 = 1.0e6` already set correctly in `sdevice_gaafet_lif.par`
-
-| Parameter | Current Value | Target Value | Status |
-|-----------|---------------|--------------|--------|
-| a_0 (d0_e) | 1.0e6 | 1×10^6 | ✅ Correct |
-| a_1 (d0_h) | 1.0e6 | 1×10^6 | ✅ Correct |
-
----
-
+--
 ## 4. SENTAURUS WORKBENCH PARAMETER SWEEP GUIDE (v2023.12)
 
 ### 4.1 How to Create a Parameter Sweep (Step-by-Step Clicking Guide)
@@ -157,10 +71,6 @@ Transient (
 
 ### 4.2 Recommended Sweep Sequence
 
-**Step 1: Fix V_D First (No Sweep Needed)**
-- Change V_D from 0.05V to 1.0V
-- Run single simulation
-- Verify kink effect appears
 
 **Step 2: Sweep V_D to Match Paper Figure 7(b)**
 | Experiment | V_D Value |
