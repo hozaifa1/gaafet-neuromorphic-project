@@ -9,6 +9,8 @@ The device combines:
 - **HZO Ferroelectric Layer** for non-volatile synaptic weight storage
 - **Floating Body Effect** with **Impact Ionization** for LIF neuron behavior
 
+The simulation uses a **2D double-gate approximation** of the 3D GAA device, following the geometry/stack/doping values in `Workflow.md`.
+
 ## Device Architecture
 
 | Parameter | Symbol | Value | Description |
@@ -19,6 +21,17 @@ The device combines:
 | Interfacial Oxide | T_ox | 2 nm | SiO₂ interface layer |
 | Ferroelectric Thickness | T_FE | 10 nm | HZO ferroelectric layer |
 | Source/Drain Length | L_S/D | ~50 nm | Contact isolation |
+
+### Gate Stack (Workflow.md Source of Truth)
+
+The implemented device stack follows the **MFIS** stack defined in `Workflow.md`:
+
+- **Silicon (channel)**
+- **SiO₂ interfacial oxide** (`T_ox = 2 nm`)
+- **HZO ferroelectric** (`T_FE = 10 nm`)
+- **TiN gate metal**
+
+There is **no internal TiN layer** between SiO₂ and HZO.
 
 ### Doping Profile
 
@@ -39,8 +52,8 @@ GAAFet/
 │   ├── Physical modeling of HZO-based.pdf
 │   └── ...
 ├── Reference_Codes/             # All reference implementations
-│   ├── Working_Codes_MFMIS/     # PRIMARY: Battle-tested MFMIS FeFET templates
-│   │   ├── sde_dvs.cmd          # SDE structure definition (FOLLOW THIS SYNTAX)
+│   ├── Working_Codes_MFMIS/     # PRIMARY: Syntax/structure reference (battle-tested)
+│   │   ├── sde_dvs.cmd          # SDE Scheme syntax patterns (function usage, structure)
 │   │   ├── sdevice_des.cmd      # S-Device command file
 │   │   └── sdevice.par          # Material parameters
 │   └── GAAFET_Coursework2/      # SECONDARY: 3D GAA FET reference (akdimitri repo)
@@ -63,14 +76,12 @@ GAAFet/
 | β (beta) | 2.007×10¹⁹ | cm⁵/FC² |
 | γ (gamma) | 0 | cm⁹/FC⁴ |
 | ε_r | 25-33 | - |
-| E_c | 1.1×10⁶ | V/cm |
-| P_r | 20×10⁻⁶ | C/cm² |
 
 ### Impact Ionization (UniBo2 Model)
 
-For LIF neuron firing at V_DS = 1.0V:
-- **d0_e** = 1.0×10⁶ (enhanced electron ionization)
-- **d0_h** = 1.0×10⁶ (enhanced hole ionization)
+`Workflow.md` specifies UniBo2 calibration for LIF firing at `V_DS = 1.0 V`.
+
+Note: the current `Simulations/sdevice_gaafet_lif.cmd` file is primarily set up for FE hysteresis/initial checks; UniBo2 enablement and calibration should follow the workflow when moving to full LIF (impact-ionization-driven) transient runs.
 
 ## 2D Simulation Approach
 
@@ -84,12 +95,12 @@ The 3D GAA structure is approximated as a 2D Double-Gate FET (DGFET) with volume
 
 1. **Structure Generation (SDE)**
    ```bash
-   sde -e -l sde_gaafet_lif.cmd
+   sde -e -l Simulations/sde_gaafet_lif.cmd
    ```
 
 2. **Device Simulation (S-Device)**
    ```bash
-   sdevice sdevice_gaafet_lif.cmd
+   sdevice Simulations/sdevice_gaafet_lif.cmd
    ```
 
 3. **Visualization (SVisual)**
