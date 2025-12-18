@@ -1,0 +1,8 @@
+DATEX2.1 Datacode "User-defined datexcodes for GAAFet LIF" "Datex codes for HZO and custom materials"
+Materials {
+  HZO {
+    label = "HafniumZirconiumOxide"
+    group = Insulator
+    color = #a0a0ff, #b0b0ff
+  }
+}

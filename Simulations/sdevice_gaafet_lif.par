@@ -11,6 +11,13 @@ Material="Silicon" {
         mumax = 300, 470.5 * electron mobility 300 cm2/(V s), default for holes
         Exponent = 2.5, 2.2
     }
+
+    * --- Impact Ionization for LIF Neuron Firing (from Workflow.md Section 3.3) ---
+    * These d0 values enable firing at low Vds=1.0V
+    Avalanche_Unibo2 {
+        d0_e = 1.0e6    * [1/cm] Electron-initiated ionization rate enhancement
+        d0_h = 1.0e6    * [1/cm] Hole-initiated ionization rate enhancement
+    }
 }
 
 Material="TiN" {

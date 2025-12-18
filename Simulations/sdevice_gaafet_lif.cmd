@@ -38,6 +38,8 @@ Physics {
  )
   Recombination(
     SRH (DopingDependence TempDependence)
+    Auger
+    Avalanche(Unibo2)  * CRITICAL: Activates LIF neuron firing trigger
   )
 	Hydrodynamic  
 }
