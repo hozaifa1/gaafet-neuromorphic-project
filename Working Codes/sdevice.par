@@ -1,0 +1,46 @@
+#define ParFileDir .
+
+Material="HfO2" {
+  #includeext "ParFileDir/HfO2.par"
+}
+
+Material="Silicon" {
+    #includeext "ParFileDir/Silicon.par"
+
+    ConstantMobility { * Correct placement: 'ConstantMobility' directly under 'Material'
+        mumax = 300, 470.5 * CORRECTION: Set electron mobility to 300 cm2/(V s), default for holes
+        Exponent = 2.5, 2.2
+    }
+}
+
+Material="TiN" {
+  #includeext "ParFileDir/TiN.par"
+}
+
+
+* --- Define HZO as an Insulator based on HfO2 ---
+Material="HZO" {
+  #includeext "ParFileDir/HfO2.par"
+
+  * --- Physical Parameters ---
+  * NOTE: The paper does not specify all material parameters for HZO.
+  * The values below are reasonable assumptions based on HfO2
+  * and typical values for HZO found in literature.
+
+  Epsilon {
+    epsilon = 25.0      * Relative permittivity (eps_r)
+  }
+  BandGap {
+    Chi0 = 2.0          * Electron Affinity [eV]
+    Eg0 = 5.2           * Band Gap [eV] at 0 K (Often used as a base for 300 K)
+  }
+
+FEPolarization
+{ * FEPolarization parameters for L-K equation 
+	alpha	= -1.911e10	# [cm/F]
+	beta	= 5.898e19	# [cm^5/(FC^2)]
+	gamma	= 0	# [cm^9/(FC^4)]
+	#g=1e-4
+}
+
+}

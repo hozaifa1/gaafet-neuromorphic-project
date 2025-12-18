@@ -1,0 +1,8 @@
+DATEX2.1 Datacode "User-defined datexcodes for HZO" "Data codes for HZO material"
+
+Materials {
+  HZO {
+    label = "HafniumZirconiumOxide"
+    group = Insulator
+    color = #a0a0a0, #b0b0b0  }
+}
