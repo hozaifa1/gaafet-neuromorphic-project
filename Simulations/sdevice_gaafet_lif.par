@@ -13,17 +13,18 @@ Material="Silicon" {
     }
 
     * --- Impact Ionization for LIF Neuron Firing (from Workflow.md Section 3.3) ---
-    * These d0 values enable firing at low Vds=1.0V
-    Avalanche_Unibo2 {
-        d0_e = 1.0e6    * [1/cm] Electron-initiated ionization rate enhancement
-        d0_h = 1.0e6    * [1/cm] Hole-initiated ionization rate enhancement
+    * Using built-in University of Bologna (UniBo) model to avoid missing PMI error.
+    * Mapping 'd0' (pre-factor) from Workflow to 'a' parameter in UniBo model.
+    Avalanche_UniBo {
+        a(0) = 1.0e6    * [1/cm] Electron ionization pre-factor (d0_e equivalent)
+        a(1) = 1.0e6    * [1/cm] Hole ionization pre-factor (d0_h equivalent)
+        * b parameters left as default or implicitly defined by material properties
     }
 }
 
 Material="TiN" {
   #includeext "ParFileDir/TiN.par"
 }
-
 
 * --- Define HZO as an Insulator based on HfO2 ---
 Material="HZO" {
