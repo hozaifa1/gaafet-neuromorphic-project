@@ -24,6 +24,7 @@ n*_*
 
 # IDE and system files
 .windsurf/
+Sentaurus Tutorials/
 .vscode/
 *.swp
 Thumbs.db
