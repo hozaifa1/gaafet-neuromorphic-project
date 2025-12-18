@@ -65,72 +65,147 @@ The simulation was run with drain voltage **V_D = 0.05 V**, but the paper requir
 
 ---
 
-## 3. EXACT PARAMETER CHANGES REQUIRED
+## 3. EXACT PARAMETER CHANGES REQUIRED (CHECKLIST)
 
 ### 3.1 CRITICAL FIX: Drain Voltage
+- [x] **DONE:** Changed `Voltage= 0.05` to `Voltage= 1.0` in `sdevice_gaafet_lif.cmd` Line 21
 
-**File:** `Simulations/sdevice_gaafet_lif.cmd`  
-**Line:** 21  
-**Current:** `{ Name="drain_contact" Voltage= 0.05 }`  
-**Change to:** `{ Name="drain_contact" Voltage= 1.0 }`
+| Item | Value |
+|------|-------|
+| File | `Simulations/sdevice_gaafet_lif.cmd` |
+| Line | 21 |
+| Before | `{ Name="drain_contact" Voltage= 0.05 }` |
+| After | `{ Name="drain_contact" Voltage= 1.0 }` |
 
-This single change is the most important fix. Without V_D = 1.0 V, the LIF neuron cannot function.
+**Why:** Without V_D = 1.0 V, Impact Ionization cannot occur and the LIF neuron will not fire.
 
-### 3.2 Sweep Configuration for Hysteresis
+### 3.2 Sweep Configuration (Verified - NO CHANGE NEEDED)
+- [x] **VERIFIED:** Current `Transient` approach is CORRECT for FeFET simulations
 
-**File:** `Simulations/sdevice_gaafet_lif.cmd`  
-**Section:** Solve block (Lines 105-122)
+**Verification Notes:**
+- Web search confirmed: `Quasistationary` assumes steady-state (zero time derivatives)
+- `Transient` is required for Landau-Khalatnikov FE polarization dynamics (ρ·dP/dt term)
+- Reference working codes (`Reference_Codes/Working_Codes_MFMIS/sdevice_des.cmd`) use `Transient`
+- Current Solve block already has forward (+2V) and backward (-2V) sweeps for hysteresis
 
-Replace the current sweep with a proper V_SG sweep:
-```
+**Current Solve Block (Lines 105-122) - KEEP AS IS:**
+```tcl
 Solve {
-  * Initial equilibrium
-  Coupled { Poisson Electron Hole FEPolarization }
-  
-  * Forward sweep: V_SG from 0 to -0.5V
-  Quasistationary (
-    InitialStep=0.01 MaxStep=0.02 MinStep=1e-5
-    Goal { Name="source_contact" Voltage=-0.5 }
-  ) { Coupled { Poisson Electron Hole FEPolarization } }
-  
-  * Backward sweep: V_SG from -0.5V to 0V (for hysteresis)
-  Quasistationary (
-    InitialStep=0.01 MaxStep=0.02 MinStep=1e-5
-    Goal { Name="source_contact" Voltage=0 }
-  ) { Coupled { Poisson Electron Hole FEPolarization } }
+ Transient (
+	InitialTime=0 FinalTime=1
+	) { Coupled (Iterations = 100) { Poisson FEPolarization } }	
+Transient (
+	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
+	InitialTime=1 FinalTime=2 
+	Goal { Name="gate_contact" Voltage= 2 }
+	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
+
+Transient (
+	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
+	InitialTime=1 FinalTime=2 
+	Goal { Name="gate_contact" Voltage= -2 }
+	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 }
 ```
 
-### 3.3 Impact Ionization Parameters (Already Correct)
+### 3.3 Impact Ionization Parameters
+- [x] **VERIFIED:** `a_0 = 1.0e6` and `a_1 = 1.0e6` already set correctly in `sdevice_gaafet_lif.par`
 
-**File:** `Simulations/sdevice_gaafet_lif.par`  
-**Status:** ✅ `a_0 = 1.0e6` and `a_1 = 1.0e6` are already set correctly.
+| Parameter | Current Value | Target Value | Status |
+|-----------|---------------|--------------|--------|
+| a_0 (d0_e) | 1.0e6 | 1×10^6 | ✅ Correct |
+| a_1 (d0_h) | 1.0e6 | 1×10^6 | ✅ Correct |
 
 ---
 
+## 4. SENTAURUS WORKBENCH PARAMETER SWEEP GUIDE (v2023.12)
+
+### 4.1 How to Create a Parameter Sweep (Step-by-Step Clicking Guide)
+
+1. **Open SWB Project:**
+   - Launch Sentaurus Workbench
+   - Open your project file (.swb)
+
+2. **Define a Variable in Your Input File:**
+   - Open `sdevice_gaafet_lif.cmd`
+   - Replace hardcoded value with `@VarName@` syntax
+   - Example: Change `Voltage= 1.0` to `Voltage= @VD@`
+
+3. **Add Variable Column in SWB:**
+   - In SWB main window, look at the spreadsheet-like interface
+   - Right-click on any column header → **Insert Column**
+   - Name it exactly as in your file (e.g., `VD`)
+   - Set the value in the cell (e.g., `1.0`)
+
+4. **Create Split for Sweep:**
+   - Select the tool node (e.g., `sdevice`)
+   - Right-click → **Experiments** → **Add Split**
+   - This creates multiple branches
+   - Enter different values in each branch's parameter cell:
+     - Branch 1: `VD = 0.8`
+     - Branch 2: `VD = 1.0`
+     - Branch 3: `VD = 1.2`
+
+5. **Run All Experiments:**
+   - Select parent node
+   - Press **Ctrl+R** or right-click → **Run**
+
+6. **Compare Results:**
+   - Select multiple completed nodes (Ctrl+Click)
+   - Right-click → **Inspect** → **Inspect Results**
+   - Curves will overlay automatically
+
+### 4.2 Recommended Sweep Sequence
+
+**Step 1: Fix V_D First (No Sweep Needed)**
+- Change V_D from 0.05V to 1.0V
+- Run single simulation
+- Verify kink effect appears
+
+**Step 2: Sweep V_D to Match Paper Figure 7(b)**
+| Experiment | V_D Value |
+|------------|----------|
+| 1 | 0.8 V |
+| 2 | 1.0 V |
+| 3 | 1.2 V |
+| 4 | 1.4 V |
+
+**Step 3: Sweep d0 to Match Paper Figure 7(a)**
+| Experiment | d0_e, d0_h Value |
+|------------|------------------|
+| 1 | 1×10^5 |
+| 2 | 5×10^5 |
+| 3 | 1×10^6 (target) |
+| 4 | 5×10^6 |
+
+**Step 4: Fine-tune Workfunction (if V_th is off)**
+| Experiment | Workfunction (eV) |
+|------------|------------------|
+| 1 | 4.5 |
+| 2 | 4.55 |
+| 3 | 4.6 (baseline) |
+| 4 | 4.65 |
+
 ---
 
-## 4. TO-DO CHECKLIST (Executable, no SWB sweeps yet)
+## 5. MASTER CHECKLIST
 
-- [x] Phase A complete: target curve identified (Fig. 7 of Bhatawdekar et al.), root cause found (V_D too low)
+### Phase A: Analysis & Code Fixes
+- [x] Identify target curve from paper (Fig. 7 from Bhatawdekar et al.)
+- [x] Analyze current simulation results (`n2_des.plt`)
+- [x] Identify root cause (V_D = 0.05V instead of 1.0V)
+- [x] Fix 3.1: Change drain voltage to 1.0V in `sdevice_gaafet_lif.cmd`
+- [x] Verify 3.2: Transient sweep is correct (no change needed)
+- [x] Verify 3.3: Impact Ionization params already correct
 
-- [x] Code change: set drain bias to 1.0 V  
-  - File: `Simulations/sdevice_gaafet_lif.cmd`  
-  - Line: drain_contact Voltage → **1.0**
+### Phase B: Simulation & Validation (NEXT)
+- [ ] Re-run simulation in Sentaurus with corrected V_D = 1.0V
+- [ ] Generate new `.plt` output file
+- [ ] Run `python Simulations/py_scripts/plot_idvg_from_plt.py` with `--ylog` flag
+- [ ] Verify kink effect is now visible in log-scale plot
+- [ ] Compare I_th with target (94 nA)
 
-- [x] Code change: replace solve block with V_SG forward/backward sweep for hysteresis  
-  - File: `Simulations/sdevice_gaafet_lif.cmd`  
-  - Sweep: 0 → -0.5 V (forward), then -0.5 → 0 V (backward), using Quasistationary
-
-- [x] Confirm II parameters already correct  
-  - File: `Simulations/sdevice_gaafet_lif.par`  
-  - d0 (a_0, a_1) = 1e6
-
-- [ ] Run simulation (no SWB sweep yet): check for kink on log-scale Id–Vg
-
-- [ ] Regenerate plot with updated .plt  
-  - Script: `Simulations/py_scripts/plot_idvg_from_plt.py` (ylog default)
-
-- [ ] If kink still weak: plan d0 sweep and V_D sweep later (do NOT start now)
-
-- [ ] Document new results: update Phase A metrics after rerun
+### Phase C: Calibration Sweeps (Use Section 4 Guide)
+- [ ] If kink is weak: Sweep d0 values (1e5 to 5e6)
+- [ ] If V_th is off: Sweep Workfunction (4.5 to 4.65 eV)
+- [ ] If hysteresis width is wrong: Sweep Ferro_alpha parameter
