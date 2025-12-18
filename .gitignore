@@ -24,7 +24,7 @@ n*_*
 
 # IDE and system files
 .windsurf/
-Sentaurus Tutorials/
+Sentaurus_Tutorials/
 .vscode/
 *.swp
 Thumbs.db
@@ -36,3 +36,4 @@ Thumbs.db
 # Python cache (if using Python scripts)
 __pycache__/
 *.pyc
+
