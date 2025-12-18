@@ -1,106 +1,43 @@
-*=====================================================================
-*== GAA FeFET LIF Neuron - S-Device Parameter File
-*== 
-*== Material parameters for: Silicon, HZO (Ferroelectric), TiN, SiO2
-*== 
-*== Key customizations:
-*==   - HZO Landau-Khalatnikov ferroelectric parameters
-*==   - Impact Ionization UniBo2 model (enhanced d0 for LIF firing)
-*=====================================================================
-
 #define ParFileDir .
 
-*=====================================================================
-*== SILICON - Channel Material
-*=====================================================================
+Material="HfO2" {
+  #includeext "ParFileDir/HfO2.par"
+}
+
 Material="Silicon" {
     #includeext "ParFileDir/Silicon.par"
-    
-    * Mobility model parameters
-    ConstantMobility {
-        mumax = 300, 470.5    * electron, hole mobility [cm2/(V s)]
+
+    ConstantMobility { * Correct placement: 'ConstantMobility' directly under 'Material'
+        mumax = 300, 470.5 * electron mobility 300 cm2/(V s), default for holes
         Exponent = 2.5, 2.2
     }
-    
-    * Impact Ionization - UniBo2 Model (CRITICAL FOR LIF NEURON)
-    * Enhanced d0 values enable firing at low Vds (1.0V)
-    Avalanche_UniBo2 {
-        d0_e = 1.0e6    * Enhanced electron ionization rate
-        d0_h = 1.0e6    * Enhanced hole ionization rate
-        * Other parameters use default calibrated values
-    }
 }
 
-*=====================================================================
-*== HZO - Ferroelectric Material (Hf0.57Zr0.43O2)
-*== Landau-Khalatnikov parameters for polarization switching
-*=====================================================================
-Material="HZO" {
-    #includeext "ParFileDir/HfO2.par"
-    
-    * Dielectric properties
-    Epsilon {
-        epsilon = 25.0    * Relative permittivity
-    }
-    
-    * Band structure
-    BandGap {
-        Chi0 = 2.0        * Electron Affinity [eV]
-        Eg0 = 5.2         * Band Gap [eV]
-    }
-    
-    * Ferroelectric Polarization - Landau-Khalatnikov Model
-    * Parameters for HZO from literature
-    FEPolarization {
-        * Landau coefficients (negative alpha creates double-well)
-        alpha = -9.889e10     * [cm/F] - Creates bistability
-        beta  = 2.007e19      * [cm^5/(FC^2)] - Well steepness
-        gamma = 0             * [cm^9/(FC^4)] - Higher order (simplified)
-        
-        * Gradient energy coefficients (domain wall width)
-        * g11 = 5e-7          * [cm^3/F]
-        * g22 = 5e-7
-        
-        * Kinetic viscosity (switching speed)
-        * rho = 2.25e4        * [Ohm*cm]
-        
-        * Reference values for initialization
-        * Ec = 1.1e6          * Coercive field [V/cm]
-        * Pr = 20e-6          * Remnant polarization [C/cm^2]
-    }
-}
-
-*=====================================================================
-*== SiO2 - Interfacial Oxide
-*=====================================================================
-Material="SiO2" {
-    #includeext "ParFileDir/SiO2.par"
-    
-    Epsilon {
-        epsilon = 3.9
-    }
-}
-
-*=====================================================================
-*== TiN - Gate Metal
-*=====================================================================
 Material="TiN" {
-    #includeext "ParFileDir/TiN.par"
-    
-    * Workfunction set in electrode definition (4.6 eV)
+  #includeext "ParFileDir/TiN.par"
 }
 
-*=====================================================================
-*== HfO2 - High-k Dielectric (if used instead of SiO2)
-*=====================================================================
-Material="HfO2" {
-    #includeext "ParFileDir/HfO2.par"
-    
-    Epsilon {
-        epsilon = 25.0
-    }
+
+* --- Define HZO as an Insulator based on HfO2 ---
+Material="HZO" {
+  #includeext "ParFileDir/HfO2.par"
+
+  * --- Physical Parameters ---
+  * NOTE: Values from Workflow.md and general HZO literature.
+
+  Epsilon {
+    epsilon = 25.0      * Relative permittivity (eps_r)
+  }
+  BandGap {
+    Chi0 = 2.0          * Electron Affinity [eV]
+    Eg0 = 5.2           * Band Gap [eV] at 0 K (Often used as a base for 300 K)
+  }
+
+FEPolarization
+{ * FEPolarization parameters for L-K equation (from Workflow.md)
+	alpha	= -9.889e10	# [cm/F]
+	beta	= 2.007e19	# [cm^5/(FC^2)]
+	gamma	= 0	# [cm^9/(FC^4)]
 }
 
-*=====================================================================
-*== END OF PARAMETER FILE
-*=====================================================================
+}

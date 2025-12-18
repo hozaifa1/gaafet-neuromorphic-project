@@ -38,18 +38,19 @@ GAAFet/
 │   ├── Design of energy-efficient LIF neuron...pdf
 │   ├── Physical modeling of HZO-based.pdf
 │   └── ...
-├── Working_Codes/               # Verified working MFMIS FeFET templates
-│   ├── sde_dvs.cmd              # SDE structure definition
-│   ├── sdevice_des.cmd          # S-Device command file
-│   └── sdevice.par              # Material parameters
-├── Reference_Codes/             # External reference implementations
-│   └── GAAFET_Coursework2/      # 3D GAA FET reference (from akdimitri repo)
+├── Reference_Codes/             # All reference implementations
+│   ├── Working_Codes_MFMIS/     # PRIMARY: Battle-tested MFMIS FeFET templates
+│   │   ├── sde_dvs.cmd          # SDE structure definition (FOLLOW THIS SYNTAX)
+│   │   ├── sdevice_des.cmd      # S-Device command file
+│   │   └── sdevice.par          # Material parameters
+│   └── GAAFET_Coursework2/      # SECONDARY: 3D GAA FET reference (akdimitri repo)
 │       ├── Ohmic_SDE.txt        # 3D cylindrical GAA SDE
 │       ├── CIGAAFET.txt         # Core-insulated GAA variant
-│       ├── Ohmic_CIGAAFET_SDevice.txt
-│       └── Group3Report2.pdf    # Documentation
-└── Simulations/                 # Simulation output directory
-    └── gaafet_lif/              # Main LIF neuron simulation
+│       └── Ohmic_CIGAAFET_SDevice.txt
+└── Simulations/                 # Active simulation files
+    ├── sde_gaafet_lif.cmd       # GAA FeFET LIF neuron SDE
+    ├── sdevice_gaafet_lif.cmd   # S-Device command file
+    └── sdevice_gaafet_lif.par   # Material parameters
 ```
 
 ## Key Physics Models
