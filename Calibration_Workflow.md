@@ -2,80 +2,188 @@
 
 This document outlines the step-by-step process to calibrate the GAAFET LIF neuron simulation against the reference design.
 
-## 1. Analysis of Current Status vs. Target
-**Current Simulation Results (`n2_des`):**
-- **I_off:** ~1.95e-20 A (Likely too ideal/low compared to experiment).
-- **I_on:** ~91.5 µA (Matches target range of 10-100 µA).
-- **V_th:** ~0.43 V (at 94 nA).
-- **Characteristics:** Standard MOSFET turn-on. "Kink" effect (LIF firing) needs verification in the logarithmic plot.
+---
 
-**Target Characteristics (from "Design of energy-efficient LIF neuron..." & Workflow):**
-- **Firing Threshold (Kink):** Sharp increase in current at a specific Vg/Vds due to Floating Body Effect + Impact Ionization.
-- **V_ds:** 1.0 V (Operating voltage).
-- **Target I_th:** 94 nA.
-- **Key Feature:** Hysteresis window (Memory Window) due to Ferroelectric HZO.
+## 1. TARGET CURVE IDENTIFICATION
 
-## 2. Hyper-Specific To-Do List
+**Primary Reference Paper:**  
+"Design of energy-efficient LIF neuron using CMOS compatible gate-all-around floating nanosheet FET"  
+*Neurocomputing 659 (2026) 131814*  
+Authors: Bhatawdekar et al.
 
-### Phase A: Curve Analysis & Validation
-- [ ] **Verify Log-Plot:** Ensure `output_curves/n2_des_Id_vs_Vg.png` is plotted in Log-Linear scale. The "Kink" is often only visible in Log scale as a hump in the subthreshold or inversion region.
-- [ ] **Identify "Kink" Presence:** Look for a sudden change in slope or a bump in the I_d curve. If absent, the Impact Ionization (II) rate is too low or the Body Effect is suppressed.
-- [ ] **Check Hysteresis:** Run the sweep as `DoubleSweep` (0 -> Vg_max -> 0) or `Cyclic` to see the memory window. Current data appears to be a single sweep.
+**Target Curves to Replicate:**
+- **Figure 7(a):** I_D vs V_SG showing Impact Ionization parameter sweep (d0 = 1×10^5 to 9×10^6)
+- **Figure 7(b):** I_D vs V_SG at different V_D values (0.4V to 1.4V), with and without II model
+- **Figure 8:** Transient I_D vs Time showing threshold firing at I_th = 94 nA
 
-### Phase B: Sentaurus Workbench (SWB) Calibration Setup
-- [ ] **Define Variables in SWB:**
-    - Ensure the following parameters are parameterized in your input files (using `@parameter@` syntax):
-        - `Workfunction` (Gate Metal)
-        - `Doping_Channel` (Body Doping)
-        - `Avalanche_d0` (Impact Ionization Coeff)
-        - `Ferro_Pr` (Remnant Polarization)
-        - `Ferro_Ec` (Coercive Field)
-- [ ] **Create Parameter Sweeps (Clicking Guide):**
-    - **Step 1:** In SWB, locate the "Parameters" list (usually on the left or top pane). Add new parameters if they don't exist as columns.
-    - **Step 2:** Select the `sdevice` node (or `sde` node if changing geometry/doping).
-    - **Step 3 (Tree Split):** Right-click the node > **Add** > **Split**. This creates two child branches.
-    - **Step 4:** On the new branches, click inside the parameter column (e.g., `Workfunction`) and enter different values (e.g., `4.5` on Branch A, `4.6` on Branch B).
-    - **Step 5:** Repeat for other variables. This creates a "Tree" of experiments.
-    - **Step 6:** Select the root of the split and press **Ctrl+R** (or right-click > Run) to run all branches.
+**Target Parameters (EXACT from Paper Table 1 & Section 3):**
 
-### Phase C: Parameter Tuning Strategy (Calibration)
-Perform these sweeps in order to match the curve:
+| Parameter | Symbol | Target Value | Source |
+|-----------|--------|--------------|--------|
+| Threshold Voltage | V_th | **-0.244 V** | Fig. 7, Table 2 |
+| Threshold Current | I_th | **94 nA** | Fig. 7(b), Fig. 8 |
+| Drain Voltage | V_D | **1.0 V** | Section 3, Fig. 7(b) |
+| Impact Ionization d0 | d0_e, d0_h | **1×10^6** | Fig. 7(a), Section 2.3 |
+| Gate Length | L_g | 100 nm | Table 1 |
+| Fin Height | H_FNS | 90 nm | Table 1 |
+| Fin Thickness | T_FNS | 15 nm | Table 1 |
+| Gate Workfunction | WF | 4.6 eV | Table 1 |
+| Channel Doping | N_ch | 1×10^16 /cm³ (Boron) | Table 1 |
+| S/D Doping | N_sd | 1×10^20 /cm³ (Arsenic) | Table 1 |
 
-1.  **Match Threshold Voltage (V_th):**
-    - **Parameter:** `Workfunction` (Gate Metal).
-    - **Range:** 4.4 eV to 4.8 eV.
-    - **Goal:** Shift curve horizontally to align V_th with ~0.4 - 0.5 V (or target from paper).
+---
 
-2.  **Match Off-Current (I_off):**
-    - **Parameter:** `Doping_Channel` (P-type Boron).
-    - **Range:** 1e15 to 1e17 cm^-3.
-    - **Goal:** Adjust subthreshold floor. Higher doping = lower I_off but higher V_th.
+## 2. PHASE A COMPLETE: ANALYSIS OF CURRENT SIMULATION
 
-3.  **Trigger the "Kink" (LIF Firing):**
-    - **Parameter:** `Avalanche_Unibo2_d0` (Impact Ionization).
-    - **Range:** 1e5, 1e6, 5e6, 1e7.
-    - **Goal:** If the kink is missing, **increase** `d0`. The Workflow recommends `1.0e6`. Try higher (`5.0e6`) if no kink appears.
-    - **Secondary Parameter:** `AreaFactor` (if 2D simulation current is too low to sustain FB effect).
+### 2.1 Simulation Results (`n2_des.plt`)
 
-4.  **Tune Hysteresis (Memory Window):**
-    - **Parameter:** `Ferro_Pr` (Remnant Polarization).
-    - **Range:** 15, 20, 25 uC/cm^2.
-    - **Goal:** Widens the memory window.
+| Metric | Measured Value | Target Value | Status |
+|--------|----------------|--------------|--------|
+| V_g Range | -2.0 V to +2.0 V | -0.5 V to 0 V (V_SG) | ✅ Acceptable |
+| **V_D (Drain Bias)** | **0.05 V** | **1.0 V** | ❌ **CRITICAL ERROR** |
+| I_off | 1.95×10^-20 A | ~1×10^-9 A | ⚠️ Too ideal |
+| I_on | 91.5 µA | ~100 µA | ✅ Close |
+| V_th (@ 94nA) | +0.43 V | -0.244 V | ⚠️ Polarity convention |
+| Kink Effect | **NOT VISIBLE** | Sharp jump in I_D | ❌ **MISSING** |
+| Hysteresis | Not present | ~2V window | ❌ Single sweep |
 
-### Phase D: Final Verification
-- [ ] **Overlay Plot:** Create a Python script to overlay the Simulated Curve vs. Digitized Paper Curve (if data points available).
-- [ ] **Extract Metrics:** Calculate Error % for V_th, SS, I_on.
+### 2.2 ROOT CAUSE IDENTIFICATION
 
-## 3. Important Clicking Guide for SWB (v2023.12)
-- **Parameterization:** To make a value sweepable, you MUST replace the hardcoded number in the `.cmd` file with `@VarName@`.
-    - *Example:* Change `Workfunction = 4.6` to `Workfunction = @WF@`.
-    - Then add `WF` as a parameter in the SWB project spreadsheet.
-- **Visualizing Results:**
-    - Select multiple finished nodes (hold Ctrl).
-    - Right-click > **Inspect** > **Inspect Results**.
-    - This overlays curves from multiple experiments.
+**PRIMARY ISSUE: V_D = 0.05 V (Line 21 of `sdevice_gaafet_lif.cmd`)**
 
-## 4. Next Actions
-1. **Modify `sdevice_gaafet_lif.par`**: Ensure `d0_e` and `d0_h` are parameterized or set to `1.0e6`.
-2. **Modify `sdevice_gaafet_lif.cmd`**: Ensure the voltage sweep covers the full hysteresis range (-2V to +2V and back).
-3. **Run Sweep:** Execute the variation of `Workfunction` to center the curve.
+The simulation was run with drain voltage **V_D = 0.05 V**, but the paper requires **V_D = 1.0 V**.
+
+**Why this breaks the LIF neuron behavior:**
+1. Impact Ionization requires high electric field at drain-channel junction
+2. At V_D = 0.05 V, the field is ~20× too weak
+3. No avalanche generation → No hole accumulation → No floating body effect
+4. Result: Standard MOSFET curve with no neuromorphic "kink"
+
+**SECONDARY ISSUES:**
+- Hysteresis requires a double-sweep (forward + backward) which was not configured
+- The polarity convention uses V_G (gate-to-ground) instead of V_SG (source-to-gate)
+
+---
+
+## 3. EXACT PARAMETER CHANGES REQUIRED
+
+### 3.1 CRITICAL FIX: Drain Voltage
+
+**File:** `Simulations/sdevice_gaafet_lif.cmd`  
+**Line:** 21  
+**Current:** `{ Name="drain_contact" Voltage= 0.05 }`  
+**Change to:** `{ Name="drain_contact" Voltage= 1.0 }`
+
+This single change is the most important fix. Without V_D = 1.0 V, the LIF neuron cannot function.
+
+### 3.2 Sweep Configuration for Hysteresis
+
+**File:** `Simulations/sdevice_gaafet_lif.cmd`  
+**Section:** Solve block (Lines 105-122)
+
+Replace the current sweep with a proper V_SG sweep:
+```
+Solve {
+  * Initial equilibrium
+  Coupled { Poisson Electron Hole FEPolarization }
+  
+  * Forward sweep: V_SG from 0 to -0.5V
+  Quasistationary (
+    InitialStep=0.01 MaxStep=0.02 MinStep=1e-5
+    Goal { Name="source_contact" Voltage=-0.5 }
+  ) { Coupled { Poisson Electron Hole FEPolarization } }
+  
+  * Backward sweep: V_SG from -0.5V to 0V (for hysteresis)
+  Quasistationary (
+    InitialStep=0.01 MaxStep=0.02 MinStep=1e-5
+    Goal { Name="source_contact" Voltage=0 }
+  ) { Coupled { Poisson Electron Hole FEPolarization } }
+}
+```
+
+### 3.3 Impact Ionization Parameters (Already Correct)
+
+**File:** `Simulations/sdevice_gaafet_lif.par`  
+**Status:** ✅ `a_0 = 1.0e6` and `a_1 = 1.0e6` are already set correctly.
+
+---
+
+## 4. SENTAURUS WORKBENCH PARAMETER SWEEP GUIDE (v2023.12)
+
+### 4.1 How to Create a Parameter Sweep (Step-by-Step Clicking Guide)
+
+1. **Open SWB Project:**
+   - Launch Sentaurus Workbench
+   - Open your project file (.swb)
+
+2. **Define a Variable in Your Input File:**
+   - Open `sdevice_gaafet_lif.cmd`
+   - Replace hardcoded value with `@VarName@` syntax
+   - Example: Change `Voltage= 1.0` to `Voltage= @VD@`
+
+3. **Add Variable Column in SWB:**
+   - In SWB main window, look at the spreadsheet-like interface
+   - Right-click on any column header → **Insert Column**
+   - Name it exactly as in your file (e.g., `VD`)
+   - Set the value in the cell (e.g., `1.0`)
+
+4. **Create Split for Sweep:**
+   - Select the tool node (e.g., `sdevice`)
+   - Right-click → **Experiments** → **Add Split**
+   - This creates multiple branches
+   - Enter different values in each branch's parameter cell:
+     - Branch 1: `VD = 0.8`
+     - Branch 2: `VD = 1.0`
+     - Branch 3: `VD = 1.2`
+
+5. **Run All Experiments:**
+   - Select parent node
+   - Press **Ctrl+R** or right-click → **Run**
+
+6. **Compare Results:**
+   - Select multiple completed nodes (Ctrl+Click)
+   - Right-click → **Inspect** → **Inspect Results**
+   - Curves will overlay automatically
+
+### 4.2 Recommended Sweep Sequence
+
+**Step 1: Fix V_D First (No Sweep Needed)**
+- Change V_D from 0.05V to 1.0V
+- Run single simulation
+- Verify kink effect appears
+
+**Step 2: Sweep V_D to Match Paper Figure 7(b)**
+| Experiment | V_D Value |
+|------------|----------|
+| 1 | 0.8 V |
+| 2 | 1.0 V |
+| 3 | 1.2 V |
+| 4 | 1.4 V |
+
+**Step 3: Sweep d0 to Match Paper Figure 7(a)**
+| Experiment | d0_e, d0_h Value |
+|------------|------------------|
+| 1 | 1×10^5 |
+| 2 | 5×10^5 |
+| 3 | 1×10^6 (target) |
+| 4 | 5×10^6 |
+
+**Step 4: Fine-tune Workfunction (if V_th is off)**
+| Experiment | Workfunction (eV) |
+|------------|------------------|
+| 1 | 4.5 |
+| 2 | 4.55 |
+| 3 | 4.6 (baseline) |
+| 4 | 4.65 |
+
+---
+
+## 5. IMMEDIATE NEXT ACTIONS
+
+- [x] **Phase A Complete:** Identified target curve (Fig. 7 from Bhatawdekar et al.)
+- [x] **Root Cause Found:** V_D = 0.05V instead of 1.0V
+- [ ] **Action 1:** Edit `sdevice_gaafet_lif.cmd` Line 21: Change `Voltage= 0.05` to `Voltage= 1.0`
+- [ ] **Action 2:** Re-run simulation with corrected V_D
+- [ ] **Action 3:** Generate new log-scale I_D vs V_G plot
+- [ ] **Action 4:** Verify kink effect is now visible
+- [ ] **Action 5:** If kink is weak, sweep d0 values (1e5 to 5e6)
