@@ -190,7 +190,7 @@ Transient (
 
 ## 5. MASTER CHECKLIST
 
-### Phase A: Analysis & Code Fixes
+### Phase A: Analysis & Code Fixes ✅ COMPLETE
 - [x] Identify target curve from paper (Fig. 7 from Bhatawdekar et al.)
 - [x] Analyze current simulation results (`n2_des.plt`)
 - [x] Identify root cause (V_D = 0.05V instead of 1.0V)
@@ -198,14 +198,58 @@ Transient (
 - [x] Verify 3.2: Transient sweep is correct (no change needed)
 - [x] Verify 3.3: Impact Ionization params already correct
 
-### Phase B: Simulation & Validation (NEXT)
-- [ ] Re-run simulation in Sentaurus with corrected V_D = 1.0V
-- [ ] Generate new `.plt` output file
-- [ ] Run `python Simulations/py_scripts/plot_idvg_from_plt.py` with `--ylog` flag
-- [ ] Verify kink effect is now visible in log-scale plot
-- [ ] Compare I_th with target (94 nA)
+### Phase B: Simulation & Validation ✅ COMPLETE
+- [x] Re-run simulation in Sentaurus with corrected V_D = 1.0V
+- [x] Generate new `.plt` output file (`n2_des.plt`)
+- [x] Run `python Simulations/py_scripts/plot_idvg_from_plt.py` with `--ylog` flag
+- [x] Analyze log-scale plot for kink effect
 
-### Phase C: Calibration Sweeps (Use Section 4 Guide)
-- [ ] If kink is weak: Sweep d0 values (1e5 to 5e6)
-- [ ] If V_th is off: Sweep Workfunction (4.5 to 4.65 eV)
-- [ ] If hysteresis width is wrong: Sweep Ferro_alpha parameter
+**Phase B Results (2024-12-18):**
+
+| Metric | Measured | Target | Status |
+|--------|----------|--------|--------|
+| V_D | 1.0 V | 1.0 V | ✅ |
+| V_G Range | -2V to +2V | — | ✅ OK |
+| I_off | ~10^-16 A | ~10^-9 A | ⚠️ Too ideal |
+| I_on | 1.37 mA | ~100 µA | ✅ |
+| V_th (@ 94nA) | 0.45 V | 0.244 V | ❌ +0.2V shift |
+| **Kink Effect** | **NOT VISIBLE** | Sharp jump | ❌ **MISSING** |
+| Hysteresis | Not detected | ~2V window | ❌ |
+
+**Diagnosis:** Impact Ionization is NOT firing despite V_D = 1.0V and d0 = 1e6.
+
+### Phase C: Calibration Sweeps (NEXT STEP)
+
+**Priority 1: Fix Missing Kink Effect**
+- [ ] Sweep d0 values to trigger Impact Ionization:
+  | Experiment | d0_e, d0_h | Expected Effect |
+  |------------|------------|----------------|
+  | C1 | 5×10^6 | Stronger II, earlier kink |
+  | C2 | 1×10^7 | Even stronger II |
+  | C3 | 2×10^6 | Moderate increase |
+
+**Priority 2: Fix V_th Shift (after kink appears)**
+- [ ] Sweep Workfunction if V_th is still off:
+  | Experiment | WF (eV) | Expected Shift |
+  |------------|---------|---------------|
+  | C4 | 4.5 | V_th ↓ ~0.1V |
+  | C5 | 4.55 | V_th ↓ ~0.05V |
+
+**Priority 3: Fix Hysteresis (after kink and V_th)**
+- [ ] If no hysteresis, check FE polarization parameters
+
+---
+
+## 6. IMMEDIATE NEXT ACTION
+
+**You need to sweep d0 parameter to trigger Impact Ionization.**
+
+In `sdevice_gaafet_lif.par`, change:
+```
+Avalanche_UniBo {
+    a_0 = 5.0e6    * Increase from 1.0e6
+    a_1 = 5.0e6    * Increase from 1.0e6
+}
+```
+
+Or use SWB parameter sweep (Section 4) to test multiple values simultaneously.
