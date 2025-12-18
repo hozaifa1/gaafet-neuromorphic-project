@@ -13,14 +13,10 @@ Material="Silicon" {
     }
 
     * --- Impact Ionization for LIF Neuron Firing (from Workflow.md Section 3.3) ---
-    * Using vanOverstraeten model with enhanced coefficients for low Vds firing
-    * Default a_n=7.03e5, a_p=1.582e6, b_n=1.231e6, b_p=2.036e6
-    * To increase ionization at low fields, reduce b (threshold field) values
-    vanOverstraetendeMan {
-        a(0) = 7.03e5       * [1/cm] Electron ionization coefficient
-        a(1) = 1.582e6      * [1/cm] Hole ionization coefficient
-        b(0) = 6.155e5      * [V/cm] Reduced threshold for electrons (was 1.231e6)
-        b(1) = 1.018e6      * [V/cm] Reduced threshold for holes (was 2.036e6)
+    * These d0 values enable firing at low Vds=1.0V
+    Avalanche_Unibo2 {
+        d0_e = 1.0e6    * [1/cm] Electron-initiated ionization rate enhancement
+        d0_h = 1.0e6    * [1/cm] Hole-initiated ionization rate enhancement
     }
 }
 

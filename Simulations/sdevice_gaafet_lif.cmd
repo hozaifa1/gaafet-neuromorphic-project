@@ -39,7 +39,7 @@ Physics {
   Recombination(
     SRH (DopingDependence TempDependence)
     Auger
-    Avalanche(vanOverstraeten)  * Built-in Impact Ionization model
+    Avalanche(Unibo2)  * CRITICAL: Activates LIF neuron firing trigger
   )
 	Hydrodynamic  
 }
