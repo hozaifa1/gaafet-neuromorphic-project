@@ -16,8 +16,8 @@ Material="Silicon" {
     * Using built-in University of Bologna (UniBo) model to avoid missing PMI error.
     * Mapping 'd0' (pre-factor) from Workflow to 'a' parameter in UniBo model.
     Avalanche_UniBo {
-        a(0) = 1.0e6    * [1/cm] Electron ionization pre-factor (d0_e equivalent)
-        a(1) = 1.0e6    * [1/cm] Hole ionization pre-factor (d0_h equivalent)
+        a_0 = 1.0e6    * [1/cm] Electron ionization pre-factor (d0_e equivalent)
+        a_1 = 1.0e6    * [1/cm] Hole ionization pre-factor (d0_h equivalent)
         * b parameters left as default or implicitly defined by material properties
     }
 }
