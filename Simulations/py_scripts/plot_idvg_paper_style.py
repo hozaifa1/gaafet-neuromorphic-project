@@ -186,9 +186,17 @@ def main():
     parser = argparse.ArgumentParser(description="Plot I_D-V_SG in paper style (flipped axis)")
     parser.add_argument("--input", type=Path, default=Path("../a0a1_1e6.plt"),
                         help="Input .plt file")
-    parser.add_argument("--output", type=Path, default=Path("../output_curves/IdVsg_paper_style.png"),
-                        help="Output image path")
-    parser.add_argument("--linear", action="store_true", help="Use linear y-axis (like Fig 7a)")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Base output image path (default: ../output_curves/IdVsg_<input-stem>.png)",
+    )
+    parser.add_argument(
+        "--fullrange",
+        action="store_true",
+        help="Also save full-range plots (V_SG from -2V to 2V)",
+    )
     args = parser.parse_args()
     
     print(f"Reading: {args.input}")
@@ -197,8 +205,8 @@ def main():
     # Analyze
     analyze_kink(df)
     
-    # Plot both linear and log versions
-    plot_paper_style(df, args.output, linear=args.linear)
+    if args.output is None:
+        args.output = Path(f"../output_curves/IdVsg_{args.input.stem}.png")
     
     # Paper-matched range: V_SG from -0.5V to 0V
     vsg_min, vsg_max = -0.5, 0.0
@@ -208,15 +216,16 @@ def main():
     plot_paper_style(df, log_output, linear=False, vsg_min=vsg_min, vsg_max=vsg_max)
     
     # Save linear version (paper-matched range)
-    lin_output = args.output.parent / (args.output.stem + "_linear.png")
+    lin_output = args.output.parent / (args.output.stem + "_lin.png")
     plot_paper_style(df, lin_output, linear=True, vsg_min=vsg_min, vsg_max=vsg_max)
     
     # Also save full-range versions for reference
-    full_log_output = args.output.parent / (args.output.stem + "_fullrange_log.png")
-    plot_paper_style(df, full_log_output, linear=False, vsg_min=-2.0, vsg_max=2.0)
-    
-    full_lin_output = args.output.parent / (args.output.stem + "_fullrange_linear.png")
-    plot_paper_style(df, full_lin_output, linear=True, vsg_min=-2.0, vsg_max=2.0)
+    if args.fullrange:
+        full_log_output = args.output.parent / (args.output.stem + "_full_log.png")
+        plot_paper_style(df, full_log_output, linear=False, vsg_min=-2.0, vsg_max=2.0)
+        
+        full_lin_output = args.output.parent / (args.output.stem + "_full_lin.png")
+        plot_paper_style(df, full_lin_output, linear=True, vsg_min=-2.0, vsg_max=2.0)
 
 
 if __name__ == "__main__":
