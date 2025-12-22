@@ -4,7 +4,7 @@
 *===================================================================
 File {
     Grid = "@tdr@"
-    Parameter = "sdevice_gaafet_lif.par"
+    Parameter = "sdevice_gaafet_lif_1e5.par"
     Plot = "@tdrdat@"
     Current = "@plot@"
     Output = "@log@"
@@ -114,7 +114,7 @@ Solve {
 Transient (
 	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
 	InitialTime=1 FinalTime=2 
-	Goal { Name="gate_contact" Voltage= 0.5 }
+	Goal { Name="gate_contact" Voltage= 2.0 }
 	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
 Transient (
