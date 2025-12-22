@@ -66,8 +66,8 @@ Material="Silicon" {
     }
 
     UniBo2 {
-        d0_e = 1e5
-        d0_h = 1e5
+        d0_e = 1.0e7
+        d0_h = 1.0e7
     }
 }
 
@@ -75,25 +75,20 @@ Material="TiN" {
   #includeext "ParFileDir/TiN.par"
 }
 
-* --- Define HZO as an Insulator based on HfO2 ---
 Material="HZO" {
   #includeext "ParFileDir/HfO2.par"
 
-  * --- Physical Parameters ---
-  * NOTE: Values from Workflow.md and general HZO literature.
-
   Epsilon {
-    epsilon = 25.0      * Relative permittivity (eps_r)
+    epsilon = 25.0
   }
   BandGap {
-    Chi0 = 2.0          * Electron Affinity [eV]
-    Eg0 = 5.2           * Band Gap [eV] at 0 K (Often used as a base for 300 K)
+    Chi0 = 2.0
+    Eg0 = 5.2
   }
 
-FEPolarization
-{
-	alpha	= -9.889e10
-	beta	= 2.007e19
-	gamma	= 0
-}
+  FEPolarization {
+    alpha = -9.889e10
+    beta = 2.007e19
+    gamma = 0
+  }
 }

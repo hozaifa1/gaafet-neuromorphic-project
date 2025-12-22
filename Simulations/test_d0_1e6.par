@@ -1,0 +1,39 @@
+#define ParFileDir .
+
+Material="HfO2" {
+  #includeext "ParFileDir/HfO2.par"
+}
+
+Material="Silicon" {
+    ConstantMobility {
+        mumax = 300, 470.5
+        Exponent = 2.5, 2.2
+    }
+
+    UniBo2 {
+        d0_e = 1.0e6
+        d0_h = 1.0e6
+    }
+}
+
+Material="TiN" {
+  #includeext "ParFileDir/TiN.par"
+}
+
+Material="HZO" {
+  #includeext "ParFileDir/HfO2.par"
+
+  Epsilon {
+    epsilon = 25.0
+  }
+  BandGap {
+    Chi0 = 2.0
+    Eg0 = 5.2
+  }
+
+  FEPolarization {
+    alpha = -9.889e10
+    beta = 2.007e19
+    gamma = 0
+  }
+}

@@ -42,7 +42,7 @@ def parse_dfise_plt(path: Path) -> pd.DataFrame:
     return pd.DataFrame(data, columns=names)
 
 
-def plot_curve(df: pd.DataFrame, x: str, y: str, out_path: Path, ylog: bool = False) -> None:
+def plot_curve(df: pd.DataFrame, x: str, y: str, out_path: Path, ylog: bool = False, use_vsg: bool = True) -> None:
     if x not in df.columns:
         raise KeyError(f"x column '{x}' not found in datasets: {list(df.columns)}")
     if y not in df.columns:
@@ -50,22 +50,23 @@ def plot_curve(df: pd.DataFrame, x: str, y: str, out_path: Path, ylog: bool = Fa
 
     fig, ax = plt.subplots(figsize=(6, 4))
     
-    # Sort by x to avoid messy lines if time steps aren't monotonic in x (e.g. hysteresis loop)
-    # But for hysteresis loops (forward and backward), sorting might break the loop visualization.
-    # Usually we just plot as is.
-    ax.plot(df[x], df[y], label=f"{y} vs {x}", linewidth=1.4)
+    x_data = df[x].values
+    y_data = df[y].values
+    
+    if use_vsg and 'gate' in x.lower():
+        x_data = -x_data
+        x_label = "V_SG (V)"
+    else:
+        x_label = x
     
     if ylog:
-        ax.set_yscale("log")
-        # Handle negative values if present (though current magnitude is usually what we care about in log)
-        # Often absolute value is plotted for log I_d
-        df[y] = df[y].abs()
-        ax.clear() # Re-plot with abs values
-        ax.plot(df[x], df[y], label=f"|{y}| vs {x}", linewidth=1.4)
-        ax.set_yscale("log")
+        y_data = np.abs(y_data)
+        ax.semilogy(x_data, y_data, label=f"|I_D| vs {x_label}", linewidth=1.4)
+    else:
+        ax.plot(x_data, y_data, label=f"I_D vs {x_label}", linewidth=1.4)
 
-    ax.set_xlabel(x)
-    ax.set_ylabel(y)
+    ax.set_xlabel(x_label, fontsize=11)
+    ax.set_ylabel("Drain Current I_D (A)", fontsize=11)
     ax.grid(True, which="both", linestyle="--", alpha=0.4)
     ax.legend()
     fig.tight_layout()

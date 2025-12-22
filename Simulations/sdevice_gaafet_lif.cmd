@@ -28,20 +28,22 @@ Electrode {
 *===================================================================
 * --- Physics models for Silicon (default material) ---
 Physics {
-	Temperature= 300
-	Areafactor=0.09  * Scale for 90nm fin height (H_FNS/1000nm default)
+  Temperature= 300
+  Areafactor=0.09  * Scale for 90nm fin height (H_FNS/1000nm default)
 
   Fermi
+	EffectiveIntrinsicDensity( OldSlotboom )
   Mobility(
     ConstantMobility
     HighFieldSaturation
- )
+    Enormal
+  )
   Recombination(
     SRH (DopingDependence TempDependence)
     Auger
-    Avalanche(UniBo)  * Built-in University of Bologna model
+    Avalanche(UniBo2 CarrierTempDrive)  * Built-in University of Bologna model
   )
-	Hydrodynamic  
+	Hydrodynamic(eTemperature hTemperature)
 }
 
 * --- Physics model for the Ferroelectric material ---
@@ -86,14 +88,17 @@ Plot {
   ConductionBand
   ValenceBand
   Doping
-  FEPolarization/Vector  * Crucial for visualizing FE state
+  FEPolarization/Vector
 	BandGap
 	BandGapNarrowing
-	ConductionBand ValenceBand
 	eTrappedCharge
 	hTrappedCharge
 	eBarrierTunneling hBarrierTunneling 
 	eDirectTunnel hDirectTunnel
+	AvalancheGeneration eAvalancheGeneration hAvalancheGeneration
+	SRHRecombination AugerRecombination
+	eMobility hMobility
+	eVelocity hVelocity
 }
 
 
@@ -107,15 +112,15 @@ Solve {
 	InitialTime=0 FinalTime=1
 	) { Coupled (Iterations = 100) { Poisson FEPolarization } }	
 Transient (
-	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
+	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
 	InitialTime=1 FinalTime=2 
-	Goal { Name="gate_contact" Voltage= 2 }
+	Goal { Name="gate_contact" Voltage= 0.5 }
 	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
 Transient (
-	MaxStep=2.5e-3 InitialStep=1e-4 MinStep=1e-5
+	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
 	InitialTime=1 FinalTime=2 
-	Goal { Name="gate_contact" Voltage= -2 }
+	Goal { Name="gate_contact" Voltage= 0 }
 	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
 

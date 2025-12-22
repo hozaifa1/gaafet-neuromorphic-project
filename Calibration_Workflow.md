@@ -1,165 +1,76 @@
-# Calibration Workflow & To-Do List
+# FeFET LIF Calibration Workflow *(Rewritten Dec 20 2025 – VDS finding)*
 
-This document outlines the step-by-step process to calibrate the GAAFET LIF neuron simulation against the reference design.
-
----
-
-## 1. TARGET CURVE IDENTIFICATION
-
-**Primary Reference Paper:**  
-"Design of energy-efficient LIF neuron using CMOS compatible gate-all-around floating nanosheet FET"  
-*Neurocomputing 659 (2026) 131814*  
-Authors: Bhatawdekar et al.
-
-**Target Curves to Replicate:**
-- **Figure 7(a):** I_D vs V_SG showing Impact Ionization parameter sweep (d0 = 1×10^5 to 9×10^6)
-- **Figure 7(b):** I_D vs V_SG at different V_D values (0.4V to 1.4V), with and without II model
-- **Figure 8:** Transient I_D vs Time showing threshold firing at I_th = 94 nA
-
-**Target Parameters (EXACT from Paper Table 1 & Section 3):**
-
-| Parameter | Symbol | Target Value | Source |
-|-----------|--------|--------------|--------|
-| Threshold Voltage | V_th | **-0.244 V** | Fig. 7, Table 2 |
-| Threshold Current | I_th | **94 nA** | Fig. 7(b), Fig. 8 |
-| Drain Voltage | V_D | **1.0 V** | Section 3, Fig. 7(b) |
-| Impact Ionization d0 | d0_e, d0_h | **1×10^6** | Fig. 7(a), Section 2.3 |
-| Gate Length | L_g | 100 nm | Table 1 |
-| Fin Height | H_FNS | 90 nm | Table 1 |
-| Fin Thickness | T_FNS | 15 nm | Table 1 |
-| Gate Workfunction | WF | 4.6 eV | Table 1 |
-| Channel Doping | N_ch | 1×10^16 /cm³ (Boron) | Table 1 |
-| S/D Doping | N_sd | 1×10^20 /cm³ (Arsenic) | Table 1 |
-
---
-## 4. SENTAURUS WORKBENCH PARAMETER SWEEP GUIDE (v2023.12)
-
-### 4.1 How to Create a Parameter Sweep (Step-by-Step Clicking Guide)
-
-1. **Open SWB Project:**
-   - Launch Sentaurus Workbench
-   - Open your project file (.swb)
-
-2. **Define a Variable in Your Input File:**
-   - Open `sdevice_gaafet_lif.cmd`
-   - Replace hardcoded value with `@VarName@` syntax
-   - Example: Change `Voltage= 1.0` to `Voltage= @VD@`
-
-3. **Add Variable Column in SWB:**
-   - In SWB main window, look at the spreadsheet-like interface
-   - Right-click on any column header → **Insert Column**
-   - Name it exactly as in your file (e.g., `VD`)
-   - Set the value in the cell (e.g., `1.0`)
-
-4. **Create Split for Sweep:**
-   - Select the tool node (e.g., `sdevice`)
-   - Right-click → **Experiments** → **Add Split**
-   - This creates multiple branches
-   - Enter different values in each branch's parameter cell:
-     - Branch 1: `VD = 0.8`
-     - Branch 2: `VD = 1.0`
-     - Branch 3: `VD = 1.2`
-
-5. **Run All Experiments:**
-   - Select parent node
-   - Press **Ctrl+R** or right-click → **Run**
-
-6. **Compare Results:**
-   - Select multiple completed nodes (Ctrl+Click)
-   - Right-click → **Inspect** → **Inspect Results**
-   - Curves will overlay automatically
-
-### 4.2 Recommended Sweep Sequence
-
-
-**Step 2: Sweep V_D to Match Paper Figure 7(b)**
-| Experiment | V_D Value |
-|------------|----------|
-| 1 | 0.8 V |
-| 2 | 1.0 V |
-| 3 | 1.2 V |
-| 4 | 1.4 V |
-
-**Step 3: Sweep d0 to Match Paper Figure 7(a)**
-| Experiment | d0_e, d0_h Value |
-|------------|------------------|
-| 1 | 1×10^5 |
-| 2 | 5×10^5 |
-| 3 | 1×10^6 (target) |
-| 4 | 5×10^6 |
-
-**Step 4: Fine-tune Workfunction (if V_th is off)**
-| Experiment | Workfunction (eV) |
-|------------|------------------|
-| 1 | 4.5 |
-| 2 | 4.55 |
-| 3 | 4.6 (baseline) |
-| 4 | 4.65 |
+This replaces the prior workflow. All recent evidence shows that **only the drain bias (V_DS) change from 1.0 V to 1.5 V altered the simulation output**. Adjusting `a_0`, `b_0`, `d_0`, or any other UniBo avalanche knobs produced byte-identical `.plt` files. Until we prove otherwise, treat V_DS as the sole effective control for the kink behavior in this project’s Sentaurus build.
 
 ---
 
-## 5. MASTER CHECKLIST
+## 1. Observed Behavior
 
-### Phase A: Analysis & Code Fixes ✅ COMPLETE
-- [x] Identify target curve from paper (Fig. 7 from Bhatawdekar et al.)
-- [x] Analyze current simulation results (`n2_des.plt`)
-- [x] Identify root cause (V_D = 0.05V instead of 1.0V)
-- [x] Fix 3.1: Change drain voltage to 1.0V in `sdevice_gaafet_lif.cmd`
-- [x] Verify 3.2: Transient sweep is correct (no change needed)
-- [x] Verify 3.3: Impact Ionization params already correct
+1. **Kink only appears when V_DS ≥ 1.5 V.**  
+   - Old files (V_DS = 1.0 V) lacked avalanche-induced slope changes.  
+   - Raising V_DS to 1.5 V triggered the “kink” and improved I_ON/I_OFF by ~30×.
+2. **Impact-ionization parameters currently inert.**  
+   - Swapping `a_0/a_1` or `b_0/b_1` between 8e5↔1.5e6 made no difference (hash-identical outputs).  
+   - Therefore, they cannot be relied upon for d₀ sweeps until we identify why Sentaurus is ignoring them.
+3. **Plotting pipeline is verified.**  
+   - `plot_idvg_final.py` and comparison scripts accurately expose identical vs different runs, so the lack of change is from the simulator, not the post-processing.
 
-### Phase B: Simulation & Validation ✅ COMPLETE
-- [x] Re-run simulation in Sentaurus with corrected V_D = 1.0V
-- [x] Generate new `.plt` output file (`n2_des.plt`)
-- [x] Run `python Simulations/py_scripts/plot_idvg_from_plt.py` with `--ylog` flag
-- [x] Analyze log-scale plot for kink effect
-
-**Phase B Results (2024-12-18):**
-
-| Metric | Measured | Target | Status |
-|--------|----------|--------|--------|
-| V_D | 1.0 V | 1.0 V | ✅ |
-| V_G Range | -2V to +2V | — | ✅ OK |
-| I_off | ~10^-16 A | ~10^-9 A | ⚠️ Too ideal |
-| I_on | 1.37 mA | ~100 µA | ✅ |
-| V_th (@ 94nA) | 0.45 V | 0.244 V | ❌ +0.2V shift |
-| **Kink Effect** | **NOT VISIBLE** | Sharp jump | ❌ **MISSING** |
-| Hysteresis | Not detected | ~2V window | ❌ |
-
-**Diagnosis:** Impact Ionization is NOT firing despite V_D = 1.0V and d0 = 1e6.
-
-### Phase C: Calibration Sweeps (NEXT STEP)
-
-**Priority 1: Fix Missing Kink Effect**
-- [ ] Sweep d0 values to trigger Impact Ionization:
-  | Experiment | d0_e, d0_h | Expected Effect |
-  |------------|------------|----------------|
-  | C1 | 5×10^6 | Stronger II, earlier kink |
-  | C2 | 1×10^7 | Even stronger II |
-  | C3 | 2×10^6 | Moderate increase |
-
-**Priority 2: Fix V_th Shift (after kink appears)**
-- [ ] Sweep Workfunction if V_th is still off:
-  | Experiment | WF (eV) | Expected Shift |
-  |------------|---------|---------------|
-  | C4 | 4.5 | V_th ↓ ~0.1V |
-  | C5 | 4.55 | V_th ↓ ~0.05V |
-
-**Priority 3: Fix Hysteresis (after kink and V_th)**
-- [ ] If no hysteresis, check FE polarization parameters
+**Conclusion:** Assume V_DS is the only working knob for now. Calibration must revolve around controlled V_DS sweeps while we investigate why UniBo parameters are frozen.
 
 ---
 
-## 6. IMMEDIATE NEXT ACTION
+## 2. Target Metrics (Bhatawdekar et al.)
 
-**You need to sweep d0 parameter to trigger Impact Ionization.**
+| Metric | Target | Primary knob (current reality) |
+|--------|--------|--------------------------------|
+| Kink onset | V_DS = 1.0 V | V_DS sweep (currently stuck at 1.5 V) |
+| Kink magnitude | 10–100× current jump | V_DS (since avalanche params inert) |
+| Threshold voltage | −0.244 V | Gate workfunction |
+| Threshold current | 94 nA | Derived once V_th + kink match |
 
-In `sdevice_gaafet_lif.par`, change:
-```
-Avalanche_UniBo {
-    a_0 = 5.0e6    * Increase from 1.0e6
-    a_1 = 5.0e6    * Increase from 1.0e6
-}
-```
+---
 
-Or use SWB parameter sweep (Section 4) to test multiple values simultaneously.
+## 3. Revised Calibration Flow
+
+### Step A – Baseline reproducibility
+1. Confirm `sdevice_gaafet_lif.cmd` is the version with **V_DS swept up to 1.5 V**.  
+2. Run once to generate `1e6_final.plt` (reference).
+3. Hash future runs (`Get-FileHash`) to verify whether any parameter edit changes output.
+
+### Step B – V_DS sweep (primary knob)
+1. Create three runs with identical `.par` files, varying only V_DS max:
+   - **Run V1:** 1.0 V
+   - **Run V2:** 1.2 V
+   - **Run V3:** 1.5 V  
+2. Plot each file; expect V1/V2 to match (no kink) and V3 to show the sharp rise.  
+3. Document I_ON/I_OFF and slope variance for each run in this file.
+
+### Step C – Attempt to re-enable avalanche parameters
+1. Inspect Sentaurus version / license modules for UniBo options (check documentation directory or `*.cfg` files).  
+2. If a PMI or alternative avalanche model exists, repeat the identical-run test to confirm parameters finally take effect.  
+3. Until confirmed, keep `a_*`, `b_*`, `d_*` at defaults and do **not** assume they work.
+
+### Step D – Threshold alignment (after kink via V_DS)
+1. Use V_DS = 1.5 V data (since that produces a kink).  
+2. Measure V_GS at |I_D| = 94 nA using the plotting scripts.  
+3. Shift gate workfunction (4.5–4.65 eV sweep) to pull V_th toward −0.244 V.  
+4. Record each workfunction setting and resulting V_th here.
+
+### Step E – Hysteresis & transient checks
+1. Once V_th is near target at V_DS = 1.5 V, evaluate hysteresis width with the same plots.  
+2. If hysteresis is negligible, revisit FE polarization parameters (only after ensuring V_DS behavior is locked).  
+3. Run the transient firing experiment using the calibrated static conditions; log whether the firing threshold matches 94 nA.
+
+---
+
+## 4. Open Questions / Action Items
+
+| Priority | Task | Owner Notes |
+|----------|------|-------------|
+| P1 | Run the V_DS sweep (1.0 / 1.2 / 1.5 V) and archive plots + metrics | Confirms that V_DS is indeed the only working knob |
+| P1 | Investigate why UniBo avalanche parameters don’t change outputs | Look for missing model licenses or script overrides |
+| P2 | Once V_DS lever is understood, try alternative avalanche models (Okuto, Chynoweth) | Goal: regain control over kink at 1.0 V |
+| P2 | Workfunction sweep for −0.244 V threshold (using V_DS = 1.5 V run) | Prepare for final calibration |
+| P3 | FE hysteresis tuning and transient validation | After V_th + kink are settled |
+
+> Keep logging every run (parameters + hashes + plots) in this document to avoid confusion about what actually changed. Once we regain control over avalanche parameters, the workflow can be updated again to fold V_DS back to 1.0 V.
