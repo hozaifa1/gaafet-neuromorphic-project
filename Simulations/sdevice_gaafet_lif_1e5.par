@@ -12,10 +12,9 @@ Material="Silicon" {
         Exponent = 2.5, 2.2
     }
 
-   UniBo2 {
-	d0_h = 1e5
-	d0_e = 1e5
-
+    AvalancheFactors {
+        n_l_f = 0.01  * Scale electron ionization coefficient (lower = less II)
+        p_l_f = 0.01  * Scale hole ionization coefficient
     }
 }
 

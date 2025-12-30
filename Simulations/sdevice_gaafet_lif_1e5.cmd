@@ -41,9 +41,9 @@ Physics {
   Recombination(
     SRH (DopingDependence TempDependence)
     Auger
-    Avalanche(UniBo2 CarrierTempDrive)  * Built-in University of Bologna model
+    Avalanche(UniBo2 CarrierTempDrive)  * Hydrodynamic needed for convergence
   )
-	Hydrodynamic(eTemperature hTemperature)
+  Hydrodynamic(eTemperature hTemperature)
 }
 
 * --- Physics model for the Ferroelectric material ---
