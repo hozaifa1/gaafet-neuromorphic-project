@@ -12,9 +12,23 @@ Material="Silicon" {
         Exponent = 2.5, 2.2
     }
 
-    AvalancheFactors {
-        n_l_f = 10.0  * Scale electron ionization coefficient (higher = more II)
-        p_l_f = 10.0  * Scale hole ionization coefficient
+   UniBo2 {
+	d0_h = 1e5
+	d0_e = 1e5
+    }
+
+    Band2BandTunneling {
+        * Hurkx model parameters for Band2Band tunneling
+        * Critical for nanoscale GAA devices
+        Agen = 4.0e14    * [1/cm^3/sec] Generation prefactor
+        Bgen = 1.9e7     * [V/cm] Generation field parameter
+        Pgen = 2.5       * [1] Generation power
+        
+        Arec = 4.0e14    * [1/cm^3/sec] Recombination prefactor
+        Brec = 1.9e7     * [V/cm] Recombination field parameter
+        Prec = 2.5       * [1] Recombination power
+        
+        alpha = 0        * 0=both gen+rec, -1=only gen, +1=only rec
     }
 }
 

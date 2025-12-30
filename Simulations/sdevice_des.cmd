@@ -4,7 +4,7 @@
 *===================================================================
 File {
     Grid = "@tdr@"
-    Parameter = "sdevice_gaafet_lif_1e7.par"
+    Parameter = "sdevice_gaafet_lif.par"
     Plot = "@tdrdat@"
     Current = "@plot@"
     Output = "@log@"
@@ -17,9 +17,9 @@ File {
 *==          electrode for simultaneous biasing.
 *===================================================================
 Electrode {
-  { Name="source_contact"     Voltage= 0.0 }
-  { Name="drain_contact"      Voltage= 1.0 }
-  { Name="gate_contact"   Voltage= 0.0 Workfunction=4.6 }
+  { Name="source_contact"     Voltage= 0.0  DistResist=1.5e-8 }
+  { Name="drain_contact"      Voltage= 1    DistResist=1.5e-8 }
+  { Name="gate_contact"       Voltage= 0.0  Workfunction=4.6 }
 }
 
 *===================================================================
@@ -29,21 +29,27 @@ Electrode {
 * --- Physics models for Silicon (default material) ---
 Physics {
   Temperature= 300
-  Areafactor=0.09  * Scale for 90nm fin height (H_FNS/1000nm default)
+  Areafactor=2.0  * Increased from 1.0 based on GAA reference implementations
 
   Fermi
 	EffectiveIntrinsicDensity( OldSlotboom )
+  
+  * Quantum confinement (critical for nanoscale GAA)
+  eQuantumPotential(AutoOrientation Density)
+  hQuantumPotential(AutoOrientation Density)
+  
   Mobility(
-    ConstantMobility
-    HighFieldSaturation
+    PhuMob  * Philips unified mobility model for thin channels
     Enormal
   )
   Recombination(
     SRH (DopingDependence TempDependence)
     Auger
-    Avalanche(UniBo2 CarrierTempDrive)  * Hydrodynamic needed for convergence
+    Avalanche(UniBo2 BandgapDependence)  * Paper uses BandgapDependence for d0 to affect d(T)
+    Band2Band(Model=Hurkx)  * Critical for nanoscale BTBT current
   )
-  Hydrodynamic(eTemperature hTemperature)
+	Hydrodynamic(eTemperature hTemperature)
+
 }
 
 * --- Physics model for the Ferroelectric material ---
@@ -62,7 +68,12 @@ Math {
 	Iterations= 50
 	NotDamped= 100
 	RHSMin= 1.000e-15
+	
+	* Required for quantum models
+	GeometricDistances
 	Extrapolate
+	Derivative
+	
 	Transient= BE
 	ComputeGradQuasiFermiAtContacts= UseQuasiFermi
 	RefDens_eGradQuasiFermi_ElectricField_HFS= 1.000e+12
