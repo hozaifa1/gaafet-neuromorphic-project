@@ -19,7 +19,7 @@ File {
 Electrode {
   { Name="source_contact"     Voltage= 0.0  DistResist=1.5e-8 }
   { Name="drain_contact"      Voltage= 1    DistResist=1.5e-8 }
-  { Name="gate_contact"       Voltage= 0.0  Workfunction=4.6 }
+  { Name="gate_contact"       Voltage= 0.0  Workfunction=4.525 }
 }
 
 *===================================================================
@@ -29,7 +29,7 @@ Electrode {
 * --- Physics models for Silicon (default material) ---
 Physics {
   Temperature= 300
-  Areafactor=2.0  * Increased from 1.0 based on GAA reference implementations
+  Areafactor=4.0  * Calibrated for 87 µA target (was 2.0)
 
   Fermi
 	EffectiveIntrinsicDensity( OldSlotboom )
@@ -126,13 +126,13 @@ Transient (
 	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
 	InitialTime=1 FinalTime=2 
 	Goal { Name="gate_contact" Voltage= 2.0 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
+	) { Coupled (Iterations = 100) {Poisson Electron Hole eTemperature hTemperature FEPolarization} }
 
 Transient (
 	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
 	InitialTime=1 FinalTime=2 
 	Goal { Name="gate_contact" Voltage= 0 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
+	) { Coupled (Iterations = 100) {Poisson Electron Hole eTemperature hTemperature FEPolarization} }
 
 
 }
