@@ -29,7 +29,7 @@ Electrode {
 * --- Physics models for Silicon (default material) ---
 Physics {
   Temperature= 300
-  Areafactor=4.0  * Calibrated for 87 µA target (was 2.0)
+  Areafactor=0.09  * H_FNS scaling: 90nm / 1000nm (default Z-depth)
 
   Fermi
 	EffectiveIntrinsicDensity( OldSlotboom )
