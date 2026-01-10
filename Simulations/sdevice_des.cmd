@@ -115,28 +115,40 @@ Plot {
 
 *===================================================================
 *== Block 6: SOLVE
-*== Purpose: Execute the simulation sequence to trace the Id-Vg
-*==          hysteresis loop.
+*== Purpose: Execute DC transfer characteristics (Id-Vg) simulation.
+*== Method: Quasistationary for steady-state DC I-V sweeps
 *===================================================================
 Solve {
-* Initialize FE polarization at equilibrium
- Transient (
-	InitialTime=0 FinalTime=1
-	) { Coupled (Iterations = 100) { Poisson FEPolarization } }
 
-* Ramp gate voltage to 2V (hysteresis forward sweep)
+* Step 1: Initialize with Poisson-only equilibrium
+Coupled(Iterations=100) { Poisson }
+
+* Step 2: Add carriers at equilibrium
+Coupled(Iterations=100) { Poisson Electron Hole }
+
+* Step 3: Initialize FE polarization at equilibrium (short transient)
 Transient (
-	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
-	InitialTime=1 FinalTime=2 
-	Goal { Name="gate_contact" Voltage= 2.0 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
+	InitialTime=0 FinalTime=1e-6
+	MaxStep=1e-7 InitialStep=1e-9
+) { Coupled (Iterations=100) { Poisson FEPolarization } }
 
-* Ramp gate voltage back to 0V (hysteresis reverse sweep)
-Transient (
-	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
-	InitialTime=2 FinalTime=3 
-	Goal { Name="gate_contact" Voltage= 0 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
+* Step 4: Couple FE polarization with carriers at equilibrium
+Coupled(Iterations=100) { Poisson Electron Hole FEPolarization }
 
+* Step 5: DC I-V sweep - Gate from 0V to 2.0V (QUASISTATIONARY for DC)
+* This obtains steady-state transfer characteristics as in Paper Figure 7b
+Quasistationary (
+	DoZero
+	InitialStep=1e-2 Increment=1.1
+	MinStep=1e-6 MaxStep=0.05
+	Goal { Name="gate_contact" Voltage=2.0 }
+) { Coupled(Iterations=100) { Poisson Electron Hole FEPolarization eQuantumPotential hQuantumPotential } }
+
+* Step 6: Reverse sweep - Gate from 2.0V back to 0V (hysteresis)
+Quasistationary (
+	InitialStep=1e-2 Increment=1.1
+	MinStep=1e-6 MaxStep=0.05
+	Goal { Name="gate_contact" Voltage=0.0 }
+) { Coupled(Iterations=100) { Poisson Electron Hole FEPolarization eQuantumPotential hQuantumPotential } }
 
 }
