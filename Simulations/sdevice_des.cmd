@@ -119,34 +119,24 @@ Plot {
 *==          hysteresis loop.
 *===================================================================
 Solve {
-* Stage 1: Initialize FE polarization at equilibrium
+* Initialize FE polarization at equilibrium
  Transient (
-	InitialTime=0 FinalTime=0.1
+	InitialTime=0 FinalTime=1
 	) { Coupled (Iterations = 100) { Poisson FEPolarization } }
 
-* Stage 2: Add carriers in drift-diffusion mode
- Transient (
-	InitialTime=0.1 FinalTime=0.5
-	) { Coupled (Iterations = 100) { Poisson Electron Hole FEPolarization } }
-
-* Stage 3: Transition to hydrodynamic (add carrier temperatures)
- Transient (
-	InitialTime=0.5 FinalTime=1.0
-	) { Coupled (Iterations = 100) { Poisson Electron Hole eTemperature hTemperature FEPolarization } }
-
-* Stage 4: Ramp gate voltage to 2V (hysteresis forward sweep)
+* Ramp gate voltage to 2V (hysteresis forward sweep)
 Transient (
 	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
 	InitialTime=1 FinalTime=2 
 	Goal { Name="gate_contact" Voltage= 2.0 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole eTemperature hTemperature FEPolarization} }
+	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
-* Stage 5: Ramp gate voltage back to 0V (hysteresis reverse sweep)
+* Ramp gate voltage back to 0V (hysteresis reverse sweep)
 Transient (
 	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
 	InitialTime=2 FinalTime=3 
 	Goal { Name="gate_contact" Voltage= 0 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole eTemperature hTemperature FEPolarization} }
+	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
 
 }
