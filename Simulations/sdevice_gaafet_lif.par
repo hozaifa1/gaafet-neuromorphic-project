@@ -13,8 +13,8 @@ Material="Silicon" {
     }
 
    UniBo2 {
-	d0_h = 1e5
-	d0_e = 1e5
+	d0_h = 1e6
+	d0_e = 1e6
     }
 
     Band2BandTunneling {
