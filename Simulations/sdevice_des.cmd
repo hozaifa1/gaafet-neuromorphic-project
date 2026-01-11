@@ -126,14 +126,14 @@ Solve {
 
 * Ramp gate voltage to 2V (hysteresis forward sweep)
 Transient (
-	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
+	MaxStep=1e-4 InitialStep=1e-6 MinStep=1e-7
 	InitialTime=1 FinalTime=2 
 	Goal { Name="gate_contact" Voltage= 2.0 }
 	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
 * Ramp gate voltage back to 0V (hysteresis reverse sweep)
 Transient (
-	MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
+	MaxStep=1e-4 InitialStep=1e-6 MinStep=1e-7
 	InitialTime=2 FinalTime=3 
 	Goal { Name="gate_contact" Voltage= 0 }
 	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
