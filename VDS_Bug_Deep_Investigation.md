@@ -15,7 +15,14 @@
 - Tighter MinStep: `1e-6` → `1e-7`
 - Should resolve both convergence and physics accuracy issues
 
-**STATUS**: Ready for re-simulation at VDS=1.4V to verify fix
+**STATUS**: ✅ ROOT CAUSE IDENTIFIED - Methodology Error (Transient vs Quasistationary)
+
+**Test 2 Results (Jan 12, 2026)**: Finer timesteps did NOT fix the bug.
+- VDS=0.4V: 135.45 µA | VDS=0.8V: 103.73 µA | VDS=1.0V: 88.58 µA
+- VDS=1.2V: 74.33 µA | VDS=1.4V: 61.73 µA
+- Current still decreases monotonically with increasing VDS ❌
+
+**SOLUTION**: Use Quasistationary (not Transient) for DC I-V sweeps
 
 ---
 
@@ -75,36 +82,54 @@ Analyzed existing simulation data (0.4V, 0.8V, 1.0V):
 
 ---
 
-### ✅ Test 2: Finer Timesteps (10x finer resolution)
+### ✅ Test 2: Finer Timesteps (10x finer resolution) - COMPLETED
 **Rationale**: Higher VDS has faster dynamics, may need finer temporal resolution.  
-**Status**: **IMPLEMENTED**  
+**Status**: **COMPLETED - BUG PERSISTS**  
 **Action**: Changed `MaxStep=1e-3` to `MaxStep=1e-4` (10x finer) + `MinStep=1e-6` to `1e-7`  
-**Expected**: 
-1. Fix convergence failure at VDS=1.4V
-2. Potentially correct the systematic VDS bug if it's a timestep-related artifact
-**Result**: **AWAITING VERIFICATION**
 
-**Changes Made**:
-```cmd
-# BEFORE:
-MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
+**Results (Jan 12, 2026)**:
+| VDS | Current @ VSG=-0.5V | Change from Previous |
+|-----|---------------------|---------------------|
+| 0.4V | 135.45 µA | baseline |
+| 0.8V | 103.73 µA | **-23.4%** ❌ |
+| 1.0V | 88.58 µA | **-14.6%** ❌ |
+| 1.2V | 74.33 µA | **-16.1%** ❌ |
+| 1.4V | 61.73 µA | **-16.9%** ❌ |
 
-# AFTER (10x finer):
-MaxStep=1e-4 InitialStep=1e-6 MinStep=1e-7
-```
-
-This addresses both:
-- **Convergence**: Allows solver to resolve rapid field changes at high VDS
-- **Physics accuracy**: Captures transient carrier heating and polarization dynamics 
+**Conclusion**: 
+✅ Convergence fixed (VDS=1.4V now completes)
+❌ Bug STILL present - finer timesteps did NOT resolve the issue
+→ **Problem is NOT temporal resolution**
+→ **Problem is METHODOLOGY** (see Test 3) 
 
 ---
 
-### ☐ Test 3: Disable Hydrodynamic (Use Drift-Diffusion Only)
-**Rationale**: Carrier temperature equations may fail at high drain fields.  
-**Status**: PENDING  
-**Action**: Comment out `Hydrodynamic(eTemperature hTemperature)` in Physics  
-**Expected**: If HD is problem → DD should work correctly  
-**Result**: 
+### 🎯 Test 3: CORRECTED METHODOLOGY (Quasistationary vs Transient)
+**Rationale**: Sentaurus FeFET_CAM reference uses **Quasistationary** for DC I-V, NOT Transient  
+**Status**: **ROOT CAUSE IDENTIFIED**  
+
+**Problem with Current Approach**:
+- Using Transient for EVERY VDS level
+- Transient couples FE polarization dynamics with carrier transport in time-domain
+- At higher VDS: Faster dynamics → FE evolves differently → Creates VDS-dependent FE states
+- Result: Higher VDS paradoxically gives weaker FE state → Lower current
+
+**Correct Approach (from Sentaurus reference)**:
+```tcad
+Step 1 (ONCE): Transient { write FE state at low VDS }
+Step 2-N: Load FE state → Quasistationary { read DC I-V at each VDS }
+```
+
+**Implementation**:
+- `sdevice_write_fe.cmd`: Write FE state via 0→2→0V hysteresis (ONCE)
+- `sdevice_read_idvg.cmd`: Load FE state → Quasistationary gate sweep at target VDS
+
+**Expected Result**: 
+Monotonic current INCREASE with VDS (physically correct!)
+
+**Reference**: 
+- Sentaurus: `Applications_Library/Memory/FeFET_CAM/IdVg_des.cmd`
+- Paper Fig 7(b): "all voltage levels demonstrate sharp increases in current with II model" 
 
 ---
 
