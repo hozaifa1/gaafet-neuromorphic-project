@@ -49,13 +49,15 @@ def main():
     print("="*80)
     print()
     
-    # Test different VDS values with new naming
+    # Test different VDS values with Workbench naming conventions
+    # If using NewCurrentPrefix="read_", files will be named like "read_0_4v.plt" 
+    # or "read_n123_des.plt" in Workbench.
     vds_files = [
-        ('0.4V', '0_4v.plt'),
-        ('0.8V', '0_8v.plt'),
-        ('1.0V', '1v.plt'),
-        ('1.2V', '1_2v.plt'),
-        ('1.4V', '1_4v.plt'),
+        ('0.4V', 'read_0_4v.plt'),
+        ('0.8V', 'read_0_8v.plt'),
+        ('1.0V', 'read_1v.plt'),
+        ('1.2V', 'read_1_2v.plt'),
+        ('1.4V', 'read_1_4v.plt'),
     ]
     
     results = []
@@ -70,8 +72,8 @@ def main():
             continue
         
         # Find current at gate voltage closest to 0.5V (VSG=-0.5V for PMOS)
-        target_vgate = 0.5
-        best = min(data, key=lambda x: abs(x['gate_V'] - target_vgate))
+        target_vg = 0.5
+        best = min(data, key=lambda x: abs(x['gate_V'] - target_vg))
         current_ua = abs(best['drain_I']) * 1e6
         
         # Calculate VSG = Source - Gate
@@ -110,22 +112,22 @@ def main():
         prev = results[i-1]
         curr = results[i]
         
-        vds_prev = float(prev['vds'].replace('V', ''))
-        vds_curr = float(curr['vds'].replace('V', ''))
+        # vds_prev = float(prev['vds'].replace('V', ''))
+        # vds_curr = float(curr['vds'].replace('V', ''))
         
         ratio = curr['current_ua'] / prev['current_ua']
         diff_percent = (ratio - 1.0) * 100
         
-        print(f"\n{prev['vds']} → {curr['vds']}:")
-        print(f"  Current: {prev['current_ua']:.2f} µA → {curr['current_ua']:.2f} µA")
+        print(f"\n{prev['vds']} -> {curr['vds']}:")
+        print(f"  Current: {prev['current_ua']:.2f} uA -> {curr['current_ua']:.2f} uA")
         print(f"  Change: {diff_percent:+.1f}%")
         
         if ratio < 1.0:
-            print(f"  ❌ STILL WRONG: Current DECREASED with increasing VDS")
+            print("  ❌ STILL WRONG: Current DECREASED with increasing VDS")
             bug_still_present = True
             bug_fixed = False
         else:
-            print(f"  ✓ CORRECT: Current increased as expected")
+            print("  ✓ CORRECT: Current increased as expected")
     
     print()
     print("="*80)
@@ -175,9 +177,9 @@ def main():
     # Check if this could be a sign/interpretation issue
     print("HYPOTHESIS CHECK: Sign/Interpretation Issue?")
     print("-"*80)
-    print(f"Device type: PMOS (p-channel)")
+    print("Device type: PMOS (p-channel)")
     print(f"VSG sign: {results[0]['vsg']:.4f}V (should be negative for ON state)")
-    print(f"Current sign: All currents shown as positive (absolute values)")
+    print("Current sign: All currents shown as positive (absolute values)")
     print()
     print("Analysis:")
     if bug_still_present:

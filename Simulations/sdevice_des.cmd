@@ -18,7 +18,7 @@ File {
 *===================================================================
 Electrode {
   { Name="source_contact"     Voltage= 0.0  DistResist=1.5e-8 }
-  { Name="drain_contact"      Voltage= 1.4    DistResist=1.5e-8 }
+  { Name="drain_contact"      Voltage= @Vds@    DistResist=1.5e-8 }
   { Name="gate_contact"       Voltage= 0.0  Workfunction=4.525 }
 }
 
@@ -115,28 +115,37 @@ Plot {
 
 *===================================================================
 *== Block 6: SOLVE
-*== Purpose: Execute the simulation sequence to trace the Id-Vg
-*==          hysteresis loop.
+*== Purpose: Execute the simulation sequence: 
+*==          1. Write FE State (Transient)
+*==          2. Read DC I-V (Quasistationary)
 *===================================================================
 Solve {
-* Initialize FE polarization at equilibrium
- Transient (
-	InitialTime=0 FinalTime=1
-	) { Coupled (Iterations = 100) { Poisson FEPolarization } }
+  * --- STEP 1: INITIALIZE ---
+  Transient (
+    InitialTime=0 FinalTime=1
+  ) { Coupled (Iterations = 100) { Poisson FEPolarization } }
 
-* Ramp gate voltage to 2V (hysteresis forward sweep)
-Transient (
-	MaxStep=1e-4 InitialStep=1e-6 MinStep=1e-7
-	InitialTime=1 FinalTime=2 
-	Goal { Name="gate_contact" Voltage= 2.0 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
+  * --- STEP 2: WRITE FE STATE (Hysteresis Loop) ---
+  * This sets the polarization state in the HZO layer
+  NewCurrentPrefix="write_"
+  Transient (
+    MaxStep=1e-4 InitialStep=1e-6 MinStep=1e-7
+    InitialTime=1 FinalTime=2 
+    Goal { Name="gate_contact" Voltage= 2.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
-* Ramp gate voltage back to 0V (hysteresis reverse sweep)
-Transient (
-	MaxStep=1e-4 InitialStep=1e-6 MinStep=1e-7
-	InitialTime=2 FinalTime=3 
-	Goal { Name="gate_contact" Voltage= 0 }
-	) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
+  Transient (
+    MaxStep=1e-4 InitialStep=1e-6 MinStep=1e-7
+    InitialTime=2 FinalTime=3 
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
-
+  * --- STEP 3: READ DC I-V (Quasistationary) ---
+  * This performs a steady-state DC sweep to measure current correctly across VDS
+  NewCurrentPrefix="read_"
+  Quasistationary (
+    DoZero
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 2.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole eQuantumPotential hQuantumPotential} }
 }

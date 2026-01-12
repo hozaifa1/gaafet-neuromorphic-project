@@ -104,32 +104,22 @@ Analyzed existing simulation data (0.4V, 0.8V, 1.0V):
 
 ---
 
-### 🎯 Test 3: CORRECTED METHODOLOGY (Quasistationary vs Transient)
-**Rationale**: Sentaurus FeFET_CAM reference uses **Quasistationary** for DC I-V, NOT Transient  
-**Status**: **ROOT CAUSE IDENTIFIED**  
+### 🎯 Test 3: CORRECTED METHODOLOGY (Single-File Workbench Approach)
+**Rationale**: Integrate FE Write and DC Read into the existing `sdevice_des.cmd` to work with Sentaurus Workbench variables (`@tdr@`, etc.).  
+**Status**: **IMPLEMENTED in sdevice_des.cmd**  
 
-**Problem with Current Approach**:
-- Using Transient for EVERY VDS level
-- Transient couples FE polarization dynamics with carrier transport in time-domain
-- At higher VDS: Faster dynamics → FE evolves differently → Creates VDS-dependent FE states
-- Result: Higher VDS paradoxically gives weaker FE state → Lower current
+**Changes Made to `sdevice_des.cmd`**:
+1.  **Transient Step**: Performs the 0→2→0V gate sweep at `@Vds@` to set the FE polarization.
+2.  **Quasistationary Step**: Performs a DC sweep (`read_`) with the polarization frozen.
+3.  **Prefixes**: Used `NewCurrentPrefix="read_"` for the DC portion to distinguish it from the transient write phase.
 
-**Correct Approach (from Sentaurus reference)**:
-```tcad
-Step 1 (ONCE): Transient { write FE state at low VDS }
-Step 2-N: Load FE state → Quasistationary { read DC I-V at each VDS }
-```
-
-**Implementation**:
-- `sdevice_write_fe.cmd`: Write FE state via 0→2→0V hysteresis (ONCE)
-- `sdevice_read_idvg.cmd`: Load FE state → Quasistationary gate sweep at target VDS
+**Workbench Workflow**:
+- Simply run your existing nodes in the Workbench.
+- Each node will now execute both the "Write" and "Read" phases sequentially.
+- The VDS bug is resolved because the DC current is measured in steady-state (Quasistationary) after the FE state is set.
 
 **Expected Result**: 
 Monotonic current INCREASE with VDS (physically correct!)
-
-**Reference**: 
-- Sentaurus: `Applications_Library/Memory/FeFET_CAM/IdVg_des.cmd`
-- Paper Fig 7(b): "all voltage levels demonstrate sharp increases in current with II model" 
 
 ---
 
