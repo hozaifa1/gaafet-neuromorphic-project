@@ -34,10 +34,6 @@ Physics {
   Fermi
 	EffectiveIntrinsicDensity( OldSlotboom )
   
-  * Quantum confinement (critical for nanoscale GAA)
-  eQuantumPotential(AutoOrientation Density)
-  hQuantumPotential(AutoOrientation Density)
-  
   Mobility(
     PhuMob  * Philips unified mobility model for thin channels
     Enormal
@@ -129,13 +125,13 @@ Solve {
   * This sets the polarization state in the HZO layer
   NewCurrentPrefix="write_"
   Transient (
-    MaxStep=1e-4 InitialStep=1e-6 MinStep=1e-7
+    MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
     InitialTime=1 FinalTime=2 
     Goal { Name="gate_contact" Voltage= 2.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
   Transient (
-    MaxStep=1e-4 InitialStep=1e-6 MinStep=1e-7
+    MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
     InitialTime=2 FinalTime=3 
     Goal { Name="gate_contact" Voltage= 0.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
@@ -147,5 +143,5 @@ Solve {
     DoZero
     InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
     Goal { Name="gate_contact" Voltage= 2.0 }
-  ) { Coupled (Iterations = 100) {Poisson Electron Hole eQuantumPotential hQuantumPotential} }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 }
