@@ -19,7 +19,7 @@ File {
 Electrode {
   { Name="source_contact"     Voltage= 0.0  DistResist=1.5e-8 }
   { Name="drain_contact"      Voltage= 0.0  DistResist=1.5e-8 }  * Start at 0V for Writing
-  { Name="gate_contact"       Voltage= 0.0  Workfunction=4.525 }
+  { Name="gate_contact"       Voltage= 0.0  Workfunction=4.15 }  * CALIBRATION: Lowered to 4.15eV to target Vth ~ -0.2V (Normally ON)
 }
 
 *===================================================================
