@@ -104,22 +104,33 @@ Analyzed existing simulation data (0.4V, 0.8V, 1.0V):
 
 ---
 
-### 🎯 Test 3: CORRECTED METHODOLOGY (Single-File Workbench Approach)
-**Rationale**: Integrate FE Write and DC Read into the existing `sdevice_des.cmd` to work with Sentaurus Workbench variables (`@tdr@`, etc.).  
-**Status**: **IMPLEMENTED in sdevice_des.cmd**  
+### ❌ Test 2 Results (Jan 13 2026)
+*   **Observation**:
+    *   VDS=0.4V: Id = 26.22 µA (Works)
+    *   VDS=0.8V: Id = 0.01 µA (Failed)
+    *   VDS=1.0V+: Id = 0.00 µA (Dead)
+*   **Analysis**: The "bug" has worsened to complete device failure at high VDS.
+*   **Root Cause Discovered**: **Write Disturb / Depolarization**.
+    *   The previous simulation setup kept `Drain Voltage = @Vds@` during the **Write** phase.
+    *   At high VDS (e.g., 1.4V), the potential in the channel near the drain is high.
+    *   When Gate goes to 2.0V, the effective voltage drop across the HZO near the drain is $V_{GS} - V_{channel} \approx 2.0 - 1.4 = 0.6V$.
+    *   This 0.6V is **insufficient to switch the ferroelectric polarization** (Coercive voltage is likely > 1V).
+    *   Result: The drain side of the channel remains in the High-Vt (OFF) state, blocking all current.
+*   **Conclusion**: The methodology was still flawed. We must **Write at VDS=0V** (standard memory operation) and *then* **Read at VDS=@Vds@**.
 
-**Changes Made to `sdevice_des.cmd`**:
-1.  **Transient Step**: Performs the 0→2→0V gate sweep at `@Vds@` to set the FE polarization.
-2.  **Quasistationary Step**: Performs a DC sweep (`read_`) with the polarization frozen.
-3.  **Prefixes**: Used `NewCurrentPrefix="read_"` for the DC portion to distinguish it from the transient write phase.
+### 🎯 Test 3: GROUNDED DRAIN WRITE (The Real Fix)
+**Rationale**: Ensure uniform polarization switching by grounding the drain during the Write pulse, then ramp VDS for the Read sweep.
 
-**Workbench Workflow**:
-- Simply run your existing nodes in the Workbench.
-- Each node will now execute both the "Write" and "Read" phases sequentially.
-- The VDS bug is resolved because the DC current is measured in steady-state (Quasistationary) after the FE state is set.
+**Plan**:
+1.  **Electrode Section**: Set default Drain Voltage to `0.0` (not `@Vds@`).
+2.  **Solve Section**:
+    *   **Init**: VDS=0, VGS=0.
+    *   **Write**: VDS=0, VGS 0->2->0.
+    *   **Ramp**: Ramp Drain 0 -> `@Vds@`.
+    *   **Read**: VGS Sweep 0->2 (at constant VDS).
 
-**Expected Result**: 
-Monotonic current INCREASE with VDS (physically correct!)
+**Expected Result**:
+Current should remain high (~26-80 µA) for all VDS values and increase with VDS.
 
 ---
 

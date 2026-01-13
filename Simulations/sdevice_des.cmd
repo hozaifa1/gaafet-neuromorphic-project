@@ -18,7 +18,7 @@ File {
 *===================================================================
 Electrode {
   { Name="source_contact"     Voltage= 0.0  DistResist=1.5e-8 }
-  { Name="drain_contact"      Voltage= @Vds@    DistResist=1.5e-8 }
+  { Name="drain_contact"      Voltage= 0.0  DistResist=1.5e-8 }  * Start at 0V for Writing
   { Name="gate_contact"       Voltage= 0.0  Workfunction=4.525 }
 }
 
@@ -116,13 +116,14 @@ Plot {
 *==          2. Read DC I-V (Quasistationary)
 *===================================================================
 Solve {
-  * --- STEP 1: INITIALIZE ---
+  * --- STEP 1: INITIALIZE (VDS=0V) ---
   Transient (
     InitialTime=0 FinalTime=1
   ) { Coupled (Iterations = 100) { Poisson FEPolarization } }
 
-  * --- STEP 2: WRITE FE STATE (Hysteresis Loop) ---
-  * This sets the polarization state in the HZO layer
+  * --- STEP 2: WRITE FE STATE (VDS=0V) ---
+  * We write with Drain=0V to ensure full polarization switching
+  * without "drain disturb" (reduced field near drain).
   NewCurrentPrefix="write_"
   Transient (
     MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
@@ -136,8 +137,17 @@ Solve {
     Goal { Name="gate_contact" Voltage= 0.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
 
-  * --- STEP 3: READ DC I-V (Quasistationary) ---
-  * This performs a steady-state DC sweep to measure current correctly across VDS
+  * --- STEP 3: RAMP TO TARGET VDS ---
+  * Now we assume the FE state is "frozen" or follows hysteresis.
+  * Ramp drain to the target voltage for this node.
+  NewCurrentPrefix="ramp_vds_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
+    Goal { Name="drain_contact" Voltage= @Vds@ }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
+
+  * --- STEP 4: READ DC I-V (Quasistationary) ---
+  * Measure I-V at the constant Target VDS.
   NewCurrentPrefix="read_"
   Quasistationary (
     DoZero

@@ -50,14 +50,13 @@ def main():
     print()
     
     # Test different VDS values with Workbench naming conventions
-    # If using NewCurrentPrefix="read_", files will be named like "read_0_4v.plt" 
-    # or "read_n123_des.plt" in Workbench.
+    # User specified mapping: 2->0.4V, 4->0.8V, 5->1.0V, 6->1.2V, 7->1.4V
     vds_files = [
-        ('0.4V', 'read_0_4v.plt'),
-        ('0.8V', 'read_0_8v.plt'),
-        ('1.0V', 'read_1v.plt'),
-        ('1.2V', 'read_1_2v.plt'),
-        ('1.4V', 'read_1_4v.plt'),
+        ('0.4V', 'read_n2_des.plt'),
+        ('0.8V', 'read_n4_des.plt'),
+        ('1.0V', 'read_n5_des.plt'),
+        ('1.2V', 'read_n6_des.plt'),
+        ('1.4V', 'read_n7_des.plt'),
     ]
     
     results = []
