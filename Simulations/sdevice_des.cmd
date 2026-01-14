@@ -50,8 +50,15 @@ Physics {
 
 * --- Physics model for the Ferroelectric material ---
 Physics(Material="HZO") {
-		FEPolarization ( direction="y")
-	}
+    FEPolarization ( direction="y")
+}
+
+* --- CALIBRATION: Fixed Charge to shift Vth Negative ---
+* Target Shift: ~ -0.9V (From 0.65V to -0.25V)
+* Q = Cox * V = 1.7e-6 * 0.9 = 1.5e-6 C/cm2 -> ~1e13 cm-2
+Physics(MaterialInterface="Silicon/SiO2") {
+    Charge(Pos=1e13)
+}
 
 *===================================================================
 *== Block 4: MATH
