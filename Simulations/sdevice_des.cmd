@@ -29,7 +29,7 @@ Electrode {
 * --- Physics models for Silicon (default material) ---
 Physics {
   Temperature= 300
-  Areafactor=4.0  * Calibrated to achieve 87 µA @ VSG=-0.5V, VDS=1.0V
+  Areafactor=0.85  * Calibrated to match Paper's current magnitude (~100uA range)
 
   Fermi
 	EffectiveIntrinsicDensity( OldSlotboom )
@@ -53,11 +53,11 @@ Physics(Material="HZO") {
     FEPolarization ( direction="y")
 }
 
-* --- CALIBRATION: Fixed Charge to shift Vth Negative ---
-* Target Shift: ~ -0.9V (From 0.65V to -0.25V)
-* Q = Cox * V = 1.7e-6 * 0.9 = 1.5e-6 C/cm2 -> ~1e13 cm-2
+* --- CALIBRATION: Fixed Charge for Exact Vth Alignment ---
+* Goal: Shift Vth from 0.65V to 0.25V (Delta = -0.4V)
+* Q = Cox * 0.4V = 1.7e-6 * 0.4 = 6.8e-7 -> ~4.2e12 cm-2
 Physics(MaterialInterface="Silicon/SiO2") {
-    Charge(Pos=1e13)
+    Charge(Pos=4.2e12)
 }
 
 *===================================================================
