@@ -1,100 +1,90 @@
-# 🧠 Master Workflow: GAA-FeFET LIF Neuron Calibration & SNN Implementation
+# 🧪 Hyperspecific Calibration Protocol: GAA-FeFET LIF Neuron
 
-**Objective**: Rigorously calibrate the GAA-FeFET TCAD model to match the reference paper ("Design of energy-efficient LIF neuron...") before bridging to Python.
-
-**Paper Reference**: *Neurocomputing 659 (2026) 131814*
-**Device Polarity**: NMOS (p-Si channel, n-As S/D).
-**Control Mechanism**: Gate-Source Voltage ($V_{GS}$).
+**Objective**: Calibrate TCAD model to match *Neurocomputing 659 (2026)* data strictly.
+**Device State**: NMOS ($N_A=1e16$, $N_D=1e20$), $L_g=100nm$.
+**Target Behavior**: Enhancement Mode ($V_{th} \approx +0.25V$), Kink @ ~1.0V.
 
 ---
 
-## 📊 Phase 1: Comprehensive Device Calibration (TCAD)
-**Goal**: Match ALL key physical characteristics. Do NOT proceed to Python until these are met.
+## 🛠️ Phase 1: Physical Baseline (The "Clean" Run)
+**Goal**: Establish the device's true behavior with physical dimensions and band-edge workfunction.
 
-### 1.1 Geometric Scaling & Current Magnitude ($I_{on}$)
-**Theory**: 2D TCAD simulates a 1 $\mu m$ deep slice. The real device is a nanosheet ($L_g=100nm, H=90nm, T=15nm$).
-**Target**: $I_{on} \approx 600 - 800 \mu A$ at $V_{GS}=2.0V, V_{DS}=1.0V$ (Source: Fig 5a/b).
-**Action**:
-*   [ ] Set `AreaFactor` to match physical width.
-    *   $W_{eff} \approx 2 \times (H_{FNS} + T_{FNS}) = 2 \times (90 + 15) = 210 nm = 0.21 \mu m$.
-    *   Target `AreaFactor = 0.21`.
-*   [ ] **Verification Run**: Run Node 5 and check Peak Current.
+### Step 1.1: Configure Simulation
+*   **Action**: Edit `Simulations/sdevice_des.cmd`
+*   **Parameters**:
+    *   `Workfunction = 3.9` (eV) [Band-edge limit for N-type]
+    *   `Areafactor = 0.21` [Physical: $W_{eff} \approx 2(90+15)nm = 0.21\mu m$]
+    *   `Charge` = **None** (Comment out any fixed charge)
+    *   `Avalanche` = `UniBo2` (Enabled)
 
-### 1.2 Threshold Voltage ($V_{th}$) Calibration
-**Target**:
-*   $V_{GS} = 0.0V \rightarrow I_D \approx 0$ (OFF / Subthreshold).
-*   $V_{GS} = 0.5V \rightarrow I_D > 1 \mu A$ (ON).
-*   $V_{th} \approx +0.25V$ (Source: Fig 7b interpreted as Enhancement Mode).
-**Tuning Knobs** (In order):
-1.  **Workfunction**: Lower to 3.9eV (Band-edge). [Current State]
-2.  **Doping Profiles**: Check Channel Doping ($N_A$) vs Source/Drain Doping ($N_D$).
-3.  **Fixed Charge**: *Only if above fail*.
+### Step 1.2: Run Baseline Simulation
+*   **Command**: Run Node 5 in Sentaurus Workbench.
+*   **Voltage Context**: $V_{DS} = 1.0V$.
 
-### 1.3 Kink Effect (Firing Mechanism)
-**Target**: Sharp increase in current (Impact Ionization) around $V_{GS} \approx 1.0V$ (Fig 5b).
-**Tuning Knobs**:
-*   `Avalanche (UniBo2)` Parameters: `d0_e`, `d0_h`.
-*   Paper values: $d0 \in [1e5, 9e6]$. Target firing current $I_{th} \approx 94 nA$.
-
-### 1.4 Leakage & Subthreshold ($I_{off}$)
-**Target**: $I_{off} < 1 \mu A$ (Low leakage for integration).
-**Tuning Knobs**:
-*   `Band2Band (Hurkx)`: Controls GIDL / Leakage at low Vg.
+### Step 1.3: Extract Metrics
+*   **Command**: `python Simulations/analyze_metrics.py`
+*   **Data to Record**:
+    | Metric | Simulation Value | Target Value | Deviation |
+    | :--- | :--- | :--- | :--- |
+    | **$V_{th}$** | `_______` V | **+0.25 V** | `_______` |
+    | **$I_{off}$ (0V)** | `_______` A | **< 1e-7 A** | `_______` |
+    | **$I_{on}$ (0.5V)** | `_______` A | **> 1e-6 A** | `_______` |
+    | **$I_{peak}$ (2.0V)**| `_______` A | **~600 uA** | `_______` |
 
 ---
 
-## 🐍 Phase 2: Python Bridge (Data Generation)
-*Only proceed after Phase 1 is marked COMPLETE.*
+## 🔧 Phase 2: Iterative Calibration Logic
+**Execute these steps in order. Do not skip.**
 
-1.  **Generate Lookup Table**: $t_{spike}$ vs $V_{input}$.
-2.  **Extract Leakage Time Constant**: $\tau_{leak}$.
-3.  **Export `device_data.csv`**.
+### Decision Block A: Threshold Voltage ($V_{th}$)
+*   **Condition**: If Sim $V_{th}$ > Target (+0.25V):
+    *   *Diagnosis*: Device turns on too late. Need negative shift.
+    *   *Action*: Add **Fixed Positive Oxide Charge** (Interface States).
+    *   *Calculation*: $\Delta V = V_{th,sim} - 0.25$.
+    *   *Charge*: $Q = C_{ox} \times \Delta V \approx 1.7 \times 10^{-6} \times \Delta V$.
+    *   *Value*: $N_{int} = Q / 1.6e-19$.
+    *   *Edit*: Add `Physics(MaterialInterface="Silicon/SiO2") { Charge(Pos=...) }`.
+*   **Condition**: If Sim $V_{th}$ < Target (+0.25V):
+    *   *Diagnosis*: Device is Depletion Mode (Always ON).
+    *   *Action*: Increase Workfunction (e.g., 4.1eV, 4.3eV).
 
----
+### Decision Block B: On-Current Magnitude ($I_{on}$)
+*   **Condition**: If $I_{peak}$ (2.0V) < 400 uA (and $V_{th}$ is correct):
+    *   *Diagnosis*: Mobility or Area scaling is underestimated.
+    *   *Action*: Increase `AreaFactor`.
+    *   *Formula*: $AF_{new} = AF_{old} \times (Target / Sim)$.
+*   **Condition**: If $I_{peak}$ (2.0V) > 800 uA:
+    *   *Action*: Decrease `AreaFactor`.
 
-## 📝 Current To-Do List
-1.  **Set AreaFactor = 0.21** (Geometric Correction).
-2.  **RE-RUN Node 5** (Workfunction=3.9eV, Clean).
-3.  **Compare Results**:
-    *   Is $I_{peak} \approx 600 \mu A$?
-    *   Is $V_{th} \approx 0.25V$?
-    *   Is there a Kink?
-
-### 2.2 Generate Data Artifact
-*   [ ] Create `device_data.csv`:
-    ```csv
-    Voltage_V, Latency_ns, Peak_Current_uA
-    0.8, [Value], [Value]
-    1.0, [Value], [Value]
-    1.2, [Value], [Value]
-    ```
-*   [ ] Extract **Leakage Decay** ($\tau_{leak}$): Measure current drop rate when gate is turned off.
-
----
-
-## 🤖 Phase 3: Python SNN Implementation
-**Goal**: Build and train the ECG Classifier.
-
-### 3.1 Custom Neuron Model (PyTorch)
-*   [ ] Create `GAALIFNeuron` class inheriting from `torch.nn.Module`.
-*   [ ] Implement `forward()` method using the **Latency Lookup Table** from Phase 2.
-    *   *Logic*: `if input_voltage > v_th: time_to_spike = lookup(input_voltage)`
-
-### 3.2 System Integration
-*   [ ] **Data Pipeline**: Pre-process MIT-BIH ECG database (Spike Encoder).
-*   [ ] **Network Architecture**: 1FeFET-1T1C Relaxation Oscillator Logic.
-*   [ ] **Training**: Train for Arrhythmia Classification.
-*   [ ] **Validation**: Compare accuracy/energy against "report.md" targets.
+### Decision Block C: Kink Effect (Firing)
+*   **Condition**: No sharp current jump around $V_{GS} = 1.0V$.
+    *   *Diagnosis*: Impact Ionization too weak.
+    *   *Action*: Increase `UniBo2` coefficients.
+    *   *Edit*: `sdevice_gaafet_lif.par` -> `UniBo2 { d0_e = [Higher], d0_h = [Higher] }`.
+    *   *Range*: Try $1e6 \to 5e6 \to 1e7$.
 
 ---
 
-## 📝 Reference Parameters (From Paper)
-| Parameter | Value | Source |
-| :--- | :--- | :--- |
-| **Gate Length ($L_g$)** | 100 nm | Paper |
-| **Drain Voltage ($V_{DS}$)** | 1.0 V | Paper (Energy Efficient) |
-| **Threshold ($V_{th}$)** | -0.244 V | Paper (Fig 7b) |
-| **Firing Current ($I_{th}$)** | 94 nA | Paper |
-| **Energy/Spike** | 4.88 fJ | Paper |
-| **Frequency** | ~19.3 MHz | Paper |
+## 🐍 Phase 3: Python Bridge (Data Generation)
+**Goal**: Generate the Lookup Table for the SNN.
+*Prerequisite*: Phase 2 Complete (All Metrics within 10% of Target).
 
+### Step 3.1: Transient Pulse Setup
+*   **Action**: Edit `sdevice_des.cmd`.
+*   **Change**: Replace Gate `Quasistationary` with `Transient` Pulse.
+    *   `Voltage = 0.0` at $t=0$.
+    *   `Voltage = 1.0` at $t=10ps$ (Step).
+
+### Step 3.2: Latency Extraction Sweep
+*   **Command**: Run Simulation for $V_{input} = [0.8V, 1.0V, 1.2V]$.
+*   **Analysis**: Measure time from Step to Current Spike ($I > I_{th}$).
+
+### Step 3.3: Export
+*   **Action**: Save `device_data.csv`.
+
+---
+
+## 📝 Execution Log
+*   [ ] **Run 1**: Baseline (3.9eV, AF=0.21). Result: __________________
+*   [ ] **Run 2**: Vth Correction. Result: __________________
+*   [ ] **Run 3**: Ion Correction. Result: __________________
