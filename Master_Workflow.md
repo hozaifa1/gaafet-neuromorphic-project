@@ -8,15 +8,17 @@
 **Goal**: Match physical device characteristics to the reference paper.
 
 ### 1.1 Threshold Voltage ($V_{th}$) Calibration [CURRENT STEP]
-**Target**: $V_{th} \approx -0.244V$ (Normally ON / Depletion Mode).
-**Current Status**: Workfunction lowered to 3.9eV (Band-edge).
+**Target**: $V_{th} \approx +0.25V$ (Enhancement Mode).
+**Constraint**: $I_{OFF}$ at 0V (Low), $I_{ON}$ at 0.5V (High).
+**Current Status**: Workfunction 3.9eV gives $V_{th} \approx 0.65V$. (Too high, turns on late).
 *   [x] **Fix VDS Bug**: Implemented "Grounded Drain Write" (Resolved).
-*   [x] **Calibration Pass 1**: Workfunction 4.15eV $\rightarrow$ $V_{on} \approx 0.6V$ (Still Enhancement Mode).
-*   [x] **Calibration Pass 2**: Verify **Workfunction = 3.9eV**.
-    *   *Result*: $V_{th} \approx 0.65V$ (Still OFF at 0V). Need more negative shift (-0.9V).
-*   [x] **Contingency (If 3.9eV fails)**: Add **Fixed Oxide Charge** ($Q_f$).
-    *   *Physics*: Positive oxide charge shifts $V_{th}$ negative.
-    *   *Action*: Add `Charge(Pos = 1e13)` to `Interface` in `sdevice` physics. (Calculated for -0.9V shift).
+*   [x] **Calibration Pass 1**: Workfunction 4.15eV $\rightarrow$ $V_{th} \approx 0.6V$.
+*   [x] **Calibration Pass 2**: Workfunction 3.9eV $\rightarrow$ $V_{th} \approx 0.65V$.
+*   [ ] **Final Calibration**: Add **Fixed Oxide Charge** ($Q_f$).
+    *   *Correction*: Target is Enhancement Mode ($V_{th} > 0$), not Depletion.
+    *   *Action*: Add `Charge(Pos = 4.2e12)` to shift $V_{th}$ by -0.4V.
+    *   *Action*: Adjust `AreaFactor` to 0.85 to match current magnitude.
+    *   *Success Criteria*: High current at $V_{GS} = 0.5V$, near zero at $V_{GS} = 0V$.
 
 ### 1.2 Time-Domain Verification (Pulse Simulation)
 **Goal**: Verify "Integrate and Fire" behavior (LIF).
