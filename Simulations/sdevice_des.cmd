@@ -19,7 +19,7 @@ File {
 Electrode {
   { Name="source_contact"     Voltage= 0.0  DistResist=1.5e-8 }
   { Name="drain_contact"      Voltage= 0.0  DistResist=1.5e-8 }  * Start at 0V for Writing
-  { Name="gate_contact"       Voltage= 0.0  Workfunction=4.15 }  * CALIBRATION: Lowered to 4.15eV to target Vth ~ -0.2V (Normally ON)
+  { Name="gate_contact"       Voltage= 0.0  Workfunction=3.9 }   * CALIBRATION: Lowered to 3.9eV (Band-edge) to force Normally-ON (Depletion Mode)
 }
 
 *===================================================================
@@ -148,9 +148,15 @@ Solve {
 
   * --- STEP 4: READ DC I-V (Quasistationary) ---
   * Measure I-V at the constant Target VDS.
+  * Sweep from -1.0V to 2.0V to capture negative Vth behavior
   NewCurrentPrefix="read_"
   Quasistationary (
     DoZero
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= -1.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+
+  Quasistationary (
     InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
     Goal { Name="gate_contact" Voltage= 2.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }

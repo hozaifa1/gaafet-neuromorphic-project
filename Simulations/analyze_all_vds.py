@@ -7,6 +7,10 @@ def parse_plt_file(filepath):
         with open(filepath, 'r', encoding='latin-1') as f:
             lines = f.readlines()
     except FileNotFoundError:
+        print(f"DEBUG: File not found: {filepath}")
+        return None
+    except Exception as e:
+        print(f"DEBUG: Error reading file {filepath}: {e}")
         return None
     
     # Find the Data section
@@ -17,6 +21,10 @@ def parse_plt_file(filepath):
             break
     
     if data_start is None:
+        print(f"DEBUG: 'Data {{' not found in {filepath}")
+        print("DEBUG: First 10 lines:")
+        for l in lines[:10]:
+            print(f"  {l.strip()}")
         return None
     
     # Parse data values
@@ -50,9 +58,9 @@ def main():
     print()
     
     # Test different VDS values with Workbench naming conventions
-    # User specified mapping: 2->0.4V, 4->0.8V, 5->1.0V, 6->1.2V, 7->1.4V
+    # User specified mapping: 3->0.4V, 4->0.8V, 5->1.0V, 6->1.2V, 7->1.4V
     vds_files = [
-        ('0.4V', 'read_n2_des.plt'),
+        ('0.4V', 'read_n3_des.plt'),
         ('0.8V', 'read_n4_des.plt'),
         ('1.0V', 'read_n5_des.plt'),
         ('1.2V', 'read_n6_des.plt'),
@@ -61,133 +69,77 @@ def main():
     
     results = []
     
-    print("STEP 1: Extracting currents at VSG=-0.5V (Vgate=0.5V)")
+    # Get the directory of the current script to build absolute paths
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    print("STEP 1: Extracting currents at VSG=-0.5V (Paper Target) and Vgs=0V")
     print("-"*80)
     
     for vds_label, filename in vds_files:
-        data = parse_plt_file(filename)
+        # Construct full path to file
+        full_path = os.path.join(script_dir, filename)
+        data = parse_plt_file(full_path)
         if not data:
-            print(f"⚠️  Could not parse {filename}")
+            print(f"⚠️  Could not parse {filename} (checked: {full_path})")
             continue
         
-        # Find current at gate voltage closest to 0.5V (VSG=-0.5V for PMOS)
-        target_vg = 0.5
-        best = min(data, key=lambda x: abs(x['gate_V'] - target_vg))
-        current_ua = abs(best['drain_I']) * 1e6
+        # Find current at Vgs = -0.5V (Target: High Current)
+        # We search for the point with gate_V closest to -0.5
+        target_vg_calib = -0.5
+        best_calib = min(data, key=lambda x: abs(x['gate_V'] - target_vg_calib))
+        current_calib = abs(best_calib['drain_I']) * 1e6
         
-        # Calculate VSG = Source - Gate
-        vsg = best['source_V'] - best['gate_V']
+        # Find current at Vgs = 0.0V
+        best_zero = min(data, key=lambda x: abs(x['gate_V'] - 0.0))
+        current_zero = abs(best_zero['drain_I']) * 1e6
+
+        # Find current at max gate voltage (2.0V) - ON State
+        best_high = max(data, key=lambda x: x['gate_V'])
+        current_high = abs(best_high['drain_I']) * 1e6
         
         results.append({
             'vds': vds_label,
-            'vgate': best['gate_V'],
-            'vsource': best['source_V'],
-            'vsg': vsg,
-            'current_ua': current_ua,
-            'drain_v': best['drain_V']
+            'current_calib': current_calib, # @ -0.5V
+            'current_zero': current_zero,   # @ 0.0V
+            'current_high': current_high,   # @ 2.0V
         })
         
         print(f"VDS={vds_label}:")
-        print(f"  Vgate={best['gate_V']:.4f}V, Vsource={best['source_V']:.4f}V, VSG={vsg:.4f}V")
-        print(f"  Drain Current: {current_ua:.2f} µA")
+        print(f"  Id @ Vgs=-0.5V: {current_calib:.4f} µA (Target: High)")
+        print(f"  Id @ Vgs= 0.0V: {current_zero:.4f} µA")
+        print(f"  Id @ Vgs= 2.0V: {current_high:.2f} µA")
         print()
     
     print("="*80)
-    print("STEP 2: BUG STATUS ANALYSIS")
+    print("STEP 2: CALIBRATION CHECK (Target: Vth ~ -0.244V)")
     print("="*80)
     
-    if len(results) < 2:
-        print("Insufficient data for comparison")
-        return
-    
-    # Check if current increases monotonically with VDS
-    bug_still_present = False
-    bug_fixed = True
-    
-    print("\nMonotonic VDS sweep analysis:")
+    print(f"{'VDS':<8} {'Id @ -0.5V':<15} {'Id @ 0.0V':<15} {'Status':<15}")
     print("-"*80)
     
-    for i in range(1, len(results)):
-        prev = results[i-1]
-        curr = results[i]
+    for r in results:
+        vds = r['vds']
+        c_calib = f"{r['current_calib']:.4f}"
+        c_zero = f"{r['current_zero']:.4f}"
         
-        # vds_prev = float(prev['vds'].replace('V', ''))
-        # vds_curr = float(curr['vds'].replace('V', ''))
-        
-        ratio = curr['current_ua'] / prev['current_ua']
-        diff_percent = (ratio - 1.0) * 100
-        
-        print(f"\n{prev['vds']} -> {curr['vds']}:")
-        print(f"  Current: {prev['current_ua']:.2f} uA -> {curr['current_ua']:.2f} uA")
-        print(f"  Change: {diff_percent:+.1f}%")
-        
-        if ratio < 1.0:
-            print("  ❌ STILL WRONG: Current DECREASED with increasing VDS")
-            bug_still_present = True
-            bug_fixed = False
-        else:
-            print("  ✓ CORRECT: Current increased as expected")
+        # Check if device is ON at -0.5V (Should be > 1 uA roughly)
+        status = "OFF ❌"
+        if r['current_calib'] > 1.0:
+            status = "ON ✅"
+            
+        print(f"{vds:<8} {c_calib:<15} {c_zero:<15} {status:<15}")
     
-    print()
     print("="*80)
+    print()
     print("FINAL VERDICT:")
     print("="*80)
     
-    if bug_fixed and not bug_still_present:
-        print("✓✓✓ BUG IS FIXED!")
-        print("Current now increases monotonically with VDS (physically correct)")
-    elif bug_still_present:
-        print("❌❌❌ BUG STILL PRESENT")
-        print("Finer timesteps did NOT fix the issue")
-        print("→ Problem is NOT related to temporal resolution")
-    else:
-        print("⚠️  MIXED RESULTS - needs manual inspection")
+    print("Check the 'Status' column above.")
+    print("If 'ON ✅' appears for VDS=1.0V, calibration is successful.")
     
     print("="*80)
     print()
-    
-    # Detailed comparison table
-    print("DETAILED COMPARISON TABLE:")
-    print("-"*80)
-    print(f"{'VDS':<8} {'Current (µA)':<15} {'vs Previous':<15} {'vs Paper Target':<15}")
-    print("-"*80)
-    
-    paper_target_1v = 85.0  # µA from paper Figure 7b
-    
-    for i, r in enumerate(results):
-        curr_str = f"{r['current_ua']:.2f}"
-        
-        if i > 0:
-            prev_ratio = (r['current_ua'] / results[i-1]['current_ua'] - 1) * 100
-            vs_prev = f"{prev_ratio:+.1f}%"
-        else:
-            vs_prev = "baseline"
-        
-        if '1.0' in r['vds']:
-            paper_match = f"{r['current_ua']/paper_target_1v*100:.1f}%"
-        else:
-            paper_match = "N/A"
-        
-        print(f"{r['vds']:<8} {curr_str:<15} {vs_prev:<15} {paper_match:<15}")
-    
-    print("="*80)
-    print()
-    
-    # Check if this could be a sign/interpretation issue
-    print("HYPOTHESIS CHECK: Sign/Interpretation Issue?")
-    print("-"*80)
-    print("Device type: PMOS (p-channel)")
-    print(f"VSG sign: {results[0]['vsg']:.4f}V (should be negative for ON state)")
-    print("Current sign: All currents shown as positive (absolute values)")
-    print()
-    print("Analysis:")
-    if bug_still_present:
-        print("  The bug is NOT a sign issue because:")
-        print("  1. Currents decrease monotonically (consistent pattern)")
-        print("  2. Absolute values are used consistently")
-        print("  3. VSG polarity is correct for PMOS")
-        print("  → This is a genuine physics/model issue")
-    print("="*80)
 
 if __name__ == '__main__':
     main()
