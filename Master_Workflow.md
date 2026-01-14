@@ -1,44 +1,64 @@
-# 🧠 Master Workflow: GAA-FeFET LIF Neuron & SNN Implementation
+# 🧠 Master Workflow: GAA-FeFET LIF Neuron Calibration & SNN Implementation
 
-**Objective**: Calibrate a TCAD GAA-FeFET to match the "Design of energy-efficient LIF neuron" paper ($V_{th} \approx -0.244V$, $V_{DS}=1.0V$) and implement it in a Python SNN for ECG classification.
+**Objective**: Rigorously calibrate the GAA-FeFET TCAD model to match the reference paper ("Design of energy-efficient LIF neuron...") before bridging to Python.
 
----
-
-## 📊 Phase 1: Device Calibration (TCAD)
-**Goal**: Match physical device characteristics to the reference paper.
-
-### 1.1 Threshold Voltage ($V_{th}$) Calibration [CURRENT STEP]
-**Target**: $V_{th} \approx +0.25V$ (Enhancement Mode).
-**Constraint**: $I_{OFF}$ at 0V (Low), $I_{ON}$ at 0.5V (High).
-**Current Status**: Workfunction 3.9eV gives $V_{th} \approx 0.65V$. (Too high, turns on late).
-*   [x] **Fix VDS Bug**: Implemented "Grounded Drain Write" (Resolved).
-*   [x] **Calibration Pass 1**: Workfunction 4.15eV $\rightarrow$ $V_{th} \approx 0.6V$.
-*   [x] **Calibration Pass 2**: Workfunction 3.9eV $\rightarrow$ $V_{th} \approx 0.65V$.
-*   [ ] **Final Calibration**: Add **Fixed Oxide Charge** ($Q_f$).
-    *   *Correction*: Target is Enhancement Mode ($V_{th} > 0$), not Depletion.
-    *   *Action*: Add `Charge(Pos = 4.2e12)` to shift $V_{th}$ by -0.4V.
-    *   *Action*: Adjust `AreaFactor` to 0.85 to match current magnitude.
-    *   *Success Criteria*: High current at $V_{GS} = 0.5V$, near zero at $V_{GS} = 0V$.
-
-### 1.2 Time-Domain Verification (Pulse Simulation)
-**Goal**: Verify "Integrate and Fire" behavior (LIF).
-**Target**: Delayed spiking under constant voltage pulse.
-*   [ ] **Setup Pulse Input**:
-    *   Modify `sdevice_des.cmd`: Change Gate source from Ramp to `Pulse` (e.g., 0V $\rightarrow$ 1.0V).
-*   [ ] **Run Transient Simulation**:
-    *   *Check*: Does current stay low (Integration) then spike (Firing)?
-    *   *Tuning*: If response is instant (no delay), increase `AreaFactor` (Floating Body volume) or adjust `Avalanche` coefficients ($d0$).
+**Paper Reference**: *Neurocomputing 659 (2026) 131814*
+**Device Polarity**: NMOS (p-Si channel, n-As S/D).
+**Control Mechanism**: Gate-Source Voltage ($V_{GS}$).
 
 ---
 
-## 🐍 Phase 2: The "Bridge" to Python
-**Goal**: Extract the behavioral lookup table for the SNN.
+## 📊 Phase 1: Comprehensive Device Calibration (TCAD)
+**Goal**: Match ALL key physical characteristics. Do NOT proceed to Python until these are met.
 
-### 2.1 The "Step 3" Sweep
-**Procedure**: Run the **Pulse Simulation** at 3 distinct Gate Voltages.
-*   [ ] **Run 1**: $V_{GS} = 0.8V$ $\rightarrow$ Measure Latency ($t_{spike}$).
-*   [ ] **Run 2**: $V_{GS} = 1.0V$ $\rightarrow$ Measure Latency ($t_{spike}$).
-*   [ ] **Run 3**: $V_{GS} = 1.2V$ $\rightarrow$ Measure Latency ($t_{spike}$).
+### 1.1 Geometric Scaling & Current Magnitude ($I_{on}$)
+**Theory**: 2D TCAD simulates a 1 $\mu m$ deep slice. The real device is a nanosheet ($L_g=100nm, H=90nm, T=15nm$).
+**Target**: $I_{on} \approx 600 - 800 \mu A$ at $V_{GS}=2.0V, V_{DS}=1.0V$ (Source: Fig 5a/b).
+**Action**:
+*   [ ] Set `AreaFactor` to match physical width.
+    *   $W_{eff} \approx 2 \times (H_{FNS} + T_{FNS}) = 2 \times (90 + 15) = 210 nm = 0.21 \mu m$.
+    *   Target `AreaFactor = 0.21`.
+*   [ ] **Verification Run**: Run Node 5 and check Peak Current.
+
+### 1.2 Threshold Voltage ($V_{th}$) Calibration
+**Target**:
+*   $V_{GS} = 0.0V \rightarrow I_D \approx 0$ (OFF / Subthreshold).
+*   $V_{GS} = 0.5V \rightarrow I_D > 1 \mu A$ (ON).
+*   $V_{th} \approx +0.25V$ (Source: Fig 7b interpreted as Enhancement Mode).
+**Tuning Knobs** (In order):
+1.  **Workfunction**: Lower to 3.9eV (Band-edge). [Current State]
+2.  **Doping Profiles**: Check Channel Doping ($N_A$) vs Source/Drain Doping ($N_D$).
+3.  **Fixed Charge**: *Only if above fail*.
+
+### 1.3 Kink Effect (Firing Mechanism)
+**Target**: Sharp increase in current (Impact Ionization) around $V_{GS} \approx 1.0V$ (Fig 5b).
+**Tuning Knobs**:
+*   `Avalanche (UniBo2)` Parameters: `d0_e`, `d0_h`.
+*   Paper values: $d0 \in [1e5, 9e6]$. Target firing current $I_{th} \approx 94 nA$.
+
+### 1.4 Leakage & Subthreshold ($I_{off}$)
+**Target**: $I_{off} < 1 \mu A$ (Low leakage for integration).
+**Tuning Knobs**:
+*   `Band2Band (Hurkx)`: Controls GIDL / Leakage at low Vg.
+
+---
+
+## 🐍 Phase 2: Python Bridge (Data Generation)
+*Only proceed after Phase 1 is marked COMPLETE.*
+
+1.  **Generate Lookup Table**: $t_{spike}$ vs $V_{input}$.
+2.  **Extract Leakage Time Constant**: $\tau_{leak}$.
+3.  **Export `device_data.csv`**.
+
+---
+
+## 📝 Current To-Do List
+1.  **Set AreaFactor = 0.21** (Geometric Correction).
+2.  **RE-RUN Node 5** (Workfunction=3.9eV, Clean).
+3.  **Compare Results**:
+    *   Is $I_{peak} \approx 600 \mu A$?
+    *   Is $V_{th} \approx 0.25V$?
+    *   Is there a Kink?
 
 ### 2.2 Generate Data Artifact
 *   [ ] Create `device_data.csv`:

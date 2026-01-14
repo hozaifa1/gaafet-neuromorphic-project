@@ -29,7 +29,7 @@ Electrode {
 * --- Physics models for Silicon (default material) ---
 Physics {
   Temperature= 300
-  Areafactor=4.0  * Calibrated to achieve 87 µA @ VSG=-0.5V, VDS=1.0V
+  Areafactor=0.21  * Physical Scaling: Weff ~ 2*(90nm+15nm) = 210nm = 0.21um
 
   Fermi
 	EffectiveIntrinsicDensity( OldSlotboom )
