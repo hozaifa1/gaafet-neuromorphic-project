@@ -2,7 +2,7 @@ import os
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
-from analyze_metrics import parse_plt_file
+from analyze_metrics import parse_full_plt
 
 def plot_transient(sim_dir, run_label="Run_04"):
     output_dir = os.path.join(sim_dir, "output_curves", run_label)
@@ -11,18 +11,28 @@ def plot_transient(sim_dir, run_label="Run_04"):
     print(f"Generating transient plots for {run_label} in {output_dir}...")
     
     # Load Data
-    # FilePrefix was "n@node@_fire", so file should be n5_fire_des.plt
-    fpath = os.path.join(sim_dir, "n5_fire_des.plt")
+    # Updated to look for "fire_hold_" which contains the latency phase
+    fpath = os.path.join(sim_dir, "read_fire_hold_n5_des.plt")
     
     if not os.path.exists(fpath):
-        # Fallback check
-        fpath = os.path.join(sim_dir, "n5_fire.plt")
+        # Fallback check for local runs or different naming conventions
+        fpath = os.path.join(sim_dir, "fire_hold_n5_des.plt")
         
     if not os.path.exists(fpath):
-        print(f"Error: Could not find transient output file at {fpath}")
+         # Try the rise file just in case
+        fpath = os.path.join(sim_dir, "read_fire_rise_n5_des.plt")
+        if os.path.exists(fpath):
+             print("Warning: Only found Rise file. Simulation might have crashed before Hold.")
+        else:
+             print(f"Error: Could not find transient output file (checked fire_hold and fire_rise)")
         return
 
-    time, values, variables = parse_plt_file(fpath, return_vars=True)
+    # Use the generic parser
+    time, values, variables = parse_full_plt(fpath)
+    
+    if not variables:
+        print("Error: Failed to parse PLT file.")
+        return
     
     # Identify indices
     idx_gate_v = -1

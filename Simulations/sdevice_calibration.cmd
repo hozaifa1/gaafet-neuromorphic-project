@@ -128,12 +128,10 @@ CurrentPlot {
 }
 
 *===================================================================
-*== Block 6: SOLVE (PHASE 3: LIF TRANSIENT FIRING)
-*== Purpose: Test Integrate-and-Fire behavior.
-*== Sequence:
-*==   1. Ramp Drain to 1.0V (Bias)
-*==   2. Step Gate to 1.2V (Input Spike)
-*==   3. Transient Hold (Observe Switching/Firing)
+*== Block 6: SOLVE (CALIBRATION MODE)
+*== Purpose: Execute the simulation sequence: 
+*==          1. Ramp VDS to 1.0V
+*==          2. Read DC I-V (Transient Hysteresis)
 *===================================================================
 Solve {
   * --- STEP 1: INITIALIZE (VDS=0V) ---
@@ -142,39 +140,41 @@ Solve {
   ) { Coupled (Iterations = 100) { Poisson } }
 
   * --- STEP 2: RAMP DRAIN BIAS (VDS -> 1.0V) ---
-  NewCurrentPrefix="init_bias_"
+  NewCurrentPrefix="ramp_vds_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
     Goal { Name="drain_contact" Voltage= 1.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
-  * --- STEP 3: FIRE (Gate Step 0V -> 1.2V) ---
-  * Split into Rise and Hold phases (Standard Sentaurus Syntax)
+  * --- STEP 3: READ DC I-V (Hysteresis Loop) ---
+  * Using Transient solver for Hysteresis
   
-  * 3a. Rise (0 -> 10ps)
-  NewCurrentPrefix="fire_rise_"
+  * Segment 1: Initial Curve (0V -> -6.0V)
+  NewCurrentPrefix="read_leg1_"
   Transient (
-    InitialTime=0 FinalTime=10e-12
-    InitialStep=1e-13 MaxStep=1e-12 MinStep=1e-14
-    Goal { Name="gate_contact" Voltage= 1.2 }
+    InitialTime=0 FinalTime=1
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= -6.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  Plot( FilePrefix="n@node@_leg1" )
 
-  * 3b. Hold (10ps -> 100ns)
-  NewCurrentPrefix="fire_hold_"
+  * Segment 2: Forward Sweep (-6.0V -> +6.0V)
+  * Captures the "Turn ON" and positive polarization switching.
+  NewCurrentPrefix="read_leg2_"
   Transient (
-    InitialTime=10e-12 FinalTime=100e-9
-    InitialStep=1e-12 MaxStep=1e-9 MinStep=1e-13
-    Goal { Name="gate_contact" Voltage= 1.2 }
+    InitialTime=1 FinalTime=2
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 6.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
-  
-  * Plot( FilePrefix="n@node@_fire" ) -> Removed as we use segment prefixes
+  Plot( FilePrefix="n@node@_leg2" )
+
+  * Segment 3: Reverse Sweep (+6.0V -> -6.0V)
+  * Captures the Hysteresis/Memory Window.
+  NewCurrentPrefix="read_leg3_"
+  Transient (
+    InitialTime=2 FinalTime=3
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= -6.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  Plot( FilePrefix="n@node@_leg3" )
 }
-
-* --- OLD CALIBRATION SOLVE BLOCK (Preserved) ---
-* Solve {
-*   * --- STEP 1: INITIALIZE (VDS=0V) ---
-*   Transient (
-*     InitialTime=0 FinalTime=1
-*   ) { Coupled (Iterations = 100) { Poisson } }
-* ... (Hysteresis Logic commented out)
-* }

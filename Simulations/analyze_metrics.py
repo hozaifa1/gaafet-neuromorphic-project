@@ -138,6 +138,62 @@ def parse_plt_file(filepath):
 
     return vgs_list, id_list, pol_list
 
+def parse_full_plt(filepath):
+    """
+    Generic parser for .plt files.
+    Returns:
+        time (list): Time points
+        values (list of lists): Data columns corresponding to variables
+        variables (list): Names of variables
+    """
+    if not os.path.exists(filepath):
+        print(f"Error: File not found at {filepath}")
+        return [], [], []
+
+    with open(filepath, 'r') as f:
+        content = f.read()
+
+    # 1. Parse Header
+    datasets_match = re.search(r'datasets\s*=\s*\[(.*?)\]', content, re.DOTALL)
+    if not datasets_match:
+        return [], [], []
+    
+    raw_datasets = datasets_match.group(1)
+    variables = re.findall(r'"([^"]+)"', raw_datasets)
+    
+    # 2. Parse Data
+    data_match = re.search(r'Data\s*\{(.*?)\}', content, re.DOTALL)
+    if not data_match:
+        return [], [], []
+        
+    all_numbers = data_match.group(1).split()
+    
+    num_vars = len(variables)
+    total_values = len(all_numbers)
+    num_records = total_values // num_vars
+    
+    # Reshape
+    # We want values[var_index][record_index]
+    values = [[] for _ in range(num_vars)]
+    
+    for i in range(num_records):
+        base_idx = i * num_vars
+        for v in range(num_vars):
+            try:
+                val = float(all_numbers[base_idx + v])
+                values[v].append(val)
+            except ValueError:
+                values[v].append(0.0)
+                
+    # Identify time
+    # Usually the first variable is time, but we should return it explicitly if possible
+    # or just return the whole matrix and let caller decide
+    
+    # Assuming index 0 is time if not found otherwise
+    time_idx = 0
+    
+    return values[time_idx], values, variables
+
 def extract_vth(vgs, ids, target_current=1e-7):
     """
     Extracts Vth at a specific constant current level (e.g., 100nA * W/L).
