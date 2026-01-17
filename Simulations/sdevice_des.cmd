@@ -17,20 +17,19 @@ File {
 *==          electrode for simultaneous biasing.
 *===================================================================
 Electrode {
-  { Name="source_contact"     Voltage= 0.0  DistResist=1.5e-8 }
-  { Name="drain_contact"      Voltage= 0.0  DistResist=1.5e-8 }  * Start at 0V for Writing
-  { Name="gate_contact"       Voltage= 0.0  Workfunction=3.9 }   * CALIBRATION: Lowered to 3.9eV (Band-edge) to force Normally-ON (Depletion Mode)
+  { Name="source_contact"     Voltage= 0.0 }
+  { Name="drain_contact"      Voltage= 0.0 }
+  { Name="gate_contact"       Voltage= 0.0  Workfunction=4.35 }   * CALIBRATION: Increased to 4.35eV to compensate for FE shift (Target Vth ~0.25V)
 }
 
 *===================================================================
 *== Block 3: PHYSICS
-*== Purpose: Define the physical models for the simulation.
 *===================================================================
 * --- Physics models for Silicon (default material) ---
 Physics {
   Temperature= 300
-  Areafactor=0.21  * Physical Scaling: Weff ~ 2*(90nm+15nm) = 210nm = 0.21um
-
+  Areafactor=0.071  * Calibrated for 600uA target (Run 03 Fine-tune)
+  
   Fermi
 	EffectiveIntrinsicDensity( OldSlotboom )
   
@@ -50,7 +49,16 @@ Physics {
 
 * --- Physics model for the Ferroelectric material ---
 Physics(Material="HZO") {
-    FEPolarization ( direction="y")
+    Polarization
+}
+
+* --- CALIBRATION: Fixed Charge to tune Vth ---
+* Run 02: Reduced Fixed Charge (3.5e12) to shift Vth Positive.
+* Workfunction kept at 4.35eV.
+Physics(MaterialInterface="Silicon/SiO2") {
+    Traps(
+        (FixedCharge Conc=4e12 Level EnergyMid=0.0 fromMidBandGap)
+    )
 }
 
 *===================================================================
@@ -95,7 +103,7 @@ Plot {
   ConductionBand
   ValenceBand
   Doping
-  FEPolarization/Vector
+  Polarization/Vector
 	BandGap
 	BandGapNarrowing
 	eTrappedCharge
@@ -108,56 +116,64 @@ Plot {
 	eVelocity hVelocity
 }
 
+*===================================================================
+*== Block 5b: CURRENT PLOT
+*== Purpose: Save specific internal variables to the .plt file.
+*== Syntax: Following sat_loop_des.cmd using point probe (( x y ))
+*== Location: Center of Top HZO (x=0, y=0.0145)
+*===================================================================
+CurrentPlot {
+  Polarization/Vector (( 0 0.0145 ))
+  ElectricField/Vector (( 0 0.0145 ))
+}
 
 *===================================================================
-*== Block 6: SOLVE
-*== Purpose: Execute the simulation sequence: 
-*==          1. Write FE State (Transient)
-*==          2. Read DC I-V (Quasistationary)
+*== Block 6: SOLVE (PHASE 3: LIF TRANSIENT FIRING)
+*== Purpose: Test Integrate-and-Fire behavior.
+*== Sequence:
+*==   1. Ramp Drain to 1.0V (Bias)
+*==   2. Step Gate to 1.2V (Input Spike)
+*==   3. Transient Hold (Observe Switching/Firing)
 *===================================================================
 Solve {
   * --- STEP 1: INITIALIZE (VDS=0V) ---
   Transient (
     InitialTime=0 FinalTime=1
-  ) { Coupled (Iterations = 100) { Poisson FEPolarization } }
+  ) { Coupled (Iterations = 100) { Poisson } }
 
-  * --- STEP 2: WRITE FE STATE (VDS=0V) ---
-  * We write with Drain=0V to ensure full polarization switching
-  * without "drain disturb" (reduced field near drain).
-  NewCurrentPrefix="write_"
-  Transient (
-    MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
-    InitialTime=1 FinalTime=2 
-    Goal { Name="gate_contact" Voltage= 2.0 }
-  ) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
-
-  Transient (
-    MaxStep=1e-3 InitialStep=1e-5 MinStep=1e-6
-    InitialTime=2 FinalTime=3 
-    Goal { Name="gate_contact" Voltage= 0.0 }
-  ) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
-
-  * --- STEP 3: RAMP TO TARGET VDS ---
-  * Now we assume the FE state is "frozen" or follows hysteresis.
-  * Ramp drain to the target voltage for this node.
-  NewCurrentPrefix="ramp_vds_"
+  * --- STEP 2: RAMP DRAIN BIAS (VDS -> 1.0V) ---
+  NewCurrentPrefix="init_bias_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
-    Goal { Name="drain_contact" Voltage= @Vds@ }
-  ) { Coupled (Iterations = 100) {Poisson Electron Hole FEPolarization} }
-
-  * --- STEP 4: READ DC I-V (Quasistationary) ---
-  * Measure I-V at the constant Target VDS.
-  * Sweep from -1.0V to 2.0V to capture negative Vth behavior
-  NewCurrentPrefix="read_"
-  Quasistationary (
-    DoZero
-    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
-    Goal { Name="gate_contact" Voltage= -1.0 }
+    Goal { Name="drain_contact" Voltage= 1.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
-  Quasistationary (
-    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
-    Goal { Name="gate_contact" Voltage= 2.0 }
-  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  * --- STEP 3: FIRE (Gate Step 0V -> 1.2V) ---
+  * We look for the "Time to Fire" (current spike).
+  NewCurrentPrefix="fire_pulse_"
+  Transient (
+    InitialTime=0 FinalTime=100e-9  * 100 ns window
+    InitialStep=1e-12 MaxStep=1e-10 MinStep=1e-14
+    Increment=1.5                   * Aggressive time stepping
+  ) {
+    * Fast Ramp (Input Spike)
+    Excite { 
+        "gate_contact" 
+        0.0  0.0 
+        10e-12 1.2  * Step to 1.2V in 10ps
+        100e-9 1.2  * Hold
+    }
+  } 
+  { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  
+  Plot( FilePrefix="n@node@_fire" )
 }
+
+* --- OLD CALIBRATION SOLVE BLOCK (Preserved) ---
+* Solve {
+*   * --- STEP 1: INITIALIZE (VDS=0V) ---
+*   Transient (
+*     InitialTime=0 FinalTime=1
+*   ) { Coupled (Iterations = 100) { Poisson } }
+* ... (Hysteresis Logic commented out)
+* }

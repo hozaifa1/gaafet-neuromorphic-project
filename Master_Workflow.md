@@ -85,6 +85,16 @@
 ---
 
 ## 📝 Execution Log
-*   [ ] **Run 1**: Baseline (3.9eV, AF=0.21). Result: __________________
-*   [ ] **Run 2**: Vth Correction. Result: __________________
-*   [ ] **Run 3**: Ion Correction. Result: __________________
+*   [x] **Run 1**: Baseline (3.9eV, AF=0.21). Result: $V_{th} \approx -0.2V$ (Too Negative), Loop Direction Correct (CCW).
+*   [x] **Run 2**: Vth Correction (FixedCharge=3.5e12). Result: $V_{th} = 0.30V$ (High), $I_{peak} = 587\mu A$.
+*   [x] **Run 3**: Fine-Tuning (FixedCharge=4.0e12, AF=0.071). Result: $V_{th} = 0.263V$, $I_{peak} = 604\mu A$, $MW = 0.68V$. **Golden Calibration.**
+
+---
+
+## 🔍 Design Verification (Sanity Check)
+*   **Reference Paper**: *Design of energy-efficient LIF neuron using CMOS compatible...* (Bhatawdekar et al.)
+*   **Fabrication Base**: *Stacked Nanosheet Device Design...* (Loubet et al.)
+*   **Decision**: We strictly follow the **LIF Paper (Table 1)** dimensions:
+    *   $L_g = 100 \text{ nm}$ (Crucial for Impact Ionization/Floating Body).
+    *   $T_{si} = 15 \text{ nm}$.
+    *   *Note*: The Fabrication Paper targets 12nm Logic; we are building a 100nm Neuron. **Workflow is Correct.**

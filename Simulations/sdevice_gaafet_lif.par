@@ -44,17 +44,28 @@ Material="HZO" {
   * NOTE: Values from Workflow.md and general HZO literature.
 
   Epsilon {
-    epsilon = 25.0      * Relative permittivity (eps_r)
+    epsilon = 33.0      * Paper value for HZO
   }
   BandGap {
     Chi0 = 2.0          * Electron Affinity [eV]
-    Eg0 = 5.2           * Band Gap [eV] at 0 K (Often used as a base for 300 K)
+    Eg0 = 5.2           * Band Gap [eV] at 0 K
   }
 
-FEPolarization
-{
-	alpha	= -9.889e10
-	beta	= 2.007e19
-	gamma	= 0
+* --- Saturation Model (Official Syntax: sat_loop_des.cmd) ---
+* Mapped from Paper: Pr=16uC/cm2, Ec=1.2MV/cm
+* DIRECTION FIX: Positive signs for CCW Loop (FeFET Mode)
+Polarization {
+    * Vector format: (x, y, z)
+    * We align with Y-axis (direction="y" in CMD)
+    P_r = (0, 1.6e-5, 0)    * Remanent Polarization [C/cm^2]
+    P_s = (0, 2.0e-5, 0)    * Saturation Polarization [C/cm^2]
+    F_c = (0, 1.2e6, 0)     * Coercive Field [V/cm]
 }
+
+* FEPolarization (Landau Model - Preserved for reference)
+* {
+* 	alpha	= -9.889e10
+* 	beta	= 2.007e20
+* 	rho     = 2.25e4
+* }
 }
