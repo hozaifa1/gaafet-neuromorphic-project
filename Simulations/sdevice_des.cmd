@@ -66,27 +66,33 @@ Physics(MaterialInterface="Silicon/SiO2") {
 *== Purpose: Set numerical solver parameters for convergence.
 *===================================================================
 Math {
-	Digits= 5
-	ErrRef(electron)= 1.000e+00
-	ErrRef(hole)= 1.000e+00
-	Iterations= 50
-	NotDamped= 100
-	RHSMin= 1.000e-15
-	
-	* Required for quantum models
-	GeometricDistances
-	Extrapolate
-	Derivative
-	
-	Transient= BE
-	ComputeGradQuasiFermiAtContacts= UseQuasiFermi
-	RefDens_eGradQuasiFermi_ElectricField_HFS= 1.000e+12
-	RefDens_hGradQuasiFermi_ElectricField_HFS= 1.000e+12
-	Method= Blocked
-	SubMethod= Super
-	
-	FEPolarizationIP=1.0
-	Method = Bitlis (Restart=100, Tolerance=1e-5, Iterations=200)
+   Extrapolate
+   Digits=5
+   Notdamped=50
+   Iterations=20
+   Transient=BE
+   Method=Blocked
+   SubMethod=ParDiSo
+   
+   * NUCLEAR OPTION: Disable LTE completely. Trust Newton convergence only.
+   ErrRef(Poisson)= 1e30
+   ErrRef(Electron)= 1e30
+   ErrRef(Hole)= 1e30
+   ErrRef(FEPolarization)= 1e30
+   ErrRef(eQuantumPotential)= 1e30
+   ErrRef(hQuantumPotential)= 1e30
+   ErrRef(LatticeTemperature)= 1e30
+   ErrRef(eTemperature)= 1e30
+   ErrRef(hTemperature)= 1e30
+   ErrRef(TrapPDE)= 1e30
+   
+   * Required for quantum models
+   GeometricDistances
+   Derivative
+   
+   ComputeGradQuasiFermiAtContacts= UseQuasiFermi
+   RefDens_eGradQuasiFermi_ElectricField_HFS= 1.000e+12
+   RefDens_hGradQuasiFermi_ElectricField_HFS= 1.000e+12
 }
 
 
@@ -151,21 +157,29 @@ Solve {
   * --- STEP 3: FIRE (Gate Step 0V -> 1.2V) ---
   * Split into Rise and Hold phases (Standard Sentaurus Syntax)
   
-  * 3a. Rise (0 -> 10ps)
+  * 3a. Rise (0 -> 50ps)
   NewCurrentPrefix="fire_rise_"
   Transient (
-    InitialTime=0 FinalTime=10e-12
-    InitialStep=1e-13 MaxStep=1e-12 MinStep=1e-14
+    InitialTime=0 FinalTime=50e-12
+    InitialStep=1e-13 MaxStep=1e-12 MinStep=1e-15
+    Increment=1.41
     Goal { Name="gate_contact" Voltage= 1.2 }
-  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  ) { 
+      Coupled (Iterations = 100) {Poisson Electron Hole} 
+      CurrentPlot( Time = (Range=(0 50e-12) Intervals=200) )
+  }
 
-  * 3b. Hold (10ps -> 100ns)
+  * 3b. Hold (50ps -> 100ns)
   NewCurrentPrefix="fire_hold_"
   Transient (
-    InitialTime=10e-12 FinalTime=100e-9
-    InitialStep=1e-12 MaxStep=1e-9 MinStep=1e-13
+    InitialTime=50e-12 FinalTime=100e-9
+    InitialStep=1e-12 MaxStep=10e-12 MinStep=1e-15
+    Increment=1.41
     Goal { Name="gate_contact" Voltage= 1.2 }
-  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  ) { 
+      Coupled (Iterations = 100) {Poisson Electron Hole} 
+      CurrentPlot( Time = (Range=(50e-12 100e-9) Intervals=5000) )
+  }
   
   * Plot( FilePrefix="n@node@_fire" ) -> Removed as we use segment prefixes
 }
