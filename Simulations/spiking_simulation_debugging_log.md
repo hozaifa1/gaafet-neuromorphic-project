@@ -93,7 +93,6 @@ Math {
    ErrRef(FEPolarization)= 1e30
    ErrRef(eQuantumPotential)= 1e30
    ErrRef(hQuantumPotential)= 1e30
-   ErrRef(TrapPDE)= 1e30
 }
 ```
 **Correction:** Initially included `ErrRef(FEPolarizationX/Y/Z)` which caused a syntax error. These were removed in the final fix.
@@ -127,7 +126,6 @@ Math {
    ErrRef(LatticeTemperature)= 1e30
    ErrRef(eTemperature)= 1e30
    ErrRef(hTemperature)= 1e30
-   ErrRef(TrapPDE)= 1e30
    
    * Required for quantum models
    GeometricDistances

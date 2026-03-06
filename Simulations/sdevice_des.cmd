@@ -84,7 +84,6 @@ Math {
    ErrRef(LatticeTemperature)= 1e30
    ErrRef(eTemperature)= 1e30
    ErrRef(hTemperature)= 1e30
-   ErrRef(TrapPDE)= 1e30
    
    * Required for quantum models
    GeometricDistances
