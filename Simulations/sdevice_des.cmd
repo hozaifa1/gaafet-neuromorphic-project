@@ -146,13 +146,16 @@ Solve {
   * --- STEP 3: FIRE (Gate Step 0V -> 1.2V) ---
   * Split into Rise and Hold phases (Standard Sentaurus Syntax)
   
-  * 3a. Rise (0 -> 10ns)
-  * Rise time matched to FeFET_CAM official example (10ns rise/fall)
-  * tau_E=1ns in par file ensures Preisach model has finite response time
+  * 3a. Rise (0 -> 10ns) - Gate ramp 0V -> 1.2V
+  * CRITICAL: Transient+Goal uses NORMALIZED step sizes (fractions 0-1),
+  * NOT absolute seconds. Effective time = fraction * (FinalTime-InitialTime).
+  * InitialStep=1e-3 -> 1e-3 * 10ns = 10ps
+  * MaxStep=5e-2    -> 5e-2 * 10ns = 500ps
+  * MinStep=1e-7    -> 1e-7 * 10ns = 1fs
   NewCurrentPrefix="fire_rise_"
   Transient (
     InitialTime=0 FinalTime=10e-9
-    InitialStep=1e-11 MaxStep=5e-10 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 1.2 }
   ) { 
@@ -160,26 +163,18 @@ Solve {
       CurrentPlot( Time = (Range=(0 10e-9) Intervals=200) )
   }
 
-  * 3b. Hold (10ns -> 100ns)
+  * 3b. Hold (10ns -> 5us) - Observe LIF at constant bias
+  * No Goal needed: gate stays at 1.2V from rise phase.
+  * Without Goal, step sizes are ABSOLUTE seconds.
   NewCurrentPrefix="fire_hold_"
   Transient (
-    InitialTime=10e-9 FinalTime=100e-9
-    InitialStep=1e-10 MaxStep=5e-9 MinStep=1e-15
+    InitialTime=10e-9 FinalTime=5e-6
+    InitialStep=1e-10 MaxStep=50e-9 MinStep=1e-15
     Increment=1.4
-    Goal { Name="gate_contact" Voltage= 1.2 }
   ) { 
       Coupled (Iterations = 100) {Poisson Electron Hole} 
-      CurrentPlot( Time = (Range=(10e-9 100e-9) Intervals=500) )
+      CurrentPlot( Time = (Range=(10e-9 5e-6) Intervals=2000) )
   }
   
   * Plot( FilePrefix="n@node@_fire" ) -> Removed as we use segment prefixes
 }
-
-* --- OLD CALIBRATION SOLVE BLOCK (Preserved) ---
-* Solve {
-*   * --- STEP 1: INITIALIZE (VDS=0V) ---
-*   Transient (
-*     InitialTime=0 FinalTime=1
-*   ) { Coupled (Iterations = 100) { Poisson } }
-* ... (Hysteresis Logic commented out)
-* }

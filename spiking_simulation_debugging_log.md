@@ -203,3 +203,42 @@ kn = (0, 0, 0)          * Nonlinear coupling constant [cm*s/V]
 *   Step sizes adjusted for the 10ns timescale.
 
 **Status: PENDING TEST.**
+
+## 7. Second Root Cause: Normalized Step Sizes in Transient+Goal
+
+### Discovery
+After running with the tau_E fix, the simulation **still** exhibited time step collapse. Analysis of `n5_des.log` (42MB) revealed:
+
+**Log line 2293-2295:**
+```sentaurus
+Transient (
+      Initial step : 1.0000e-19 s,  Minimum step : 1.0000e-23 s, Maximum step : 5.0000e-18 s,
+      Initial time : 0.0000e+00 s, Final time : 1.0000e-08 s,
+```
+
+**What we specified vs what the solver parsed:**
+| Parameter | Code Value | Solver Parsed | Scale Factor |
+|---|---|---|---|
+| `InitialStep` | `1e-11` | `1e-19 s` | `1e-8 = FinalTime` |
+| `MaxStep` | `5e-10` | `5e-18 s` | `1e-8 = FinalTime` |
+| `MinStep` | `1e-15` | `1e-23 s` | `1e-8 = FinalTime` |
+
+### Root Cause
+When `Transient` is used with a `Goal` keyword, the `InitialStep`, `MaxStep`, and `MinStep` parameters are **normalized fractions (0 to 1)** of the sweep — identical to `Quasistationary`. They are NOT absolute time in seconds.
+
+Effective time step = fraction × (FinalTime − InitialTime)
+
+So `InitialStep=1e-11` with `FinalTime=10e-9` gives: `1e-11 × 10e-9 = 1e-19 s` (0.1 attoseconds!)
+
+This is why the MaxStep was only 5e-18 s (5 attoseconds), requiring **2 billion steps** for 10ns.
+
+**Note:** Without `Goal`, step sizes ARE absolute seconds (confirmed by the initialization Transient in the same log).
+
+### Why Previous Calibration Worked
+The hysteresis calibration used `Transient` with `Goal` and `FinalTime=1` (1 second). With FinalTime=1, the normalized fractions equal the absolute values, so the bug was invisible.
+
+### Fix Applied
+1. **fire_rise (with Goal):** Changed to normalized fractions: `InitialStep=1e-3` (→10ps), `MaxStep=5e-2` (→500ps), `MinStep=1e-7` (→1fs)
+2. **fire_hold (without Goal):** Removed Goal (gate stays at 1.2V from rise phase), kept absolute step sizes in seconds.
+
+**Status: PENDING TEST.**
