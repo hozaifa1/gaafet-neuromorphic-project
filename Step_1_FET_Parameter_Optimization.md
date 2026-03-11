@@ -39,11 +39,19 @@ The baseline replication is divided into stages. Here is the explicit breakdown 
 - **Code Context:** The output data is successfully saved in `Simulations/calibration outputs/hysteresis_id_vg.csv` and plotted using the working `plot_data.py` script.
 
 **Step C: Firing Mechanism & Transient Stability**
-- **Previous Issues Fixed:** (1) `tau_E=1ns` added to par file, (2) normalized step sizes in `Transient+Goal`, (3) VGS reduced from 1.2V to 0.3V.
-- **Status:** ⚠️ **RUN 2 (VGS=0.3V): STILL FLAT — 67.5 μA, NO SPIKING**.
-- **Physics models confirmed active:** UniBo2 II (d0_e=d0_h=1e6), SRH, Auger, Band2Band, Hydrodynamic — all verified in log. Models are NOT the problem.
-- **Root Cause (BIASING SEQUENCE):** The paper (Bhatawdekar Fig.4) sets VGS first as a constant DC bias, then **pulses VDS** from 0→1.0V. This starts the device with zero drain current, and Impact Ionization gradually builds up holes over ~1μs → integration → fire. Our simulation did the reverse: VDS was set first (Quasistationary to 1.0V), then VGS was ramped. This caused the device to immediately reach steady-state with no room for II buildup.
-- **Fix Applied:** Reversed biasing order in `sdevice_des.cmd`: (1) Ramp VGS to 0.3V at VDS=0V (Quasistationary), (2) Pulse VDS 0→1.0V (Transient 10ns), (3) Hold 5μs to observe II-driven integration and firing.
+- **Status:** ⚠️ **RUN 3 (Corrected Biasing): STILL FLAT — 68.3 μA, NO SPIKING**.
+- **Progress:**
+  - ✅ Run 1 (VGS=1.2V): Failed due to wrong operating point (too far above Vth)
+  - ✅ Run 2 (VGS=0.3V, drain first): Fixed operating point but wrong biasing order
+  - ✅ Run 3 (Gate first, drain pulsed): Correct biasing order but **missing negative source bias**
+- **Physics models confirmed active:** UniBo2 II (d0_e=d0_h=1e6), SRH, Auger, Band2Band, Hydrodynamic — all present.
+- **Root Cause 1 (BIASING SEQUENCE - FIXED):** Gate must be set FIRST, then drain pulsed (not reversed).
+- **Root Cause 2 (MISSING SOURCE BIAS - FOUND):** Paper explicitly states (line 210): **"a small negative voltage is applied to the source"**. Our V_S=0V was wrong. Negative source bias reverse-biases the source-channel junction, creating the low-current initial state needed for gradual II buildup.
+- **Fix Applied (Run 4):** 
+  - V_S = **-0.25V** (negative bias per paper)
+  - V_G = **0.05V** (to achieve V_SG ≈ -0.30V near paper's -0.244V threshold)
+  - V_D pulsed 0→1.0V (10ns rise, 5μs hold)
+- **Expected:** Initial current ~nA range → gradual II buildup → spike at I_th ≈ 94 nA
 - **Code Context:** Output in `Simulations/spiking_runs/`, plots in `Simulations/py_scripts/`.
 
 ---
@@ -75,11 +83,17 @@ The goal of this phase is not merely to replicate existing FeFET designs, but to
 
 ## 4. Hyper-Specific Next Steps & Workflow
 
-1. **Run Corrected Biasing Sequence (Immediate Priority):**
-   - Biasing order has been fixed to match the paper: gate set first, drain pulsed second.
-   - **Next action:** Run `sdevice_des.cmd` on the server and analyze results. Expect gradual current buildup over ~1μs → kink → spike at $I_{th} \approx 94$ nA.
-   - If spike is observed, proceed to multi-VSG sweep to characterize spiking frequency vs input voltage.
-   - **Note:** The FE polarization barely switches at these low voltages (0.6% of P_r). Its role is Vth modulation for synaptic weight, not part of the firing mechanism itself.
+1. **Run with Negative Source Bias (Immediate Priority):**
+   - **Critical fix applied:** Source bias set to -0.25V (paper line 210: "a small negative voltage is applied to the source")
+   - Gate voltage adjusted to 0.05V to achieve V_SG ≈ -0.30V (near paper's -0.244V threshold)
+   - **Next action:** 
+     1. Upload updated `sdevice_des.cmd` to server
+     2. Run: `nohup sdevice sdevice_des.cmd &`
+     3. Analyze new `fire_rise_n5_des.plt` and `fire_hold_n5_des.plt`
+     4. Run `plot_spiking.py` to visualize
+   - **Expected behavior:** Initial ID ~nA → gradual rise over ~1μs via II → spike when ID reaches I_th ≈ 94 nA → reset
+   - If spiking is observed, sweep V_G from 0.0V to 0.1V (varying V_SG from -0.25V to -0.35V) to characterize frequency vs input
+   - **Note:** AreaFactor (0.071) may need adjustment after confirming spiking behavior. Current is 720× too high, suggesting device area mismatch.
 2. **Execute Phase II Optimization Sweep:**
    - Once the single transient spike works, create a Python automation script to modify the `.cmd` files, run `sdevice`, and extract the peak $I_D$ and $V_{DS}$ for the Asymmetric Junction sweep (Section 3.1).
 3. **Data Extraction for Step 2:**

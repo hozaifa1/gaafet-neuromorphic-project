@@ -17,7 +17,7 @@ File {
 *==          electrode for simultaneous biasing.
 *===================================================================
 Electrode {
-  { Name="source_contact"     Voltage= 0.0 }
+  { Name="source_contact"     Voltage= -0.25 }   * LIF: Negative source bias per paper line 210
   { Name="drain_contact"      Voltage= 0.0 }
   { Name="gate_contact"       Voltage= 0.0  Workfunction=4.35 }   * CALIBRATION: Increased to 4.35eV to compensate for FE shift (Target Vth ~0.25V)
 }
@@ -143,13 +143,15 @@ Solve {
     InitialTime=0 FinalTime=1
   ) { Coupled (Iterations = 100) { Poisson } }
 
-  * --- STEP 2: SET GATE BIAS (VGS -> 0.3V) [VDS still 0V] ---
+  * --- STEP 2: SET GATE BIAS (VGS -> 0.05V) [VDS still 0V] ---
   * This is the "synaptic weight" input. Applied BEFORE drain pulse.
+  * With V_S = -0.25V and V_G = 0.05V, V_SG = -0.25V - 0.05V = -0.30V
+  * This is close to paper's V_SG = -0.244V (their threshold).
   * At VDS=0V there is no drain current and no impact ionization.
   NewCurrentPrefix="gate_bias_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
-    Goal { Name="gate_contact" Voltage= 0.3 }
+    Goal { Name="gate_contact" Voltage= 0.05 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
   * --- STEP 3: FIRE (Drain Pulse 0V -> 1.0V) ---

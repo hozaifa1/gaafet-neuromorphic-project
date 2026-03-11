@@ -316,4 +316,69 @@ Reversed the Solve block in `sdevice_des.cmd`:
 2. Step 3a: Pulse VDS 0→1.0V (Transient, 10ns rise) → triggers II
 3. Step 3b: Hold (5μs) → observe integration → fire
 
-### Status: PENDING TEST
+### Status: TESTED — STILL NO SPIKING
+
+---
+
+## 10. Run 3 Analysis (Corrected Biasing Order) & Source Bias Discovery
+
+### Run 3 Results (Gate First, Drain Pulsed)
+| Metric | Value |
+|---|---|
+| Biasing | Gate set to 0.3V first (V_S=0V), then drain pulsed 0→1.0V |
+| V_SG | 0V - 0.3V = -0.3V |
+| ID at end of rise (10ns) | 68.43 μA |
+| ID at end of hold (5μs) | 68.28 μA |
+| ID change during hold | -0.15 μA (flat) |
+| Spiking | **None** |
+| Current vs paper | 68 μA / 94 nA = **720× too high** |
+
+### Analysis: Biasing order was correct, but still missing critical element
+
+The corrected biasing sequence (gate first, drain pulsed) did not produce spiking. Current is still 720× higher than paper and completely flat.
+
+### Second Root Cause: MISSING NEGATIVE SOURCE BIAS
+
+Re-reading the paper carefully (Bhatawdekar, Section 2.3, line 210):
+
+> **"To replicate the neuron model, a small negative voltage is applied to the source."**
+
+**Our simulation had source grounded at 0V. This is WRONG.**
+
+**Paper's biasing configuration:**
+- **V_S = small negative voltage** (e.g., -0.2V to -0.3V)
+- V_G = positive relative to source
+- V_SG = V_S - V_G (e.g., -0.25V - 0.05V = -0.30V ≈ paper's -0.244V)
+- V_D pulsed from 0V to 1.0V
+
+**Why negative source bias is critical:**
+1. **Reverse-biases source-channel junction:** Reduces initial electron injection from source
+2. **Sets low-current initial state:** Device starts well below threshold (pre-kink)
+3. **Enables gradual II buildup:** As V_D ramps, E-field at drain gradually builds
+4. **Creates integration window:** Holes accumulate over ~1μs before firing
+
+**Our incorrect config:**
+- V_S = 0V (grounded)
+- V_G = 0.3V
+- V_SG = 0V - 0.3V = -0.3V (voltage difference is correct, but absolute potentials are wrong)
+
+The issue is that with source at 0V and gate at 0.3V, the source-channel barrier is too low. The device injects too many electrons immediately, leading to high steady-state current (68 μA) with no room for gradual buildup.
+
+### Fix Applied (Run 4 Configuration)
+Modified `sdevice_des.cmd`:
+1. **Source electrode:** V_S = -0.25V (negative bias per paper)
+2. **Gate voltage:** V_G = 0.05V (to achieve V_SG ≈ -0.30V near paper's -0.244V)
+3. **Drain:** Pulsed from 0V → 1.0V (unchanged)
+
+**Expected behavior:** With negative source bias, initial current should be very low (~nA range). As drain is pulsed, II gradually builds up holes in the channel, creating positive feedback → spike.
+
+### Secondary Issue: AreaFactor Scaling
+
+Paper's effective area: **0.033 μm²**
+Our AreaFactor: **0.071** (calibrated for 600 μA strong inversion)
+
+Current discrepancy: 68 μA vs 94 nA = 720× too high
+
+This suggests the paper's device has a much smaller effective channel area OR our AreaFactor needs adjustment for subthreshold operation. However, fixing the source bias should address the operating point first.
+
+### Status: FIX APPLIED, PENDING RE-RUN
