@@ -60,6 +60,11 @@ Polarization {
     P_r = (0, 1.6e-5, 0)    * Remanent Polarization [C/cm^2]
     P_s = (0, 2.0e-5, 0)    * Saturation Polarization [C/cm^2]
     F_c = (0, 1.2e6, 0)     * Coercive Field [V/cm]
+    * Transient relaxation times (Required for fast transients)
+    * Source: FeFET_CAM official example uses tau_E=1e-9
+    tau_E = (0, 1e-9, 0)    * Auxiliary field relaxation time [s]
+    tau_P = (0, 0, 0)       * Polarization relaxation time [s]
+    kn = (0, 0, 0)          * Nonlinear coupling constant [cm*s/V]
 }
 
 * FEPolarization (Landau Model - Preserved for reference)

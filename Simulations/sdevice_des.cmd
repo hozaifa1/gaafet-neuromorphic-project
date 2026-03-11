@@ -67,23 +67,13 @@ Physics(MaterialInterface="Silicon/SiO2") {
 *===================================================================
 Math {
    Extrapolate
-   Digits=5
+   RelErrControl
+   Digits=4
    Notdamped=50
    Iterations=20
    Transient=BE
    Method=Blocked
    SubMethod=ParDiSo
-   
-   * NUCLEAR OPTION: Disable LTE completely. Trust Newton convergence only.
-   ErrRef(Poisson)= 1e30
-   ErrRef(Electron)= 1e30
-   ErrRef(Hole)= 1e30
-   ErrRef(FEPolarization)= 1e30
-   ErrRef(eQuantumPotential)= 1e30
-   ErrRef(hQuantumPotential)= 1e30
-   ErrRef(LatticeTemperature)= 1e30
-   ErrRef(eTemperature)= 1e30
-   ErrRef(hTemperature)= 1e30
    
    * Required for quantum models
    GeometricDistances
@@ -156,28 +146,30 @@ Solve {
   * --- STEP 3: FIRE (Gate Step 0V -> 1.2V) ---
   * Split into Rise and Hold phases (Standard Sentaurus Syntax)
   
-  * 3a. Rise (0 -> 50ps)
+  * 3a. Rise (0 -> 10ns)
+  * Rise time matched to FeFET_CAM official example (10ns rise/fall)
+  * tau_E=1ns in par file ensures Preisach model has finite response time
   NewCurrentPrefix="fire_rise_"
   Transient (
-    InitialTime=0 FinalTime=50e-12
-    InitialStep=1e-13 MaxStep=1e-12 MinStep=1e-15
-    Increment=1.41
+    InitialTime=0 FinalTime=10e-9
+    InitialStep=1e-11 MaxStep=5e-10 MinStep=1e-15
+    Increment=1.4
     Goal { Name="gate_contact" Voltage= 1.2 }
   ) { 
       Coupled (Iterations = 100) {Poisson Electron Hole} 
-      CurrentPlot( Time = (Range=(0 50e-12) Intervals=200) )
+      CurrentPlot( Time = (Range=(0 10e-9) Intervals=200) )
   }
 
-  * 3b. Hold (50ps -> 100ns)
+  * 3b. Hold (10ns -> 100ns)
   NewCurrentPrefix="fire_hold_"
   Transient (
-    InitialTime=50e-12 FinalTime=100e-9
-    InitialStep=1e-12 MaxStep=10e-12 MinStep=1e-15
-    Increment=1.41
+    InitialTime=10e-9 FinalTime=100e-9
+    InitialStep=1e-10 MaxStep=5e-9 MinStep=1e-15
+    Increment=1.4
     Goal { Name="gate_contact" Voltage= 1.2 }
   ) { 
       Coupled (Iterations = 100) {Poisson Electron Hole} 
-      CurrentPlot( Time = (Range=(50e-12 100e-9) Intervals=5000) )
+      CurrentPlot( Time = (Range=(10e-9 100e-9) Intervals=500) )
   }
   
   * Plot( FilePrefix="n@node@_fire" ) -> Removed as we use segment prefixes

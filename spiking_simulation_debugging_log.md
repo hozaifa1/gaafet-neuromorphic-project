@@ -153,9 +153,53 @@ Includes strict manual step control to ensure data fidelity despite disabled LTE
   }
 ```
 
-## 4. Next Steps
-The debugging process was halted due to a **Sentaurus License Error**.
-Once the license issue is resolved:
-1.  **Delete** old log/output files in `spiking_runs`.
-2.  **Run** the simulation with the current `sdevice_des.cmd`.
-3.  **Verify** that the "Nuclear Option" successfully allows the simulation to complete the 50ps transient.
+## 4. Resolution & Final Status
+
+### Attempt 6 Result
+**Status:** The "Nuclear Option" method (Attempt 6) was implemented and tested.
+**Outcome:** **Same Issue Observed** - The infinite loop and time step collapse persisted despite completely disabling LTE for all variables. This confirmed the root cause is NOT the LTE checker.
+
+---
+
+## 5. Root Cause Analysis (Post-Mortem)
+
+### The Actual Root Cause: Missing `tau_E` in the Polarization Parameter File
+
+The `Polarization` keyword activates the **Preisach-based analytic model**. Its transient dynamics are governed by two relaxation equations:
+*   `dF_aux/dt = (F - F_aux) / tau_E` (auxiliary field relaxation)
+*   `dP/dt = (P_aux - P) / tau_P` (polarization relaxation)
+
+**When `tau_E` and `tau_P` are not specified, they default to 0** (instantaneous response). Every voltage change causes an instant E-field → instant P switch → instant Poisson update feedback loop. This creates an **infinitely stiff system with no characteristic timescale** for the solver to work with.
+
+**Evidence from Official Sentaurus Examples:**
+*   The **FeFET_CAM** application (the ONLY official fast-transient FeFET example) uses `tau_E = 1e-9` (1 ns) in its parameter file (`gtree.dat`).
+*   The **sat_loop** example works without `tau_E` because it's quasi-static (1 second time span, 10 V/s ramp rate).
+*   Our hysteresis calibration worked without `tau_E` for the same reason (quasi-static sweeps).
+*   Our spiking simulation ramps 1.2V in 50ps = **24 GV/s** (4 billion times faster) — numerically catastrophic without `tau_E`.
+
+### Secondary Issues
+*   **50ps rise time** was 200x faster than the 10ns used in the official FeFET_CAM example.
+*   **ErrRef=1e30** removed the solver's ability to manage accuracy.
+*   **Hydrodynamic equations** not included in the Coupled block (decoupled stiffness).
+
+### Why All 6 Attempts Failed
+All attempts focused on **solver controls** (LTE, ErrRef, tolerances, solver methods). None addressed the **physics parameters**. The Preisach model's internal dynamics were instantaneous regardless of solver settings.
+
+---
+
+## 6. Fix Applied
+
+### Parameter File (`sdevice_gaafet_lif.par`)
+Added transient relaxation times to the HZO Polarization section:
+```
+tau_E = (0, 1e-9, 0)    * Auxiliary field relaxation time [s]
+tau_P = (0, 0, 0)       * Polarization relaxation time [s]
+kn = (0, 0, 0)          * Nonlinear coupling constant [cm*s/V]
+```
+
+### Command File (`sdevice_des.cmd`)
+*   Rise time increased from 50ps to 10ns (matching FeFET_CAM official example).
+*   Math block restored to proper settings: `RelErrControl`, `Digits=4`, no ErrRef overrides.
+*   Step sizes adjusted for the 10ns timescale.
+
+**Status: PENDING TEST.**
