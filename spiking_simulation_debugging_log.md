@@ -269,5 +269,51 @@ VGS = 1.2V is far above Vth = 0.263V (overdrive = 0.937V). The device is deeply 
 ### Plot Bug Fixed
 Original `plot_spiking.py` included `init_bias_n5_des.plt` (Quasistationary) whose "time" is the normalized parameter (0→1), not seconds. Fixed by excluding init_bias.
 
-### Next Step
-Re-run transient with VGS near threshold (0.25V–0.35V) while keeping VDS=1.0V.
+### Next Step (Attempted)
+Re-ran with VGS=0.3V (near Vth=0.263V). Result: ID still flat at 67.5 μA. No spiking.
+
+---
+
+## 9. Run 2 Analysis (VGS=0.3V) & Root Cause Discovery
+
+### Run 2 Results
+| Metric | Value |
+|---|---|
+| VGS | 0.3V (overdrive = 0.037V) |
+| ID at end of rise | 67.50 μA |
+| ID at end of hold (5μs) | 67.76 μA |
+| ID change during hold | 0.26 μA (0.4%) |
+| Spiking | None |
+
+### Physics Models Verified
+Checked the simulation log — ALL models are active:
+- `eAvalanche/UniBo2 (BandgapDependence = 1)` ✅
+- `hAvalanche/UniBo2 (BandgapDependence = 1)` ✅
+- `UniBo2: d0_h = 1e+06` ✅
+- `UniBo2: d0_e = 1e+06` ✅
+- `SRHRecombination` ✅
+- `AugerRecombination` ✅
+- `Band2BandTunneling (Hurkx)` ✅
+- `Hydrodynamic` ✅
+
+**The physics models are NOT the problem.**
+
+### Root Cause: WRONG BIASING SEQUENCE
+
+Reading the paper carefully (Bhatawdekar, Section 2.3, Fig.4):
+- **Paper biasing:** VSG is set FIRST as constant DC bias ("synaptic weight"), then VD is PULSED from 0→1.0V to trigger Impact Ionization.
+- **Our biasing (WRONG):** VDS was ramped to 1.0V FIRST (Quasistationary, with VGS=0V), then VGS was ramped to 0.3V.
+
+**Why this matters:**
+1. In the paper: When VD is pulsed, device starts with zero drain current (VDS=0). As VDS ramps, the electric field at the drain builds gradually. Impact ionization starts generating electron-hole pairs. Holes accumulate in the floating body over ~1μs (integration). Positive feedback → current spike (fire).
+2. In our simulation: VDS is already at 1.0V when VGS is applied. The device immediately enters strong inversion with full drain bias. The current jumps to steady state (including II equilibrium) within the 10ns gate ramp. There is no gradual II buildup because the device never starts in the low-current state.
+
+**The order of bias application determines whether the device enters the low-current (pre-kink) or high-current (post-kink) state.** The II mechanism creates a bistable behavior — the device must start from VDS=0 to allow gradual hole accumulation.
+
+### Fix Applied
+Reversed the Solve block in `sdevice_des.cmd`:
+1. Step 2: Ramp VGS to 0.3V (Quasistationary, VDS=0V) → sets synaptic weight
+2. Step 3a: Pulse VDS 0→1.0V (Transient, 10ns rise) → triggers II
+3. Step 3b: Hold (5μs) → observe integration → fire
+
+### Status: PENDING TEST

@@ -125,46 +125,56 @@ CurrentPlot {
 *===================================================================
 *== Block 6: SOLVE (PHASE 3: LIF TRANSIENT FIRING)
 *== Purpose: Test Integrate-and-Fire behavior.
-*== Sequence:
-*==   1. Ramp Drain to 1.0V (Bias)
-*==   2. Step Gate to 1.2V (Input Spike)
-*==   3. Transient Hold (Observe Switching/Firing)
+*== Paper Biasing (Bhatawdekar Fig.4):
+*==   - VSG is set FIRST as constant DC bias ("synaptic weight")
+*==   - VD is PULSED to trigger Impact Ionization buildup
+*== Our Sequence (matching paper):
+*==   1. Initialize Poisson
+*==   2. Ramp Gate to 0.3V (Quasistationary, VDS=0V) -> set weight
+*==   3. Pulse Drain 0V -> 1.0V (Transient, 10ns rise) -> trigger II
+*==   4. Hold (5us) -> observe integration -> fire
+*== WHY: If drain is set first, device immediately reaches steady-state
+*==       with no room for gradual II buildup. Paper pulses drain AFTER
+*==       gate bias is set, so current starts near 0 and builds via II.
 *===================================================================
 Solve {
-  * --- STEP 1: INITIALIZE (VDS=0V) ---
+  * --- STEP 1: INITIALIZE ---
   Transient (
     InitialTime=0 FinalTime=1
   ) { Coupled (Iterations = 100) { Poisson } }
 
-  * --- STEP 2: RAMP DRAIN BIAS (VDS -> 1.0V) ---
-  NewCurrentPrefix="init_bias_"
+  * --- STEP 2: SET GATE BIAS (VGS -> 0.3V) [VDS still 0V] ---
+  * This is the "synaptic weight" input. Applied BEFORE drain pulse.
+  * At VDS=0V there is no drain current and no impact ionization.
+  NewCurrentPrefix="gate_bias_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
-    Goal { Name="drain_contact" Voltage= 1.0 }
+    Goal { Name="gate_contact" Voltage= 0.3 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
-  * --- STEP 3: FIRE (Gate Step 0V -> 1.2V) ---
-  * Split into Rise and Hold phases (Standard Sentaurus Syntax)
+  * --- STEP 3: FIRE (Drain Pulse 0V -> 1.0V) ---
+  * Paper: VD pulse triggers II at the drain-channel junction.
+  * Current starts near 0, then II generates holes -> accumulate in
+  * floating body -> positive feedback -> gradual current rise -> spike.
   
-  * 3a. Rise (0 -> 10ns) - Gate ramp 0V -> 1.2V
-  * CRITICAL: Transient+Goal uses NORMALIZED step sizes (fractions 0-1),
-  * NOT absolute seconds. Effective time = fraction * (FinalTime-InitialTime).
-  * InitialStep=1e-3 -> 1e-3 * 10ns = 10ps
-  * MaxStep=5e-2    -> 5e-2 * 10ns = 500ps
-  * MinStep=1e-7    -> 1e-7 * 10ns = 1fs
+  * 3a. Rise (0 -> 10ns) - Drain ramp 0V -> 1.0V
+  * CRITICAL: Transient+Goal uses NORMALIZED step sizes (fractions 0-1).
+  * InitialStep=1e-3 -> 1e-3 * 10ns = 10ps effective
+  * MaxStep=5e-2    -> 5e-2 * 10ns = 500ps effective
+  * MinStep=1e-7    -> 1e-7 * 10ns = 1fs effective
   NewCurrentPrefix="fire_rise_"
   Transient (
     InitialTime=0 FinalTime=10e-9
     InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
-    Goal { Name="gate_contact" Voltage= 1.2 }
+    Goal { Name="drain_contact" Voltage= 1.0 }
   ) { 
       Coupled (Iterations = 100) {Poisson Electron Hole} 
       CurrentPlot( Time = (Range=(0 10e-9) Intervals=200) )
   }
 
-  * 3b. Hold (10ns -> 5us) - Observe LIF at constant bias
-  * No Goal needed: gate stays at 1.2V from rise phase.
+  * 3b. Hold (10ns -> 5us) - Observe LIF integration and firing
+  * No Goal needed: drain stays at 1.0V, gate at 0.3V.
   * Without Goal, step sizes are ABSOLUTE seconds.
   NewCurrentPrefix="fire_hold_"
   Transient (
@@ -175,6 +185,4 @@ Solve {
       Coupled (Iterations = 100) {Poisson Electron Hole} 
       CurrentPlot( Time = (Range=(10e-9 5e-6) Intervals=2000) )
   }
-  
-  * Plot( FilePrefix="n@node@_fire" ) -> Removed as we use segment prefixes
 }

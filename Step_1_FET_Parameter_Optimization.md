@@ -39,10 +39,11 @@ The baseline replication is divided into stages. Here is the explicit breakdown 
 - **Code Context:** The output data is successfully saved in `Simulations/calibration outputs/hysteresis_id_vg.csv` and plotted using the working `plot_data.py` script.
 
 **Step C: Firing Mechanism & Transient Stability**
-- **Action Done:** Applied 10ns gate ramp (0→1.2V) at VDS=1.0V, followed by 5μs hold. Two root causes of earlier infinite loop were fixed: (1) missing `tau_E=1ns` in par file, (2) normalized step sizes in `Transient+Goal` blocks.
-- **Status:** ⚠️ **SIMULATION COMPLETED — NO SPIKING OBSERVED**.
-- **Result:** The simulation ran successfully to 5μs. However, the drain current is **flat at 392.7 μA** throughout the entire hold phase — no integration, no spike, no reset. Polarization switched only 0.6% of P_r.
-- **Root Cause:** VGS=1.2V is far above V_th=0.263V (overdrive=0.937V). The device is deeply in strong inversion and immediately at steady state. There is no gradual integration or impact-ionization buildup. The Bhatawdekar paper operates near threshold (V_SG ≈ −0.244V → V_GS ≈ +0.244V) where current is ~94nA and impact ionization slowly builds up over microseconds.
+- **Previous Issues Fixed:** (1) `tau_E=1ns` added to par file, (2) normalized step sizes in `Transient+Goal`, (3) VGS reduced from 1.2V to 0.3V.
+- **Status:** ⚠️ **RUN 2 (VGS=0.3V): STILL FLAT — 67.5 μA, NO SPIKING**.
+- **Physics models confirmed active:** UniBo2 II (d0_e=d0_h=1e6), SRH, Auger, Band2Band, Hydrodynamic — all verified in log. Models are NOT the problem.
+- **Root Cause (BIASING SEQUENCE):** The paper (Bhatawdekar Fig.4) sets VGS first as a constant DC bias, then **pulses VDS** from 0→1.0V. This starts the device with zero drain current, and Impact Ionization gradually builds up holes over ~1μs → integration → fire. Our simulation did the reverse: VDS was set first (Quasistationary to 1.0V), then VGS was ramped. This caused the device to immediately reach steady-state with no room for II buildup.
+- **Fix Applied:** Reversed biasing order in `sdevice_des.cmd`: (1) Ramp VGS to 0.3V at VDS=0V (Quasistationary), (2) Pulse VDS 0→1.0V (Transient 10ns), (3) Hold 5μs to observe II-driven integration and firing.
 - **Code Context:** Output in `Simulations/spiking_runs/`, plots in `Simulations/py_scripts/`.
 
 ---
@@ -74,11 +75,11 @@ The goal of this phase is not merely to replicate existing FeFET designs, but to
 
 ## 4. Hyper-Specific Next Steps & Workflow
 
-1. **Fix Operating Point for LIF Behavior (Immediate Priority):**
-   - The transient solver is now working (time-step collapse resolved). The issue is the **biasing point**.
-   - The Bhatawdekar paper operates near threshold ($V_{GS} \approx V_{th}$) where the device is barely ON and impact ionization builds up gradually over microseconds. Our $V_{GS}=1.2V$ puts the device deeply in strong inversion with no room for integration.
-   - **Next action:** Re-run the transient with $V_{GS}$ near threshold (e.g., 0.25V–0.35V) while keeping $V_{DS}=1.0V$. This should produce the slow current buildup → kink → spike behavior described in the paper.
-   - **Caution:** At low $V_{GS}$, the FE polarization will barely switch (as seen: 0.6% at 1.2V). The FE's role may be Vth modulation for synaptic weight, not part of the firing mechanism itself.
+1. **Run Corrected Biasing Sequence (Immediate Priority):**
+   - Biasing order has been fixed to match the paper: gate set first, drain pulsed second.
+   - **Next action:** Run `sdevice_des.cmd` on the server and analyze results. Expect gradual current buildup over ~1μs → kink → spike at $I_{th} \approx 94$ nA.
+   - If spike is observed, proceed to multi-VSG sweep to characterize spiking frequency vs input voltage.
+   - **Note:** The FE polarization barely switches at these low voltages (0.6% of P_r). Its role is Vth modulation for synaptic weight, not part of the firing mechanism itself.
 2. **Execute Phase II Optimization Sweep:**
    - Once the single transient spike works, create a Python automation script to modify the `.cmd` files, run `sdevice`, and extract the peak $I_D$ and $V_{DS}$ for the Asymmetric Junction sweep (Section 3.1).
 3. **Data Extraction for Step 2:**

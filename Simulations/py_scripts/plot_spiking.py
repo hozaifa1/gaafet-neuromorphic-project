@@ -111,11 +111,12 @@ def main():
     # Panel 1: Gate Voltage
     axes[0].plot(all_time_us, all_vgs, 'r-', linewidth=2)
     axes[0].set_ylabel('V_GS (V)', fontsize=12)
-    axes[0].set_ylim(-0.1, 1.4)
+    axes[0].set_ylim(-0.1, max(1.4, max(all_vgs)+0.2))
     axes[0].axhline(y=0.263, color='gray', linestyle='--', alpha=0.7, label='V_th = 0.263V')
     axes[0].legend(fontsize=10)
     axes[0].grid(True, alpha=0.3)
-    axes[0].set_title('GAA-FeFET LIF Neuron: Transient Response (VDS=1.0V, VGS=0->1.2V)', fontsize=13)
+    vgs_final = vgs_hold[-1] if len(vgs_hold) > 0 else vgs_rise[-1]
+    axes[0].set_title(f'GAA-FeFET LIF Neuron: Transient Response (VGS={vgs_final:.2f}V, VDS pulsed 0->1.0V)', fontsize=13)
     
     # Panel 2: Drain Current
     axes[1].plot(all_time_us, all_id * 1e6, 'b-', linewidth=2)
@@ -148,7 +149,7 @@ def main():
     axes2[0].axhline(y=0.263, color='gray', linestyle='--', alpha=0.7, label='V_th')
     axes2[0].legend()
     axes2[0].grid(True, alpha=0.3)
-    axes2[0].set_title('Rise Phase Detail (0 -> 10 ns)', fontsize=13)
+    axes2[0].set_title('Drain Pulse Rise Phase Detail (0 -> 10 ns)', fontsize=13)
     
     axes2[1].plot(t_rise_ns, np.abs(id_rise) * 1e6, 'b-', linewidth=2)
     axes2[1].set_ylabel('I_D (uA)', fontsize=12)
@@ -165,7 +166,8 @@ def main():
     ax3.plot(t_hold_us, np.abs(id_hold) * 1e6, 'b-', linewidth=2)
     ax3.set_ylabel('I_D (uA)', fontsize=12)
     ax3.set_xlabel('Time (us)', fontsize=12)
-    ax3.set_title(f'Hold Phase (VGS=1.2V, VDS=1.0V): ID is FLAT at {abs(id_hold[-1])*1e6:.1f} uA', fontsize=13)
+    vgs_val = vgs_hold[-1] if len(vgs_hold) > 0 else 0
+    ax3.set_title(f'Hold Phase (VGS={vgs_val:.2f}V, VDS=1.0V): ID at {abs(id_hold[-1])*1e6:.1f} uA', fontsize=13)
     ax3.grid(True, alpha=0.3)
     
     fig3.tight_layout()
