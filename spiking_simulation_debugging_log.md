@@ -241,4 +241,33 @@ The hysteresis calibration used `Transient` with `Goal` and `FinalTime=1` (1 sec
 1. **fire_rise (with Goal):** Changed to normalized fractions: `InitialStep=1e-3` (→10ps), `MaxStep=5e-2` (→500ps), `MinStep=1e-7` (→1fs)
 2. **fire_hold (without Goal):** Removed Goal (gate stays at 1.2V from rise phase), kept absolute step sizes in seconds.
 
-**Status: PENDING TEST.**
+**Status: ✅ SIMULATION COMPLETED — NO SPIKING.**
+
+---
+
+## 8. Simulation Results (Post-Fix)
+
+### Numerical Summary
+| Metric | Value |
+|---|---|
+| Rise phase | 0 → 10 ns (201 data points) |
+| Hold phase | 10 ns → 5 μs (2001 data points) |
+| VGS at end of rise | 1.2000 V |
+| ID at start (VGS=0V) | 3.52 μA |
+| ID at end of rise | 390.57 μA |
+| ID at end of hold (5μs) | 392.66 μA |
+| ID change during 5μs hold | 2.09 μA (0.5%) |
+| Polarization at end | −9.64e-8 C/cm² |
+| Fraction of P_r switched | 0.6% |
+
+### Observation
+**No spiking behavior.** The drain current jumps to ~391 μA during the 10ns gate ramp and is completely flat for the entire 5μs hold. No integration, no fire, no reset.
+
+### Root Cause: Wrong Operating Point
+VGS = 1.2V is far above Vth = 0.263V (overdrive = 0.937V). The device is deeply in strong inversion and immediately reaches steady state. The Bhatawdekar paper operates near threshold (VSG ≈ −0.244V → VGS ≈ +0.244V) where impact ionization slowly builds up over microseconds.
+
+### Plot Bug Fixed
+Original `plot_spiking.py` included `init_bias_n5_des.plt` (Quasistationary) whose "time" is the normalized parameter (0→1), not seconds. Fixed by excluding init_bias.
+
+### Next Step
+Re-run transient with VGS near threshold (0.25V–0.35V) while keeping VDS=1.0V.

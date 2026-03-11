@@ -39,9 +39,11 @@ The baseline replication is divided into stages. Here is the explicit breakdown 
 - **Code Context:** The output data is successfully saved in `Simulations/calibration outputs/hysteresis_id_vg.csv` and plotted using the working `plot_data.py` script.
 
 **Step C: Firing Mechanism & Transient Stability**
-- **Action Required:** Apply fast transient pulses (e.g., 50 ps to 10 ns ramps) to the gate to trigger impact ionization and simulate the spiking event.
-- **Status:** 🚨 **FAILED / BLOCKED**.
-- **Context & Errors:** The Sentaurus Device solver fails to converge during fast transients, collapsing the time step to $\sim 10^{-22}$ seconds (Infinite Loop). As logged in `spiking_simulation_debugging_log.md`, we attempted to fix this by adding `tau_E=1ns` and `tau_P=0` to the parameter file, and increasing the pulse rise time from 50ps to 10ns in `sdevice_des.cmd`. **However, the latest run confirms this solution still failed.** The strong physics coupling between sudden impact ionization, floating body charging, and ferroelectric switching is causing severe numerical instability.
+- **Action Done:** Applied 10ns gate ramp (0→1.2V) at VDS=1.0V, followed by 5μs hold. Two root causes of earlier infinite loop were fixed: (1) missing `tau_E=1ns` in par file, (2) normalized step sizes in `Transient+Goal` blocks.
+- **Status:** ⚠️ **SIMULATION COMPLETED — NO SPIKING OBSERVED**.
+- **Result:** The simulation ran successfully to 5μs. However, the drain current is **flat at 392.7 μA** throughout the entire hold phase — no integration, no spike, no reset. Polarization switched only 0.6% of P_r.
+- **Root Cause:** VGS=1.2V is far above V_th=0.263V (overdrive=0.937V). The device is deeply in strong inversion and immediately at steady state. There is no gradual integration or impact-ionization buildup. The Bhatawdekar paper operates near threshold (V_SG ≈ −0.244V → V_GS ≈ +0.244V) where current is ~94nA and impact ionization slowly builds up over microseconds.
+- **Code Context:** Output in `Simulations/spiking_runs/`, plots in `Simulations/py_scripts/`.
 
 ---
 
@@ -72,11 +74,11 @@ The goal of this phase is not merely to replicate existing FeFET designs, but to
 
 ## 4. Hyper-Specific Next Steps & Workflow
 
-1. **Resolve Transient Simulation (Immediate Priority):**
-   - We must solve the time-step collapse in `sdevice_des.cmd`. Since `tau_E` modification failed, the next debugging steps involve:
-     - Disabling Impact Ionization (`Avalanche` model) temporarily to see if the ferroelectric transient alone converges.
-     - If it converges, the issue is purely the avalanche-floating-body coupling. We may need to switch to a less aggressive impact ionization model or add severe dampening to the carrier equations during the transient solve block.
-     - If it still fails, the issue is in the transient boundary conditions or the Preisach model's reaction to instantaneous voltage steps.
+1. **Fix Operating Point for LIF Behavior (Immediate Priority):**
+   - The transient solver is now working (time-step collapse resolved). The issue is the **biasing point**.
+   - The Bhatawdekar paper operates near threshold ($V_{GS} \approx V_{th}$) where the device is barely ON and impact ionization builds up gradually over microseconds. Our $V_{GS}=1.2V$ puts the device deeply in strong inversion with no room for integration.
+   - **Next action:** Re-run the transient with $V_{GS}$ near threshold (e.g., 0.25V–0.35V) while keeping $V_{DS}=1.0V$. This should produce the slow current buildup → kink → spike behavior described in the paper.
+   - **Caution:** At low $V_{GS}$, the FE polarization will barely switch (as seen: 0.6% at 1.2V). The FE's role may be Vth modulation for synaptic weight, not part of the firing mechanism itself.
 2. **Execute Phase II Optimization Sweep:**
    - Once the single transient spike works, create a Python automation script to modify the `.cmd` files, run `sdevice`, and extract the peak $I_D$ and $V_{DS}$ for the Asymmetric Junction sweep (Section 3.1).
 3. **Data Extraction for Step 2:**
