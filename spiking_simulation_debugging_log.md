@@ -419,4 +419,45 @@ Modified `sdevice_des.cmd`:
 1. **Electrodes:** `drain_contact Voltage = -0.25` (matches source)
 2. **Goal:** Transient pulse ramps drain from `-0.25V` to `1.0V`
 
+### Status: TESTED — V_DS FIX SUCCESSFUL, BUT DEVICE IS TOO "ON"
+
+---
+
+## 12. Run 5 Analysis (Zero Initial V_DS) & Subthreshold Operating Point Fix
+
+### Run 5 Results (V_S = -0.25V, V_D(init) = -0.25V, V_G = 0.05V)
+| Metric | Value |
+|---|---|
+| ID at start (t=0, V_D=-0.25V) | **0.00 μA** (Expected! Fix worked) |
+| ID at end of rise (V_D=1.0V) | **73.06 μA** |
+| ID at end of hold | 72.88 μA |
+| Spiking | None (immediate jump to high current) |
+
+### Analysis: Initial Leakage Fixed, but Operating Point is Wrong
+The fix to set initial $V_D = V_S$ worked perfectly. The device started with **0.0 A** of drain current.
+However, as soon as the drain was pulsed to $1.0V$, the current immediately jumped to $73 \mu A$, which is orders of magnitude above the target threshold current.
+
+**Why? We are operating in strong inversion.**
+1. The paper's device has a threshold $V_{SG} = -0.244V$. When they apply $V_S = -0.25V$, their required $V_G$ is around $0V$.
+2. **Our calibrated device is different.** We achieved $V_{th} = +0.26V$ for a logic target ($I_{on} = 600\mu A$).
+3. The paper's target subthreshold current for the LIF neuron is $I_{th} = 94nA$.
+4. Since our device area (AreaFactor=0.071) is ~2.15x larger than the paper's area (0.033 $\mu m^2$), our scaled target threshold current is **$\approx 202 nA$**.
+
+Looking closely at our calibration data (`hysteresis_id_vg.csv`):
+- At $V_{GS} = +0.30V$ (the setting in Run 5), the static drain current is $\approx 11.4 \mu A$. (In transient with $V_D=1.0V$ and no equilibrium, it hit $73 \mu A$).
+- To reach the target subthreshold current of **202 nA**, our $V_{GS}$ needs to be **$-0.32V$**.
+
+### The Fix (Run 6 Configuration)
+We must bias the gate so that $V_{GS} \approx -0.32V$.
+Given that $V_S = -0.25V$:
+$V_G = V_S + V_{GS} = -0.25V + (-0.32V) = \mathbf{-0.57V}$
+
+Modified `sdevice_des.cmd`:
+- **Step 2 (Gate Bias):** Ramps $V_G$ to **$-0.57V$** (was $0.05V$)
+- $V_S$ remains at $-0.25V$.
+- Initial $V_D$ remains at $-0.25V$.
+- Drain pulse ramps from $-0.25V \rightarrow 1.0V$.
+
+**Expected Behavior:** The device will now start deeply in the subthreshold regime. When the drain pulses to $1.0V$, the initial current will be extremely small ($\ll 1\mu A$). The high electric field at the drain will trigger Impact Ionization, generating holes that accumulate and gradually raise the potential, eventually causing the current to spike near $200nA$.
+
 ### Status: FIX APPLIED, PENDING RE-RUN

@@ -39,20 +39,19 @@ The baseline replication is divided into stages. Here is the explicit breakdown 
 - **Code Context:** The output data is successfully saved in `Simulations/calibration outputs/hysteresis_id_vg.csv` and plotted using the working `plot_data.py` script.
 
 **Step C: Firing Mechanism & Transient Stability**
-- **Status:** ⚠️ **RUN 4 (Negative Source): STILL FLAT — 69 μA, NO SPIKING**.
+- **Status:** ⚠️ **RUN 5: INITIAL LEAKAGE FIXED, BUT DEVICE STILL TOO "ON"**.
 - **Progress:**
-  - ✅ Run 1 (VGS=1.2V): Failed due to wrong operating point (too far above Vth)
-  - ✅ Run 2 (VGS=0.3V, drain first): Fixed operating point but wrong biasing order
-  - ✅ Run 3 (Gate first, drain pulsed): Correct biasing order but missing negative source bias
-  - ✅ Run 4 (V_S=-0.25V, V_D=0V): Failed because V_DS was **+0.25V** initially!
+  - ✅ Run 1-3: Debugged biasing sequence and identified missing negative source bias.
+  - ✅ Run 4: Identified initial $V_{DS}$ leakage ($V_D$ must equal $V_S$ initially).
+  - ✅ Run 5 (Zero initial $V_{DS}$): Initial current was $0.0A$ (Success!), but pulsed to $73\mu A$. The gate bias ($V_{GS}=+0.3V$) was in strong inversion for our calibrated device.
 - **Physics models confirmed active:** UniBo2 II (d0_e=d0_h=1e6), SRH, Auger, Band2Band, Hydrodynamic.
-- **Root Cause (INITIAL V_DS > 0):** In Run 4, source was -0.25V but drain was 0V. This created V_DS = +0.25V immediately, causing 46 μA of initial current before the pulse even began. The device must start at V_DS = 0V for gradual hole accumulation.
-- **Fix Applied (Run 5):** 
-  - V_S = **-0.25V**
-  - **Initial V_D = -0.25V** (so V_DS = 0V initially)
-  - V_G = 0.05V (V_SG = -0.30V)
-  - V_D pulsed from -0.25V to 1.0V (10ns rise, 5μs hold)
-- **Expected:** Initial current = 0A → gradual II buildup → spike at I_th ≈ 202 nA (scaled for our 0.071 AreaFactor)
+- **Root Cause (WRONG OPERATING POINT):** The paper biases the device at a subthreshold target of $94nA$. Scaling for our AreaFactor ($0.071$ vs paper's $0.033$), our target is **$\sim 202nA$**. According to our calibration curve, to hit $202nA$, we need **$V_{GS} = -0.32V$**. In Run 5, we used $V_{GS} = +0.3V$, pushing the device way past threshold immediately.
+- **Fix Applied (Run 6):** 
+  - $V_S = -0.25V$
+  - Initial $V_D = -0.25V$ (so $V_{DS} = 0V$)
+  - **$V_G = -0.57V$** (so $V_{GS} = -0.32V$, placing us squarely at the target subthreshold point)
+  - $V_D$ pulsed from $-0.25V$ to $1.0V$
+- **Expected:** Initial current $= 0A \rightarrow$ gradual II buildup $\rightarrow$ spike at $I_{th} \approx 202 nA$.
 - **Code Context:** Output in `Simulations/spiking_runs/`, plots in `Simulations/py_scripts/`.
 
 ---
