@@ -461,3 +461,69 @@ Modified `sdevice_des.cmd`:
 **Expected Behavior:** The device will now start deeply in the subthreshold regime. When the drain pulses to $1.0V$, the initial current will be extremely small ($\ll 1\mu A$). The high electric field at the drain will trigger Impact Ionization, generating holes that accumulate and gradually raise the potential, eventually causing the current to spike near $200nA$.
 
 ### Status: FIX APPLIED, PENDING RE-RUN
+
+---
+
+## 13. Run 6 Analysis (V_GS = -0.32V, V_G = -0.57V) — Too Deep in Subthreshold
+
+### Run 6 Results (V_S = -0.25V, V_D(init) = -0.25V, V_G = -0.57V)
+| Metric | Value |
+|---|---|
+| V_GS | **-0.32V** (confirmed from PLT) |
+| V_DS at end of rise | **1.25V** (V_D=1.0V, V_S=-0.25V) |
+| I_D at start (V_DS=0V) | **~0 A** ✅ |
+| I_D at end of rise (t=10ns) | **1.6 nA** (but ~1.53 nA is gate leakage/displacement; actual channel current ~78 pA) |
+| I_D steady-state (hold, t=2.5μs) | **74 pA** (flat, no change) |
+| I_D at end of hold (t=5μs) | **74 pA** (flat, no change) |
+| Source hole current (t=5μs) | **0.29 pA** (negligible — no Impact Ionization) |
+| Spiking | **None** — current is flat at 74 pA for the entire 5μs hold |
+| FE Polarization (Pol_y) | **~0.14 μC/cm²** (essentially zero; remnant Pr ≈ 22 μC/cm²) |
+
+### Root Cause: V_GS Calculation Was Based on Wrong FE State
+
+**The previous V_GS = -0.32V calculation (Section 12) was fundamentally flawed.**
+
+The calibration CSV (`hysteresis_id_vg.csv`) was generated from a full ±6V hysteresis sweep. When we looked up "V_GS = -0.32V gives 202 nA", that data point came from a specific ferroelectric polarization state — the FE had been partially programmed by the sweep history. **In the transient simulation, the FE is in its VIRGIN (unpolarized) state** (confirmed by Pol_y ≈ 0.14 μC/cm² vs Pr ≈ 22 μC/cm²).
+
+**Proof from calibration CSV initial sweep (virgin-like FE state, V_S=0V so V_G = V_GS):**
+| Calibration V_G (= V_GS) | I_D | Notes |
+|---|---|---|
+| -0.06V | 7.36 μA | Just above threshold |
+| -0.18V | 494 nA | **Near our 202 nA target!** |
+| -0.42V | 80 pA | Deep subthreshold |
+| -0.57V | 2.1 pA | Very deep subthreshold |
+
+Our Run 6 used V_GS = -0.32V, which interpolates to ~3 nA on the initial sweep. The transient observation of 74 pA (at V_DS = 1.25V) is consistent with being deep in subthreshold. **At 74 pA, the channel current is ~2700x below the 202 nA target.** Impact Ionization cannot activate because:
+1. II generation rate is proportional to drain current × ionization coefficient
+2. At 74 pA, even with high ionization coefficients, the generated hole current is negligible (observed: 0.29 pA)
+3. This is insufficient for the positive feedback loop (hole accumulation → body potential rise → current increase)
+
+### The Fix (Run 7 Configuration)
+
+**The correct V_GS must be derived from the INITIAL sweep of the calibration data** (which represents the virgin FE state matching our transient conditions).
+
+From calibration initial sweep:
+- V_GS = -0.18V → I_D = 494 nA (too high)
+- V_GS = -0.42V → I_D = 80 pA (too low)
+- **Target: I_D ≈ 200 nA → V_GS ≈ -0.20V** (log-interpolation)
+
+Converting to transient V_G (where V_S = -0.25V):
+$V_G = V_S + V_{GS} = -0.25V + (-0.20V) = \mathbf{-0.45V}$
+
+However, DC calibration and transient conditions differ (V_DS, FE dynamics). **Recommended approach: V_GS sweep.**
+
+| Run | V_GS | V_G (with V_S=-0.25V) | Expected I_D (from cal.) |
+|---|---|---|---|
+| 7a | -0.15V | -0.40V | ~1-5 μA (may be too high) |
+| **7b** | **-0.20V** | **-0.45V** | **~100-500 nA (target range)** |
+| 7c | -0.25V | -0.50V | ~10-50 nA (may be too low for II) |
+
+**Start with Run 7b (V_G = -0.45V).** If current is in the ~100-500 nA range, II should have a chance to generate meaningful hole accumulation. If no spiking, adjust V_G up or down.
+
+### Important Note on FE Pre-Programming
+The paper's FeFET LIF neuron uses the ferroelectric polarization state as the "synaptic weight" — different FE states shift $V_{th}$, changing the firing threshold. For a complete FeFET LIF demonstration, a **WRITE step** (large V_G pulse to set FE state) should precede the LIF transient. However, for initial II/spiking verification, adjusting V_GS to match the virgin-state threshold is simpler and faster.
+
+### Why This Is NOT an Impact Ionization Parameter Issue
+The II parameters (d0_e = d0_h = 1e6) are NOT the problem. The problem is that at 74 pA of channel current, there is simply not enough carrier flow for II to generate a meaningful number of electron-hole pairs. Once the operating point is corrected to ~200 nA, the II mechanism should engage. If it doesn't, THEN we tune d0_e/d0_h.
+
+### Status: OPERATING POINT ERROR IDENTIFIED — V_GS SWEEP NEEDED

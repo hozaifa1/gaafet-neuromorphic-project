@@ -145,14 +145,14 @@ Solve {
 
   * --- STEP 2: SET GATE BIAS (VGS -> Target) [VDS still 0V] ---
   * This is the "synaptic weight" input. Applied BEFORE drain pulse.
-  * Paper: V_SG = -0.244V (target threshold 94nA).
-  * Our Calibrated Device: To hit scaled threshold (~202nA for our AreaFactor), V_GS must be ~ -0.32V.
-  * Since V_S = -0.25V, we set V_G = -0.57V so that V_GS = -0.57 - (-0.25) = -0.32V.
+  * RUN 7b: Using virgin-state calibration data (initial sweep).
+  * At V_GS = -0.20V (virgin state), calibration gives I_D ~ 200 nA (target).
+  * V_G = V_S + V_GS = -0.25V + (-0.20V) = -0.45V.
   * At V_D = -0.25V and V_S = -0.25V, V_DS = 0V. No initial drain current.
   NewCurrentPrefix="gate_bias_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
-    Goal { Name="gate_contact" Voltage= -0.57 }
+    Goal { Name="gate_contact" Voltage= -0.45 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
   * --- STEP 3: FIRE (Drain Pulse -0.25V -> 1.0V) ---

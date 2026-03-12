@@ -39,19 +39,20 @@ The baseline replication is divided into stages. Here is the explicit breakdown 
 - **Code Context:** The output data is successfully saved in `Simulations/calibration outputs/hysteresis_id_vg.csv` and plotted using the working `plot_data.py` script.
 
 **Step C: Firing Mechanism & Transient Stability**
-- **Status:** ⚠️ **RUN 5: INITIAL LEAKAGE FIXED, BUT DEVICE STILL TOO "ON"**.
+- **Status:** ⚠️ **RUN 6: DEVICE TOO DEEP IN SUBTHRESHOLD — V_GS SWEEP NEEDED**.
 - **Progress:**
   - ✅ Run 1-3: Debugged biasing sequence and identified missing negative source bias.
   - ✅ Run 4: Identified initial $V_{DS}$ leakage ($V_D$ must equal $V_S$ initially).
-  - ✅ Run 5 (Zero initial $V_{DS}$): Initial current was $0.0A$ (Success!), but pulsed to $73\mu A$. The gate bias ($V_{GS}=+0.3V$) was in strong inversion for our calibrated device.
+  - ✅ Run 5 (Zero initial $V_{DS}$): Initial current was $0.0A$ (Success!), but pulsed to $73\mu A$ ($V_{GS}=+0.3V$ was in strong inversion).
+  - ❌ Run 6 ($V_{GS} = -0.32V$): Channel current = **74 pA** (flat for entire 5μs hold). No II activity. No spiking.
 - **Physics models confirmed active:** UniBo2 II (d0_e=d0_h=1e6), SRH, Auger, Band2Band, Hydrodynamic.
-- **Root Cause (WRONG OPERATING POINT):** The paper biases the device at a subthreshold target of $94nA$. Scaling for our AreaFactor ($0.071$ vs paper's $0.033$), our target is **$\sim 202nA$**. According to our calibration curve, to hit $202nA$, we need **$V_{GS} = -0.32V$**. In Run 5, we used $V_{GS} = +0.3V$, pushing the device way past threshold immediately.
-- **Fix Applied (Run 6):** 
-  - $V_S = -0.25V$
-  - Initial $V_D = -0.25V$ (so $V_{DS} = 0V$)
-  - **$V_G = -0.57V$** (so $V_{GS} = -0.32V$, placing us squarely at the target subthreshold point)
-  - $V_D$ pulsed from $-0.25V$ to $1.0V$
-- **Expected:** Initial current $= 0A \rightarrow$ gradual II buildup $\rightarrow$ spike at $I_{th} \approx 202 nA$.
+- **Root Cause (WRONG FE STATE ASSUMPTION):** The $V_{GS} = -0.32V$ target was derived from calibration data at a specific FE polarization state (after ±6V sweep history). In the transient, the **FE is in its virgin (unpolarized) state** (Pol_y ≈ 0.14 μC/cm² vs Pr ≈ 22 μC/cm²). At $V_{GS} = -0.32V$ in the virgin state, the device is ~2700x below the 202 nA target. II cannot activate at 74 pA.
+- **Calibration reference (virgin-state initial sweep, V_S=0V):**
+  - $V_{GS} = -0.06V$ → $I_D = 7.36\mu A$
+  - $V_{GS} = -0.18V$ → $I_D = 494 nA$ ← near target
+  - $V_{GS} = -0.42V$ → $I_D = 80 pA$ ← matches Run 6 observation
+- **Next Step (Run 7 — V_GS Sweep):** Try $V_{GS} = -0.20V$ ($V_G = -0.45V$) first. Expected $I_D \approx 100-500 nA$. If no spiking, sweep $V_G$ from $-0.40V$ to $-0.50V$.
+- **Note:** II parameters (d0_e/d0_h) are NOT the issue yet. Operating point must be fixed first. If spiking still absent at correct operating point, THEN tune II params.
 - **Code Context:** Output in `Simulations/spiking_runs/`, plots in `Simulations/py_scripts/`.
 
 ---
