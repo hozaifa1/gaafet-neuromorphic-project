@@ -381,4 +381,42 @@ Current discrepancy: 68 μA vs 94 nA = 720× too high
 
 This suggests the paper's device has a much smaller effective channel area OR our AreaFactor needs adjustment for subthreshold operation. However, fixing the source bias should address the operating point first.
 
+### Status: TESTED — RUN 4 FAILED
+
+---
+
+## 11. Run 4 Analysis (Negative Source Bias) & V_DS Discovery
+
+### Run 4 Results (V_S = -0.25V, V_G = 0.05V)
+| Metric | Value |
+|---|---|
+| ID at start (V_D=0) | **46.17 μA** (Expected ~nA) |
+| ID at end of rise | 69.46 μA |
+| ID at end of hold | 69.34 μA |
+| Spiking | None |
+
+### Root Cause: V_DS was not zero initially!
+In Run 4, I set the source to `-0.25V` and left the drain at `0.0V` initially.
+- V_DS = V_D - V_S = 0.0V - (-0.25V) = **+0.25V**
+- With V_GS = 0.3V and V_DS = 0.25V, the device immediately conducted **46 μA** of current before the drain pulse even began.
+- The device was not in the off/low-current state required for gradual II buildup.
+
+**The Fix:**
+The drain electrode must initially be biased to the **same voltage as the source** to maintain V_DS = 0V.
+- Initial state: V_S = -0.25V, **V_D = -0.25V** → V_DS = 0V (Current = 0)
+- Drain Pulse: Ramp V_D from **-0.25V to +1.0V**
+
+### Secondary Issue: AreaFactor & Current Levels
+The paper's target threshold current is **94 nA**. The paper's effective area is **0.033 μm²**.
+Our device has an AreaFactor of **0.071** (calibrated to hit 600 μA for logic operation).
+- Ratio: 0.071 / 0.033 = 2.15x larger
+- Scaled threshold current should be: 94 nA * 2.15 ≈ **202 nA**
+
+Even considering AreaFactor, our current is jumping to ~69,000 nA. The primary issue is still the biasing/operating point, specifically ensuring V_DS starts at 0V so the integration process can occur.
+
+### Fix Applied (Run 5 Configuration)
+Modified `sdevice_des.cmd`:
+1. **Electrodes:** `drain_contact Voltage = -0.25` (matches source)
+2. **Goal:** Transient pulse ramps drain from `-0.25V` to `1.0V`
+
 ### Status: FIX APPLIED, PENDING RE-RUN

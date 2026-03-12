@@ -39,19 +39,20 @@ The baseline replication is divided into stages. Here is the explicit breakdown 
 - **Code Context:** The output data is successfully saved in `Simulations/calibration outputs/hysteresis_id_vg.csv` and plotted using the working `plot_data.py` script.
 
 **Step C: Firing Mechanism & Transient Stability**
-- **Status:** ⚠️ **RUN 3 (Corrected Biasing): STILL FLAT — 68.3 μA, NO SPIKING**.
+- **Status:** ⚠️ **RUN 4 (Negative Source): STILL FLAT — 69 μA, NO SPIKING**.
 - **Progress:**
   - ✅ Run 1 (VGS=1.2V): Failed due to wrong operating point (too far above Vth)
   - ✅ Run 2 (VGS=0.3V, drain first): Fixed operating point but wrong biasing order
-  - ✅ Run 3 (Gate first, drain pulsed): Correct biasing order but **missing negative source bias**
-- **Physics models confirmed active:** UniBo2 II (d0_e=d0_h=1e6), SRH, Auger, Band2Band, Hydrodynamic — all present.
-- **Root Cause 1 (BIASING SEQUENCE - FIXED):** Gate must be set FIRST, then drain pulsed (not reversed).
-- **Root Cause 2 (MISSING SOURCE BIAS - FOUND):** Paper explicitly states (line 210): **"a small negative voltage is applied to the source"**. Our V_S=0V was wrong. Negative source bias reverse-biases the source-channel junction, creating the low-current initial state needed for gradual II buildup.
-- **Fix Applied (Run 4):** 
-  - V_S = **-0.25V** (negative bias per paper)
-  - V_G = **0.05V** (to achieve V_SG ≈ -0.30V near paper's -0.244V threshold)
-  - V_D pulsed 0→1.0V (10ns rise, 5μs hold)
-- **Expected:** Initial current ~nA range → gradual II buildup → spike at I_th ≈ 94 nA
+  - ✅ Run 3 (Gate first, drain pulsed): Correct biasing order but missing negative source bias
+  - ✅ Run 4 (V_S=-0.25V, V_D=0V): Failed because V_DS was **+0.25V** initially!
+- **Physics models confirmed active:** UniBo2 II (d0_e=d0_h=1e6), SRH, Auger, Band2Band, Hydrodynamic.
+- **Root Cause (INITIAL V_DS > 0):** In Run 4, source was -0.25V but drain was 0V. This created V_DS = +0.25V immediately, causing 46 μA of initial current before the pulse even began. The device must start at V_DS = 0V for gradual hole accumulation.
+- **Fix Applied (Run 5):** 
+  - V_S = **-0.25V**
+  - **Initial V_D = -0.25V** (so V_DS = 0V initially)
+  - V_G = 0.05V (V_SG = -0.30V)
+  - V_D pulsed from -0.25V to 1.0V (10ns rise, 5μs hold)
+- **Expected:** Initial current = 0A → gradual II buildup → spike at I_th ≈ 202 nA (scaled for our 0.071 AreaFactor)
 - **Code Context:** Output in `Simulations/spiking_runs/`, plots in `Simulations/py_scripts/`.
 
 ---

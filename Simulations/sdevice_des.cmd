@@ -18,7 +18,7 @@ File {
 *===================================================================
 Electrode {
   { Name="source_contact"     Voltage= -0.25 }   * LIF: Negative source bias per paper line 210
-  { Name="drain_contact"      Voltage= 0.0 }
+  { Name="drain_contact"      Voltage= -0.25 }   * MUST equal source initially so V_DS = 0V
   { Name="gate_contact"       Voltage= 0.0  Workfunction=4.35 }   * CALIBRATION: Increased to 4.35eV to compensate for FE shift (Target Vth ~0.25V)
 }
 
@@ -147,19 +147,19 @@ Solve {
   * This is the "synaptic weight" input. Applied BEFORE drain pulse.
   * With V_S = -0.25V and V_G = 0.05V, V_SG = -0.25V - 0.05V = -0.30V
   * This is close to paper's V_SG = -0.244V (their threshold).
-  * At VDS=0V there is no drain current and no impact ionization.
+  * At V_D = -0.25V and V_S = -0.25V, V_DS = 0V. No initial drain current.
   NewCurrentPrefix="gate_bias_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
     Goal { Name="gate_contact" Voltage= 0.05 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
-  * --- STEP 3: FIRE (Drain Pulse 0V -> 1.0V) ---
+  * --- STEP 3: FIRE (Drain Pulse -0.25V -> 1.0V) ---
   * Paper: VD pulse triggers II at the drain-channel junction.
   * Current starts near 0, then II generates holes -> accumulate in
   * floating body -> positive feedback -> gradual current rise -> spike.
   
-  * 3a. Rise (0 -> 10ns) - Drain ramp 0V -> 1.0V
+  * 3a. Rise (0 -> 10ns) - Drain ramp -0.25V -> 1.0V
   * CRITICAL: Transient+Goal uses NORMALIZED step sizes (fractions 0-1).
   * InitialStep=1e-3 -> 1e-3 * 10ns = 10ps effective
   * MaxStep=5e-2    -> 5e-2 * 10ns = 500ps effective
