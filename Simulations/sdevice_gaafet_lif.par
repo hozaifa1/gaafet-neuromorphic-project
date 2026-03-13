@@ -20,6 +20,11 @@ Material="Silicon" {
 	* Si defaults: d0_e=7.1e5 (1.4x boost), d0_h=2.08e6 (2.1x boost)
 	d0_h = 2.08e6
 	d0_e = 7.1e5
+	* Next iterations if needed:
+	* d0_h = 5e5   * Run 8b: moderate boost
+	* d0_e = 5e5
+	* d0_h = 1e5   * Run 8c: strong boost (paper lower bound)
+	* d0_e = 1e5
     }
 
     Band2BandTunneling {
