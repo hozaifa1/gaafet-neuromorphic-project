@@ -145,14 +145,16 @@ Solve {
 
   * --- STEP 2: SET GATE BIAS (VGS -> Target) [VDS still 0V] ---
   * This is the "synaptic weight" input. Applied BEFORE drain pulse.
-  * RUN 7b: Using virgin-state calibration data (initial sweep).
-  * At V_GS = -0.20V (virgin state), calibration gives I_D ~ 200 nA (target).
-  * V_G = V_S + V_GS = -0.25V + (-0.20V) = -0.45V.
+  * RUN 8: Using TWO transient data points to extrapolate correct V_GS:
+  *   Run 6: V_GS=-0.32V -> I_D=74pA | Run 7b: V_GS=-0.20V -> I_D=6.95nA
+  *   SS = 0.12V / log10(6.95e-9/74e-12) = 60.8 mV/dec
+  *   For target ~200nA: V_GS = -0.20 + 0.0608*log10(200/6.95) = -0.111V
+  *   V_G = V_S + V_GS = -0.25 + (-0.111) = -0.361V -> round to -0.36V
   * At V_D = -0.25V and V_S = -0.25V, V_DS = 0V. No initial drain current.
   NewCurrentPrefix="gate_bias_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
-    Goal { Name="gate_contact" Voltage= -0.45 }
+    Goal { Name="gate_contact" Voltage= -0.36 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
   * --- STEP 3: FIRE (Drain Pulse -0.25V -> 1.0V) ---

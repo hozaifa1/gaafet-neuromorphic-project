@@ -39,20 +39,20 @@ The baseline replication is divided into stages. Here is the explicit breakdown 
 - **Code Context:** The output data is successfully saved in `Simulations/calibration outputs/hysteresis_id_vg.csv` and plotted using the working `plot_data.py` script.
 
 **Step C: Firing Mechanism & Transient Stability**
-- **Status:** ⚠️ **RUN 6: DEVICE TOO DEEP IN SUBTHRESHOLD — V_GS SWEEP NEEDED**.
+- **Status:** ⚠️ **RUN 7b: II ACTIVE BUT TOO WEAK — OPERATING POINT + II TUNING NEEDED**.
 - **Progress:**
   - ✅ Run 1-3: Debugged biasing sequence and identified missing negative source bias.
   - ✅ Run 4: Identified initial $V_{DS}$ leakage ($V_D$ must equal $V_S$ initially).
-  - ✅ Run 5 (Zero initial $V_{DS}$): Initial current was $0.0A$ (Success!), but pulsed to $73\mu A$ ($V_{GS}=+0.3V$ was in strong inversion).
-  - ❌ Run 6 ($V_{GS} = -0.32V$): Channel current = **74 pA** (flat for entire 5μs hold). No II activity. No spiking.
+  - ✅ Run 5: Initial current $0.0A$, but $V_{GS}=+0.3V$ was in strong inversion ($73\mu A$).
+  - ✅ Run 6: $V_{GS} = -0.32V$ → 74 pA (too deep in subthreshold, no II).
+  - ⚠️ Run 7b: $V_{GS} = -0.20V$ → **6.95 nA** channel current. **II IS active** (source hole current = 65 fA, M = 9.35×10⁻⁶), but too weak for spiking. Hole current saturated — no net accumulation.
+- **Subthreshold swing (from Run 6 + 7b):** **SS = 60.8 mV/dec** (Boltzmann limit ✅).
 - **Physics models confirmed active:** UniBo2 II (d0_e=d0_h=1e6), SRH, Auger, Band2Band, Hydrodynamic.
-- **Root Cause (WRONG FE STATE ASSUMPTION):** The $V_{GS} = -0.32V$ target was derived from calibration data at a specific FE polarization state (after ±6V sweep history). In the transient, the **FE is in its virgin (unpolarized) state** (Pol_y ≈ 0.14 μC/cm² vs Pr ≈ 22 μC/cm²). At $V_{GS} = -0.32V$ in the virgin state, the device is ~2700x below the 202 nA target. II cannot activate at 74 pA.
-- **Calibration reference (virgin-state initial sweep, V_S=0V):**
-  - $V_{GS} = -0.06V$ → $I_D = 7.36\mu A$
-  - $V_{GS} = -0.18V$ → $I_D = 494 nA$ ← near target
-  - $V_{GS} = -0.42V$ → $I_D = 80 pA$ ← matches Run 6 observation
-- **Next Step (Run 7 — V_GS Sweep):** Try $V_{GS} = -0.20V$ ($V_G = -0.45V$) first. Expected $I_D \approx 100-500 nA$. If no spiking, sweep $V_G$ from $-0.40V$ to $-0.50V$.
-- **Note:** II parameters (d0_e/d0_h) are NOT the issue yet. Operating point must be fixed first. If spiking still absent at correct operating point, THEN tune II params.
+- **Root Cause:** Two compounding issues:
+  1. **Operating point too low:** 6.95 nA is ~29× below the 202 nA target. At this current, II hole generation (65 fA) is too small for positive feedback.
+  2. **II multiplication marginal:** $M = 9.35 \times 10^{-6}$. Our $d0\_e = 10^6$ is 1.41× above the Sentaurus Si default (7.10×10⁵), slightly suppressing electron II.
+- **Next Step (Run 8):** $V_G = -0.36V$ ($V_{GS} = -0.111V$, target $\sim 200 nA$). At 200 nA, $I_{hole} \approx 1.9 pA$ — potentially sufficient for spiking.
+- **If Run 8 fails → II Parameter Tuning** (d0 sweep: 1e6 → 7.1e5 → 5e5 → 1e5). This does **NOT** affect calibration (d0 only matters at high $V_{DS}$ with II, not in DC sweeps).
 - **Code Context:** Output in `Simulations/spiking_runs/`, plots in `Simulations/py_scripts/`.
 
 ---

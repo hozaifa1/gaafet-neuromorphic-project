@@ -527,3 +527,94 @@ The paper's FeFET LIF neuron uses the ferroelectric polarization state as the "s
 The II parameters (d0_e = d0_h = 1e6) are NOT the problem. The problem is that at 74 pA of channel current, there is simply not enough carrier flow for II to generate a meaningful number of electron-hole pairs. Once the operating point is corrected to ~200 nA, the II mechanism should engage. If it doesn't, THEN we tune d0_e/d0_h.
 
 ### Status: OPERATING POINT ERROR IDENTIFIED — V_GS SWEEP NEEDED
+
+---
+
+## 14. Run 7b Analysis (V_GS = -0.20V, V_G = -0.45V) — II Active but Too Weak
+
+### Run 7b Results (V_S = -0.25V, V_D(init) = -0.25V, V_G = -0.45V)
+| Metric | Value |
+|---|---|
+| V_GS | **-0.20V** (confirmed from PLT: V_G = -0.45V) |
+| V_DS at end of rise | **1.25V** (V_D=1.0V, V_S=-0.25V) |
+| I_D at start (V_DS=0V) | **~0 A** ✅ |
+| I_D at end of rise (t=10ns) | **8.52 nA** (drain total; channel current = 6.99 nA, gate leakage = 1.53 nA) |
+| I_D steady-state (hold) | **6.95 nA** (flat from ~50ns onward) |
+| Source hole current (t=10ns) | **-4.3 fA** |
+| Source hole current (t=20ns) | **-44.1 fA** (rapid initial growth) |
+| Source hole current (t=5μs) | **-65.0 fA** (saturated — no further growth) |
+| II Multiplication Factor M | **9.35 × 10⁻⁶** (= 65 fA / 6.95 nA) |
+| Spiking | **None** — current flat at 6.95 nA for entire 5μs |
+
+### Key Finding: Impact Ionization IS Active, but Far Too Weak
+
+Unlike Run 6 (where II was essentially zero), **Run 7b shows clear II activity:**
+- Source hole current grew from 4.3 fA → 65 fA (15× increase) within the first ~100ns
+- This proves II is generating electron-hole pairs at the drain junction
+- However, the hole current **saturated at 65 fA** — generation = removal (recombination + leakage)
+- There is **no net hole accumulation** in the floating body → no positive feedback → no spiking
+
+### Subthreshold Swing Extraction (Two Transient Data Points)
+
+Using Run 6 and Run 7b as calibration points for the **actual transient virgin FE state**:
+| Run | V_GS | V_G | I_D (steady-state) |
+|---|---|---|---|
+| 6 | -0.32V | -0.57V | 74 pA |
+| 7b | -0.20V | -0.45V | 6.95 nA |
+
+$$SS = \frac{V_{GS2} - V_{GS1}}{\log_{10}(I_{D2}/I_{D1})} = \frac{0.12}{\log_{10}(93.9)} = \frac{0.12}{1.973} = \mathbf{60.8 \text{ mV/dec}}$$
+
+This is essentially the Boltzmann limit (60 mV/dec), confirming excellent gate control. We can now **precisely calculate** V_GS for any target current:
+
+| Target I_D | V_GS | V_G (V_S=-0.25V) |
+|---|---|---|
+| 50 nA | -0.147V | -0.397V |
+| **200 nA** | **-0.111V** | **-0.361V** |
+| 500 nA | -0.087V | -0.337V |
+| 1 μA | -0.069V | -0.319V |
+
+### Quantitative II Analysis: Why Spiking Doesn't Occur
+
+**II Multiplication factor M = 9.35 × 10⁻⁶** (this depends on E-field at drain, NOT on channel current).
+
+At the target 200 nA:
+- I_hole = M × I_channel = 9.35e-6 × 200 nA = **1.87 pA**
+- For a body capacitance C_body ≈ 0.01-0.1 fF:
+  - dV_body/dt = 1.87 pA / 0.01 fF = 187,000 V/s → **60 mV in 0.32 μs** (could spike!)
+  - dV_body/dt = 1.87 pA / 0.1 fF = 18,700 V/s → **60 mV in 3.2 μs** (marginal)
+
+**Conclusion:** At 200 nA, spiking is **possible** if C_body is small enough. At 6.95 nA (Run 7b), the hole current was only 65 fA — insufficient even with the smallest body capacitance.
+
+### Reference: Paper's II Parameters vs Ours vs Sentaurus Defaults
+
+| Parameter | Paper (Bhatawdekar) | Our Value | Sentaurus Si Default |
+|---|---|---|---|
+| d0_e | 1×10⁶ | 1×10⁶ | **7.10×10⁵** |
+| d0_h | 1×10⁶ | 1×10⁶ | **2.08×10⁶** |
+
+Our d0_e is **1.41× higher** than the Sentaurus default for silicon, meaning we are **slightly suppressing** electron-initiated II compared to the physically calibrated value. The paper uses the same d0=1e6, but their device (no FE layer, different field distribution) achieves spiking at I_th=94 nA.
+
+### The Fix (Run 8 — Two-Pronged Approach)
+
+**1. Operating Point Fix (PRIMARY):** V_G = -0.36V (V_GS = -0.111V, target ~200 nA)
+- At ~200 nA, hole generation increases ~30× (from 65 fA → ~1.9 pA)
+- This may be sufficient to tip the balance toward net hole accumulation
+
+**2. If Run 8 Shows No Spiking → II Parameter Tuning (SECONDARY):**
+The paper (Section 2.3) swept d0_e/d0_h from 1e5 to 9e6. Our FeFET may need different values due to the HZO layer affecting field distribution. Iterative guide:
+
+| Step | d0_e | d0_h | Rationale |
+|---|---|---|---|
+| 8a | 1e6 | 1e6 | Current (paper's value). Test with corrected V_GS first. |
+| 8b | 7.1e5 | 2.08e6 | Sentaurus Si default. Increases electron II by ~1.4×. |
+| 8c | 5e5 | 5e5 | Moderate increase. Both carriers enhanced. |
+| 8d | 1e5 | 1e5 | Strong II enhancement. Paper's lower sweep bound. |
+
+**Tuning rules (to preserve calibration):**
+- d0_e/d0_h only affect II generation, which is negligible in DC I_D-V_G sweeps at low V_DS
+- Changing d0 does **NOT** affect V_th, I_on, MW, or any calibration parameters
+- The calibration (Step A+B) used `Quasistationary` at V_DS ≤ 1V where II is minimal
+- Therefore, **d0 tuning cannot break existing calibration** ✅
+- Do NOT change AreaFactor, Workfunction, FixedCharge, or FE parameters
+
+### Status: OPERATING POINT + II ANALYSIS COMPLETE — RUN 8 READY
