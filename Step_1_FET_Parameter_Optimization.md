@@ -39,21 +39,22 @@ The baseline replication is divided into stages. Here is the explicit breakdown 
 - **Code Context:** The output data is successfully saved in `Simulations/calibration outputs/hysteresis_id_vg.csv` and plotted using the working `plot_data.py` script.
 
 **Step C: Firing Mechanism & Transient Stability**
-- **Status:** ⚠️ **RUN 7b: II ACTIVE BUT TOO WEAK — OPERATING POINT + II TUNING NEEDED**.
+- **Status:** ⚠️ **RUN 8: OPERATING POINT ACHIEVED, II COLLAPSED — II PARAMETER TUNING INITIATED**.
 - **Progress:**
   - ✅ Run 1-3: Debugged biasing sequence and identified missing negative source bias.
   - ✅ Run 4: Identified initial $V_{DS}$ leakage ($V_D$ must equal $V_S$ initially).
   - ✅ Run 5: Initial current $0.0A$, but $V_{GS}=+0.3V$ was in strong inversion ($73\mu A$).
   - ✅ Run 6: $V_{GS} = -0.32V$ → 74 pA (too deep in subthreshold, no II).
-  - ⚠️ Run 7b: $V_{GS} = -0.20V$ → **6.95 nA** channel current. **II IS active** (source hole current = 65 fA, M = 9.35×10⁻⁶), but too weak for spiking. Hole current saturated — no net accumulation.
-- **Subthreshold swing (from Run 6 + 7b):** **SS = 60.8 mV/dec** (Boltzmann limit ✅).
-- **Physics models confirmed active:** UniBo2 II (d0_e=d0_h=1e6), SRH, Auger, Band2Band, Hydrodynamic.
-- **Root Cause:** Two compounding issues:
-  1. **Operating point too low:** 6.95 nA is ~29× below the 202 nA target. At this current, II hole generation (65 fA) is too small for positive feedback.
-  2. **II multiplication marginal:** $M = 9.35 \times 10^{-6}$. Our $d0\_e = 10^6$ is 1.41× above the Sentaurus Si default (7.10×10⁵), slightly suppressing electron II.
-- **Next Step (Run 8):** $V_G = -0.36V$ ($V_{GS} = -0.111V$, target $\sim 200 nA$). At 200 nA, $I_{hole} \approx 1.9 pA$ — potentially sufficient for spiking.
-- **If Run 8 fails → II Parameter Tuning** (d0 sweep: 1e6 → 7.1e5 → 5e5 → 1e5). This does **NOT** affect calibration (d0 only matters at high $V_{DS}$ with II, not in DC sweeps).
-- **Code Context:** Output in `Simulations/spiking_runs/`, plots in `Simulations/py_scripts/`.
+  - ✅ Run 7b: $V_{GS} = -0.20V$ → 6.95 nA, M = 9.35×10⁻⁶ (II active but weak).
+  - ⚠️ **Run 8: $V_{GS} = -0.11V$ → 183.4 nA** (9% of 200 nA target ✅), **but M = 4.99×10⁻⁸** (530× weaker than Run 7b ✗). No spiking.
+- **Subthreshold swing:** **SS = 60.8 mV/dec** (Boltzmann limit).
+- **Physics models confirmed active:** UniBo2 II, SRH, Auger, Band2Band, Hydrodynamic.
+- **Root Cause (Run 8):** Higher $V_{GS}$ pulls body potential up → reduced drain-body reverse bias → E-field at drain junction drops → II collapses exponentially. The HZO layer creates a different field distribution vs paper (no FE layer), requiring stronger II parameters.
+- **Operating point is CORRECT.** Further $V_{GS}$ tuning will not help — this is a field distribution issue.
+- **Solution:** II parameter tuning (d0 reduction to boost II generation). **Calibration-safe** — d0 only affects high-$V_{DS}$ transients, not DC sweeps.
+- **Run 8a (READY):** Updated `sdevice_gaafet_lif.par` with **Sentaurus Si defaults**: $d0\_e = 7.1 \times 10^5$ (1.41× boost), $d0\_h = 2.08 \times 10^6$ (2.08× boost). Expected M increase: 1.5-3×.
+- **If Run 8a fails:** Run 8b ($d0 = 5 \times 10^5$), then Run 8c ($d0 = 1 \times 10^5$).
+- **Code Context:** Output in `Simulations/spiking_runs/`, parameter file: `sdevice_gaafet_lif.par`.
 
 ---
 

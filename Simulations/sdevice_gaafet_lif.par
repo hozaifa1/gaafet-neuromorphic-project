@@ -13,8 +13,13 @@ Material="Silicon" {
     }
 
    UniBo2 {
-	d0_h = 1e6
-	d0_e = 1e6
+	* RUN 8a: Use Sentaurus Si defaults to boost II
+	* Run 8 (d0=1e6) showed M=4.99e-8 (530x weaker than Run 7b)
+	* despite hitting target I_D=183nA. Higher V_GS reduces drain-body
+	* reverse bias, killing II. Must reduce d0 to compensate.
+	* Si defaults: d0_e=7.1e5 (1.4x boost), d0_h=2.08e6 (2.1x boost)
+	d0_h = 2.08e6
+	d0_e = 7.1e5
     }
 
     Band2BandTunneling {

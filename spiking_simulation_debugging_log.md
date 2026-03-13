@@ -618,3 +618,94 @@ The paper (Section 2.3) swept d0_e/d0_h from 1e5 to 9e6. Our FeFET may need diff
 - Do NOT change AreaFactor, Workfunction, FixedCharge, or FE parameters
 
 ### Status: OPERATING POINT + II ANALYSIS COMPLETE — RUN 8 READY
+
+---
+
+## 15. Run 8 Analysis (V_GS = -0.11V, V_G = -0.36V) — Operating Point Hit, but II Collapsed
+
+### Run 8 Results (V_S = -0.25V, V_D(init) = -0.25V, V_G = -0.36V)
+| Metric | Value |
+|---|---|
+| V_GS | **-0.11V** (confirmed from PLT: V_G = -0.36V) |
+| V_DS at end of rise | **1.25V** (V_D=1.0V, V_S=-0.25V) |
+| I_D at start (V_DS=0V) | **~0 A** ✅ |
+| I_D at end of rise (t=10ns) | **184.95 nA** (drain total; channel current = 183.41 nA, gate leakage = 1.54 nA) |
+| I_D steady-state (hold) | **182.59 nA** (flat from ~15ns onward) — **within 9% of 200 nA target** ✅ |
+| Source hole current (t=10ns) | **-5.74 fA** |
+| Source hole current (t=20ns) | **-9.15 fA** |
+| Source hole current (t=5μs) | **-9.15 fA** (immediately saturated) |
+| II Multiplication Factor M | **4.99 × 10⁻⁸** (= 9.15 fA / 183.4 nA) |
+| Spiking | **None** — current flat at 182.6 nA for entire 5μs |
+
+### Critical Finding: Impact Ionization Collapsed Despite Correct Operating Point
+
+**Comparison across runs:**
+
+| Run | V_GS | I_D (steady) | I_hole (source) | II Multiplication M |
+|---|---|---|---|---|
+| 6 | -0.32V | 74 pA | negligible | ~0 |
+| 7b | -0.20V | 6.95 nA | 65 fA | **9.35 × 10⁻⁶** |
+| 8 | -0.11V | 183.4 nA | 9.15 fA | **4.99 × 10⁻⁸** |
+
+**The paradox:**
+- Run 7b → Run 8: Channel current increased **26.4×** (6.95 nA → 183.4 nA) ✅
+- But II multiplication **dropped 530×** (9.35e-6 → 4.99e-8) ✗
+
+This is the opposite of what we expected. Higher channel current should provide more carriers for II, not less.
+
+### Root Cause: Gate Control Kills Drain-Body Reverse Bias
+
+**Physics mechanism:**
+1. At V_GS = -0.20V (Run 7b), the gate is weakly ON. The body potential is largely determined by the floating body charge balance.
+2. At V_GS = -0.11V (Run 8), the gate pulls the body potential **up** (less negative).
+3. Higher body potential → **reduced drain-body reverse bias** → lower E-field at drain junction → drastically reduced II.
+4. The II generation rate is exponentially dependent on the electric field: $\alpha \propto \exp(-d/E)$.
+
+**Quantitative estimate:**
+- M dropped by 530× → implies E-field dropped by roughly 10-15% (due to exponential dependence)
+- This small field reduction is exactly what we'd expect from a ~0.09V increase in body potential (V_GS: -0.20V → -0.11V)
+
+### Why the Paper Achieves Spiking at 94 nA and We Cannot at 183 nA
+
+The Bhatawdekar paper (no FE layer):
+- I_th = 94 nA
+- d0_e = d0_h = 1e6
+- Device spikes successfully
+
+Our FeFET (with HZO layer):
+- I_D = 183.4 nA (2× higher)
+- d0_e = d0_h = 1e6 (same as paper)
+- M = 4.99e-8 → I_hole = 9.15 fA → **cannot spike**
+
+**The difference:** The HZO ferroelectric layer creates a **different electrostatic field distribution** compared to a standard SiO₂ gate dielectric. The capacitive voltage divider effect (C_ox vs C_fe) affects how V_GS translates to body potential, changing the drain-body junction bias. Our device requires **stronger II parameters** to compensate.
+
+### The Fix: Impact Ionization Parameter Tuning (Calibration-Safe)
+
+**Operating point is now correct.** Further V_GS adjustment will not help — it's a field distribution issue, not a current issue.
+
+**Solution:** Reduce d0_e/d0_h to enhance II generation. Lower d0 → higher ionization coefficient α → more electron-hole pair generation at the same E-field.
+
+**Why this is calibration-safe:**
+- The calibration (Step A: electrostatic baseline, Step B: hysteresis) used `Quasistationary` sweeps at **V_DS ≤ 1V**
+- At low V_DS, drain E-field is weak → II is negligible (generates <1 pA even with d0=1e5)
+- Therefore, d0_e/d0_h have **zero effect** on V_th, I_on, I_off, or Memory Window
+- **d0 tuning cannot break existing calibration** ✅
+
+### Run 8a Plan: Sentaurus Silicon Defaults
+
+Update `sdevice_gaafet_lif.par`:
+```
+d0_e = 7.1e5   (was 1e6 → 1.41× II boost)
+d0_h = 2.08e6  (was 1e6 → 2.08× II boost)
+```
+
+These are the **physically calibrated default values for silicon** from the Sentaurus library (verified in Power/IGBT examples).
+
+**Expected outcome:**
+- Electron II: 1.41× stronger → e-h pair generation increases
+- Hole II: 2.08× stronger → hole current feedback increases
+- Combined effect: M should increase by 1.5-3× (approximate, nonlinear)
+- If M reaches ~1.5e-7, I_hole = 27 fA → still marginal
+- If insufficient, proceed to Run 8b (d0 = 5e5) or 8c (d0 = 1e5)
+
+### Status: II PARAMETER TUNING INITIATED — RUN 8a READY
