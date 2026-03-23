@@ -12,21 +12,6 @@ Material="Silicon" {
         Exponent = 2.5, 2.2
     }
 
-   UniBo2 {
-	* RUN 8a: Use Sentaurus Si defaults to boost II
-	* Run 8 (d0=1e6) showed M=4.99e-8 (530x weaker than Run 7b)
-	* despite hitting target I_D=183nA. Higher V_GS reduces drain-body
-	* reverse bias, killing II. Must reduce d0 to compensate.
-	* Si defaults: d0_e=7.1e5 (1.4x boost), d0_h=2.08e6 (2.1x boost)
-	d0_h = 2.08e6
-	d0_e = 7.1e5
-	* Next iterations if needed:
-	* d0_h = 5e5   * Run 8b: moderate boost
-	* d0_e = 5e5
-	* d0_h = 1e5   * Run 8c: strong boost (paper lower bound)
-	* d0_e = 1e5
-    }
-
     Band2BandTunneling {
         * Hurkx model parameters for Band2Band tunneling
         * Critical for nanoscale GAA devices
@@ -72,15 +57,18 @@ Polarization {
     F_c = (0, 1.2e6, 0)     * Coercive Field [V/cm]
     * Transient relaxation times (Required for fast transients)
     * Source: FeFET_CAM official example uses tau_E=1e-9
+    * SWEEP tau_E: Controls FE switching speed. Manually change per run.
+    *   tau_E = (0, 1e-10, 0)   * 0.1ns — fast switching
+    *   tau_E = (0, 1e-9, 0)    * 1ns   — baseline (default)
+    *   tau_E = (0, 1e-8, 0)    * 10ns  — slow switching
     tau_E = (0, 1e-9, 0)    * Auxiliary field relaxation time [s]
+    * SWEEP tau_P: Controls depolarization (leak). Manually change per run.
+    *   tau_P = (0, 0, 0)       * 0     — no relaxation (non-volatile)
+    *   tau_P = (0, 1e-6, 0)    * 1us   — fast leak
+    *   tau_P = (0, 1e-5, 0)    * 10us  — moderate leak
+    *   tau_P = (0, 1e-4, 0)    * 100us — slow leak
     tau_P = (0, 0, 0)       * Polarization relaxation time [s]
     kn = (0, 0, 0)          * Nonlinear coupling constant [cm*s/V]
 }
 
-* FEPolarization (Landau Model - Preserved for reference)
-* {
-* 	alpha	= -9.889e10
-* 	beta	= 2.007e20
-* 	rho     = 2.25e4
-* }
 }
