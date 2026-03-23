@@ -709,3 +709,188 @@ These are the **physically calibrated default values for silicon** from the Sent
 - If insufficient, proceed to Run 8b (d0 = 5e5) or 8c (d0 = 1e5)
 
 ### Status: II PARAMETER TUNING INITIATED — RUN 8a READY
+
+---
+
+## 16. Run 8a/8b/8c Analysis — Impact Ionization Parameter Sweep FAILED
+
+### Configuration
+All three runs used V_G = -0.36V, V_S = -0.25V, V_D pulsed from -0.25V → 1.0V (identical to Run 8).
+Only the II parameters (d0_e, d0_h) in `sdevice_gaafet_lif.par` were changed:
+
+| Run | d0_e | d0_h | II Boost Factor |
+|---|---|---|---|
+| 8 (baseline) | 1×10⁶ | 1×10⁶ | 1× (paper value) |
+| **8a** | **7.1×10⁵** | **2.08×10⁶** | **1.4× e / 2.1× h (Si defaults)** |
+| **8b** | **5×10⁵** | **5×10⁵** | **2× e / 2× h (moderate boost)** |
+| **8c** | **1×10⁵** | **1×10⁵** | **10× e / 10× h (strong boost, paper lower bound)** |
+
+**Verification:** d0 values confirmed loaded correctly from each run's `n5_des.log` file (line ~1067-1068).
+
+### Results: ALL THREE RUNS ARE BYTE-IDENTICAL
+
+| Metric | Run 8a | Run 8b | Run 8c |
+|---|---|---|---|
+| I_D steady-state | 182.59 nA | 182.59 nA | 182.59 nA |
+| Source hole current | 9.15 fA | 9.15 fA | 9.15 fA |
+| M (II mult) | 5.01×10⁻⁸ | 5.01×10⁻⁸ | 5.01×10⁻⁸ |
+| Spiking | None | None | None |
+| **File MD5 hash** | **5CFC848B...** | **5CFC848B...** | **5CFC848B...** |
+
+**MD5 hash verification:** All `fire_hold_n5_des.plt` files have identical hash `5CFC848B059430956949BD878146652B`. The outputs are not just "similar" — they are **byte-for-byte identical** despite d0 varying by 7× (from 7.1e5 to 1e5).
+
+File timestamps confirm separate simulation runs (8c: 11:28, 8b: 11:52, 8a: 12:02 on Mar 23).
+
+### Root Cause: Impact Ionization Generates ZERO Carriers
+
+Changing d0 by 7× produced zero change in output. This is physically possible only when:
+
+$$\alpha(F, T) = \frac{F_{ava}}{a(T) + b(T) \cdot \exp\left[\frac{d(T)}{F_{ava} + c(T)}\right]}$$
+
+If $F_{ava}$ (the driving electric field at the drain junction) is **far below** the critical field for any d0 value, then $\alpha \approx 0$ for all d0 → II generation = 0 → changing d0 has no effect.
+
+**The 9.15 fA of source hole current is NOT from Impact Ionization.** It comes from **Band2Band tunneling** (Hurkx model), whose parameters (Agen=4e14, Bgen=1.9e7, Pgen=2.5) were unchanged across all runs. This explains the byte-identical output.
+
+### Why the Drain Junction Field Is Too Low
+
+The Bhatawdekar paper uses a **standard GAA FNSFET** (no ferroelectric layer):
+- Gate stack: Metal (WF=4.6eV) / SiO₂ (2nm) / Si channel
+- VDS directly creates a strong reverse-bias field at the drain-body junction
+- The paper shows clear kink effect in output characteristics (Fig 5)
+
+Our device is a **GAA-FeFET** with HZO layer:
+- Gate stack: Metal (WF=4.35eV) / HZO / SiO₂ / Si channel
+- The HZO layer changes the capacitive voltage divider
+- The gate-all-around geometry provides excellent electrostatic control (by design — this is good for logic, bad for II)
+- The strong gate coupling **screens** the drain field from the body
+- The drain-body junction field is insufficient to trigger avalanche generation at any d0
+
+### Critical Missing Step: Output Characteristics Were Never Verified
+
+**The paper (Bhatawdekar, Fig 5 and Fig 7) explicitly shows ID-VDS output characteristics with a visible kink effect.** This kink IS the Impact Ionization signature. The paper:
+1. First verified the kink exists in DC output curves
+2. Then optimized d0 parameters to control the kink onset
+3. Only then ran transient spiking simulations
+
+**We never ran output characteristics (ID-VDS sweep).** We went directly from hysteresis calibration (ID-VGS) to transient spiking. Without verifying the kink exists in DC, there was no reason to expect spiking in transient.
+
+### Conclusion: Spiking Debugging Path Was Incorrect from Run 5 Onwards
+
+From Run 5 onwards, we attempted to find the correct operating point by adjusting voltages. While each individual fix was valid (correct biasing order, zero initial VDS, correct VGS for target current), the **underlying assumption — that our device can produce Impact Ionization — was never verified.**
+
+The entire debugging effort was adjusting operating parameters for a mechanism that doesn't exist in our current device structure. The correct first step should have been:
+1. Run output characteristics (ID-VDS) at multiple VGS
+2. Verify kink effect exists
+3. Only then proceed to transient spiking
+
+### Status: ❌ II PARAMETER TUNING FAILED — FUNDAMENTAL DEVICE ISSUE CONFIRMED
+
+---
+
+## 17. Comprehensive Calibration & Methodology Review
+
+### What the Paper (Bhatawdekar) Did for Calibration
+
+From Section 2.2: *"The simulation framework utilized in this research is **thoroughly calibrated** against the work of N. Loubet et al., achieving a close match through careful adjustments of **velocity saturation, mobility, source/drain resistances, and metal work function**, as illustrated in Fig. 2(d)."*
+
+Paper's calibration procedure:
+1. **Full ID-VGS curve match** against Loubet experimental data (Fig 2d) — not just 2 points
+2. Calibrated: velocity saturation, mobility, S/D resistances, work function
+3. Verified SS, DIBL at Lg=12nm (SSat=75 mV/dec, DIBL=32mV)
+4. Ran **output characteristics (ID-VDS)** at multiple VGS (Fig 5) — verified kink effect
+5. **Swept d0** from 1e5 to 9e6 (Fig 7a) — selected d0=1e6 for biological current levels
+6. Verified kink onset at VD=1.0V
+7. Set Ith=94nA from kink analysis in ID-VGS at VDS=1.0V (Fig 7b)
+8. THEN ran transient spiking simulations (Fig 8, Fig 9)
+
+### What Our Calibration Actually Did
+
+From `Calibration_Log_2026_01_15.md`:
+
+**Stage 1 (DC — Runs 1-5):** Swept FixedCharge and AreaFactor to match Vth=0.25V and Ion=600μA.
+- Only matched 2 numbers at a single point
+- Did NOT match full ID-VGS curve shape
+- Did NOT verify SS, DIBL, Ioff
+
+**Stage 2 (Hysteresis — Runs 6-13):** Activated FE, switched to Transient solver, recalibrated AreaFactor.
+- Successfully achieved CCW hysteresis loop
+- But lost DC calibration, required WF shift
+
+**Stage 3 (Final — Runs 14-16):** Re-tuned WF=4.35eV, FixedCharge=4e12, AreaFactor=0.071.
+- Matched Vth(Fwd)=0.263V and Ion=604μA
+- MW=0.68V (good)
+
+**What was NOT done:**
+- ❌ Full ID-VGS curve shape matching (only 2 points)
+- ❌ Output characteristics (ID-VDS) verification — **CRITICAL OMISSION**
+- ❌ Kink effect verification
+- ❌ Subthreshold swing verification at calibration stage
+- ❌ DIBL verification
+- ❌ Velocity saturation calibration
+- ❌ S/D resistance calibration
+- ❌ Par file modification during calibration (par file was fixed throughout)
+- ❌ Comparison against Loubet experimental data
+
+### Specific Parameter Discrepancies
+
+| Parameter | Paper (Bhatawdekar) | Our Value | Issue |
+|---|---|---|---|
+| Workfunction | 4.6 eV | 4.35 eV | 0.25 eV discrepancy |
+| Gate Oxide | SiO₂ (2nm) | SiO₂ + HZO (ferroelectric) | Fundamentally different stack |
+| FixedCharge | Not specified | 4×10¹² cm⁻² | Very high — compensating for structural mismatch |
+| AreaFactor | 0.033 μm² effective | 0.071 | 2.15× discrepancy |
+| Mobility (e⁻) | Calibrated (Lombardi + PhuMob) | Fixed at 300 cm²/Vs | Not calibrated |
+| S/D Resistance | Calibrated (7 Ω·μm²) | Not explicitly set | Not calibrated |
+| Contact Resist | 7 Ω·μm² | Not set | Missing |
+
+### Assessment: Calibration Was Insufficient for LIF Neuron Operation
+
+The calibration successfully achieved the hysteresis targets (Vth, Ion, MW) which are sufficient for **memory/synaptic weight** operation. However, it is **fundamentally insufficient** for **LIF neuron** operation because:
+
+1. LIF operation requires Impact Ionization, which depends on the **drain junction electric field**
+2. The drain field depends on output characteristics (ID-VDS), which were never verified
+3. The HZO layer changes the electrostatic coupling between gate and drain, potentially killing II
+4. Without output characteristics verification, there's no evidence our device can support II
+
+---
+
+## 18. Corrected Path Forward
+
+### Phase 1A: Verify II Capability (IMMEDIATE — MUST DO FIRST)
+
+**Goal:** Determine if our GAA-FeFET structure can produce Impact Ionization at all.
+
+**Action:** Run output characteristics (ID-VDS sweep) at multiple VGS values.
+
+Modify `sdevice_des.cmd` for a DC output characteristics sweep:
+1. Set VGS = 0.3V (above Vth), VGS = 0.5V, VGS = 1.0V
+2. Sweep VDS from 0V to 2.0V (Quasistationary)
+3. Look for kink (sudden slope change) in ID-VDS curve
+4. Use d0_e = d0_h = 1e5 (maximum II) for this test
+
+**Expected outcomes:**
+- **If kink observed:** Device supports II → problem was transient biasing/operating point → proceed to Phase 1B
+- **If NO kink at any VGS up to VDS=2.0V:** Device structure cannot support II → proceed to Phase 1C
+
+### Phase 1B: If Kink Observed — Transient Spiking with Corrected Biasing
+
+Re-run transient spiking with the VGS/VDS that produced the kink.
+
+### Phase 1C: If No Kink — Structural Root Cause Isolation
+
+Run the **same output characteristics** but with FE physics DISABLED:
+```
+* Physics(Material="HZO") {
+*     Polarization
+* }
+```
+
+- **If kink appears without FE:** The HZO layer is screening the drain field → need to either remove FE for LIF or re-engineer the stack
+- **If no kink even without FE:** The base GAA structure doesn't support II with current dimensions/doping → need structural changes (doping profile, channel thickness, etc.)
+
+### Phase 1D: Proper Calibration (If Structural Changes Needed)
+
+1. Match full ID-VGS curve against Loubet data (if available) or paper data
+2. Calibrate velocity saturation, S/D resistance
+3. Verify output characteristics with kink
+4. Then re-enable FE and verify hysteresis + kink coexist

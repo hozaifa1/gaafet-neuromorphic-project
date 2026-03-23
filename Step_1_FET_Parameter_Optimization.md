@@ -13,90 +13,179 @@ Biological neurons possess a cell membrane with capacitance, ion channels that a
 - **Fire (Action Potential):** When the integrated gate potential exceeds the threshold voltage ($V_{th}$), the transistor abruptly turns ON. In our specific design, we leverage the **Impact Ionization (Kink Effect)** at a specific drain bias ($V_{DS}$) to create an abrupt, sharp spike in drain current ($I_{D}$), representing the neuron firing.
 - **Reset (Refractory Period):** After firing, an external circuit or intrinsic polarization reset brings the membrane potential back to its resting state.
 
----
-
-## 2. Phase I: Baseline Replication & Foundation Setup
-Before innovating, we must first replicate the baseline behavior from foundational literature (e.g., Bhatawdekar et al. for the LIF neuron platform and Loubet et al. for GAA dimensions). 
-
-### 2.1 Key Baseline Parameters
-1. **Gate Length ($L_g$):** $100$ nm. A longer channel ensures robust impact ionization and charge storage (floating body effect) compared to logic-scaled 12nm nodes.
-2. **Nanosheet Thickness ($T_{si}$):** $15$ nm. Thicker sheets provide a robust vertical electric field distribution, highly beneficial for impact ionization.
-3. **Gate Workfunction (WF):** Tuned to center the hysteresis loop and achieve a target baseline $V_{th}$ (e.g., $+0.25$ V) ensuring the neuron is neither always-ON nor too hard to trigger.
-4. **Ferroelectric Layer ($T_{fe}$):** Carefully matched with $T_{ox}$ to form a capacitive voltage divider $C_{stack} = (C_{ox} \cdot C_{fe}) / (C_{ox} + C_{fe})$ that ensures the FE layer receives sufficient voltage ($> V_c$) during operation.
-
-### 2.2 Algorithm & Current Status of Baseline
-The baseline replication is divided into stages. Here is the explicit breakdown of what has been achieved and what is failing:
-
-**Step A: Electrostatic Baseline (The "Vanilla" FET)**
-- **Action Done:** Disabled FE models. Swept $L_g$, $T_{si}$, Doping, and Workfunction.
-- **Status:** ✅ **COMPLETED** (Refer to `Calibration_Log_2026_01_15.md`, Run 16).
-- **Result:** We achieved a perfect calibration with $L_g=100nm$, $T_{si}=15nm$, WF=4.35 eV, Fixed Charge=4.0e12 cm⁻², AreaFactor=0.071. Target $V_{th}$ of 0.263 V was hit with a clean OFF state.
-
-**Step B: Ferroelectric Integration & Hysteresis**
-- **Action Done:** Enabled FE physics. Ran slow transient sweeps (quasistationary equivalent) to trace the $I_D-V_{GS}$ hysteresis loop.
-- **Status:** ✅ **COMPLETED**.
-- **Result:** Achieved a stable, counter-clockwise Memory Window (MW) of 0.681 V. 
-- **Code Context:** The output data is successfully saved in `Simulations/calibration outputs/hysteresis_id_vg.csv` and plotted using the working `plot_data.py` script.
-
-**Step C: Firing Mechanism & Transient Stability**
-- **Status:** ⚠️ **RUN 8: OPERATING POINT ACHIEVED, II COLLAPSED — II PARAMETER TUNING INITIATED**.
-- **Progress:**
-  - ✅ Run 1-3: Debugged biasing sequence and identified missing negative source bias.
-  - ✅ Run 4: Identified initial $V_{DS}$ leakage ($V_D$ must equal $V_S$ initially).
-  - ✅ Run 5: Initial current $0.0A$, but $V_{GS}=+0.3V$ was in strong inversion ($73\mu A$).
-  - ✅ Run 6: $V_{GS} = -0.32V$ → 74 pA (too deep in subthreshold, no II).
-  - ✅ Run 7b: $V_{GS} = -0.20V$ → 6.95 nA, M = 9.35×10⁻⁶ (II active but weak).
-  - ⚠️ **Run 8: $V_{GS} = -0.11V$ → 183.4 nA** (9% of 200 nA target ✅), **but M = 4.99×10⁻⁸** (530× weaker than Run 7b ✗). No spiking.
-- **Subthreshold swing:** **SS = 60.8 mV/dec** (Boltzmann limit).
-- **Physics models confirmed active:** UniBo2 II, SRH, Auger, Band2Band, Hydrodynamic.
-- **Root Cause (Run 8):** Higher $V_{GS}$ pulls body potential up → reduced drain-body reverse bias → E-field at drain junction drops → II collapses exponentially. The HZO layer creates a different field distribution vs paper (no FE layer), requiring stronger II parameters.
-- **Operating point is CORRECT.** Further $V_{GS}$ tuning will not help — this is a field distribution issue.
-- **Solution:** II parameter tuning (d0 reduction to boost II generation). **Calibration-safe** — d0 only affects high-$V_{DS}$ transients, not DC sweeps.
-- **Run 8a (READY):** Updated `sdevice_gaafet_lif.par` with **Sentaurus Si defaults**: $d0\_e = 7.1 \times 10^5$ (1.41× boost), $d0\_h = 2.08 \times 10^6$ (2.08× boost). Expected M increase: 1.5-3×.
-- **If Run 8a fails:** Run 8b ($d0 = 5 \times 10^5$), then Run 8c ($d0 = 1 \times 10^5$).
-- **Code Context:** Output in `Simulations/spiking_runs/`, parameter file: `sdevice_gaafet_lif.par`.
+### 1.3 Key Difference: Bhatawdekar Paper vs. Our Device
+The reference LIF neuron paper (Bhatawdekar et al.) uses a **standard GAA FNSFET** with no ferroelectric layer. Their LIF mechanism is purely Impact Ionization + Floating Body effect. Our device **adds an HZO ferroelectric layer** to provide programmable synaptic weights (threshold voltage modulation via polarization). This is the novel contribution but also introduces a fundamental challenge: the HZO layer changes the gate stack's capacitive voltage divider and the electrostatic coupling between the gate and the drain junction, potentially suppressing the Impact Ionization mechanism required for spiking.
 
 ---
 
-## 3. Phase II: Novel Device Engineering (The Core Innovation)
-*Note: This phase will commence immediately after resolving the transient simulation blockage in Phase I.*
+## 2. Calibration Work Completed
 
-The goal of this phase is not merely to replicate existing FeFET designs, but to introduce **novel structural and material optimizations** that maximize the device's performance specifically as a Leaky Integrate-and-Fire (LIF) neuron. Standard GAA-FETs are optimized for logic (high $I_{on}/I_{off}$, low SS). However, a LIF neuron requires distinct characteristics: rapid impact ionization at low voltages (low-energy spiking), controlled charge retention (integration), and tunable leakage. 
+### 2.1 Summary of Calibration Runs
+All calibration details are in `Calibration_Log_2026_01_15.md`. Total: 16 runs across 3 stages.
 
-### 3.1 Asymmetric Junction Engineering for Low-Voltage Firing
-- **Current Approach:** Symmetric highly doped Source/Drain regions ($10^{20} \text{ cm}^{-3}$).
-- **Innovative Approach:** Engineer an asymmetric drain doping profile or incorporate a lightly doped drain (LDD) extension specifically tuned to maximize the local electric field near the drain at low $V_{DS}$. 
-- **TCAD Action:** Introduce a spatial doping gradient in `sdevice` structure generation. Sweep the length and concentration of this transition region.
-- **Impact:** This will trigger the Kink Effect at a significantly lower drain voltage than conventional designs, translating to a massive reduction in the **Energy per Spike**.
+**Stage 1 — DC Calibration (Runs 1-5):**
+Swept FixedCharge and AreaFactor to match $V_{th}=0.25V$ and $I_{on}=600\mu A$ using Quasistationary solver. Achieved DC golden run at Run 5 with WF=3.9eV, FixedCharge=5.15e12, AreaFactor=0.224.
 
-### 3.2 Floating Body and Volume Inversion Optimization
-- **Current Approach:** Standard 15nm thickness.
-- **Innovative Approach:** Intentionally "de-scale" and fine-tune dimensions for neuromorphic utility. Optimize a thicker nanosheet ($T_{si} \approx 15-25$ nm) to maximize the hole-storage capacity (Floating Body Effect) within the channel.
-- **TCAD Action:** Run transient multi-pulse simulations varying $T_{si}$ to observe which thickness retains the generated holes the longest before recombination.
-- **Impact:** Enhances the integration phase of the LIF neuron, allowing for stable accumulation of membrane potential and a more pronounced firing spike.
+**Stage 2 — Hysteresis Integration (Runs 6-13):**
+Activated ferroelectric physics (`Polarization` keyword for Preisach model). Switched to Transient solver (required for FE). AreaFactor recalibrated from 0.224 to 0.069 due to Transient solver calculating displacement + particle current differently. Sweep range increased to $\pm 6.0V$ to ensure $V_{fe} > V_c$ (coercive voltage).
 
-### 3.3 Ferroelectric Stack Engineering for Analog Integration
-- **Current Approach:** Binary polarization switching aimed at maximizing the Memory Window.
-- **Innovative Approach:** Tune the Hafnium Zirconium Oxide (HZO) thickness ($T_{fe}$) and interfacial layer ($T_{ox}$) to promote multi-domain, gradual polarization switching rather than abrupt macroscopic switching.
-- **TCAD Action:** Enable the multi-domain Preisach model. Sweep $T_{fe}$ and $T_{ox}$ to find the "sweet spot" where the capacitive voltage divider allows partial polarization switching for every small step in gate voltage.
-- **Impact:** Converts the FeFET into a highly linear, multi-state integrator, mimicking biological membrane capacitance charging much more accurately.
+**Stage 3 — Final Calibration (Runs 14-16):**
+Re-tuned WF from 3.9eV to 4.35eV and FixedCharge to 4.0e12 to center the hysteresis loop.
+
+### 2.2 Final Calibrated Parameters (Run 16 — "Golden")
+
+| Parameter | Value | Purpose |
+|---|---|---|
+| Workfunction | 4.35 eV | Centers hysteresis loop |
+| Fixed Charge | 4.0×10¹² cm⁻² | Fine-tunes $V_{th}$ to 0.25V |
+| AreaFactor | 0.071 | Scales $I_{on}$ to 600μA (Transient mode) |
+| $L_g$ / $T_{si}$ | 100nm / 15nm | Matches Bhatawdekar design |
+
+**Results:**
+- $V_{th}$ (Fwd): **0.263 V** (target 0.25V) 
+- $I_{peak}$: **604 μA** (target 600μA) 
+- Memory Window: **0.681 V** (CCW direction) 
+
+### 2.3 What Calibration Did NOT Cover
+
+The calibration matched two scalar targets ($V_{th}$, $I_{on}$) and verified the hysteresis loop. However, the following were **not** performed:
+
+- **Full $I_D$-$V_{GS}$ curve shape matching** — Only 2 points matched, not the full transfer characteristic
+- **Output characteristics ($I_D$-$V_{DS}$) verification** — **CRITICAL OMISSION** — the kink effect was never verified
+- **Subthreshold swing (SS) verification** during calibration
+- **DIBL verification**
+- **Velocity saturation calibration** (paper: calibrated; ours: Sentaurus defaults)
+- **S/D resistance calibration** (paper: 7 Ω·μm²; ours: not set)
+- **Contact resistance** (paper: 7 Ω·μm²; ours: not set)
+- **Comparison against Loubet et al. experimental data**
+
+For **memory/synaptic weight** operation, the completed calibration is sufficient. For **LIF neuron** operation requiring Impact Ionization, it is **insufficient** because the kink effect (II signature) was never verified.
 
 ---
 
-## 4. Hyper-Specific Next Steps & Workflow
+## 3. Spiking Simulation Attempts (Runs 1-8c)
 
-1. **Run with Negative Source Bias (Immediate Priority):**
-   - **Critical fix applied:** Source bias set to -0.25V (paper line 210: "a small negative voltage is applied to the source")
-   - Gate voltage adjusted to 0.05V to achieve V_SG ≈ -0.30V (near paper's -0.244V threshold)
-   - **Next action:** 
-     1. Upload updated `sdevice_des.cmd` to server
-     2. Run: `nohup sdevice sdevice_des.cmd &`
-     3. Analyze new `fire_rise_n5_des.plt` and `fire_hold_n5_des.plt`
-     4. Run `plot_spiking.py` to visualize
-   - **Expected behavior:** Initial ID ~nA → gradual rise over ~1μs via II → spike when ID reaches I_th ≈ 94 nA → reset
-   - If spiking is observed, sweep V_G from 0.0V to 0.1V (varying V_SG from -0.25V to -0.35V) to characterize frequency vs input
-   - **Note:** AreaFactor (0.071) may need adjustment after confirming spiking behavior. Current is 720× too high, suggesting device area mismatch.
-2. **Execute Phase II Optimization Sweep:**
-   - Once the single transient spike works, create a Python automation script to modify the `.cmd` files, run `sdevice`, and extract the peak $I_D$ and $V_{DS}$ for the Asymmetric Junction sweep (Section 3.1).
-3. **Data Extraction for Step 2:**
-   - After finalized optimization, extract the $I_{spike}$, $V_{th\_effective}$, and integration time constants to be passed into the Python SNN models.
+Full details in `spiking_simulation_debugging_log.md`.
+
+### 3.1 Key Lessons Learned (Valid Fixes)
+- **Biasing order matters:** Gate bias must be set FIRST, then drain is pulsed (Bhatawdekar Fig.4)
+- **Initial $V_{DS}$ must be 0V:** $V_D$ must equal $V_S$ initially to avoid leakage
+- **Negative source bias:** $V_S = -0.25V$ per paper
+- **Transient+Goal uses normalized step sizes:** fractions of (FinalTime - InitialTime), not absolute seconds
+- **Missing $\tau_E$:** Required in Preisach model for transient stability
+- **Subthreshold swing:** SS = 60.8 mV/dec confirmed via two-point extraction
+
+### 3.2 Run 8 Result: Operating Point Correct, II Dead
+Run 8 ($V_{GS} = -0.11V$) achieved the target channel current (~183 nA) but Impact Ionization multiplication factor M = 4.99×10⁻⁸ — completely negligible.
+
+### 3.3 Runs 8a/8b/8c: d0 Parameter Sweep — FAILED
+Swept d0 from 7.1e5 to 1e5 (7× change). **All three runs produced byte-identical output** (MD5 hash match). Changing d0 had literally zero effect because II generates zero carriers at this operating point. The 9.15 fA source hole current comes entirely from Band2Band tunneling (Hurkx model), not II.
+
+### 3.4 Root Cause: Device Cannot Produce Impact Ionization
+
+The electric field at the drain-body junction ($F_{ava}$) is far below the critical field required for avalanche generation at any d0 value. The GAA-FeFET's strong electrostatic gate coupling (designed for logic) combined with the HZO capacitive voltage divider suppresses the drain junction field to the point where II is physically impossible.
+
+**The Bhatawdekar paper verified II capability via output characteristics (Fig 5, Fig 7) BEFORE attempting transient spiking. We skipped this step entirely.**
+
+---
+
+## 4. Current Status: BLOCKED — Impact Ionization Verification Required
+
+### 4.1 The Single Most Important Missing Step
+
+**We must run output characteristics ($I_D$-$V_{DS}$ sweep) to determine if our device can produce the kink effect at all.** Without this, all transient spiking attempts are premature.
+
+The paper's Fig 5 shows ID-VDS curves with a clear kink at VDS ~0.7-1.0V for various VGS values. The paper's Fig 7(a) shows how d0 tuning affects the kink. These DC sweeps are the fundamental prerequisite for LIF operation.
+
+---
+
+## 5. Corrected Next Steps (In Priority Order)
+
+### Step 1: Output Characteristics Sweep (IMMEDIATE)
+
+**Goal:** Determine if the GAA-FeFET structure can produce Impact Ionization.
+
+**Action:** Create a new `sdevice_des.cmd` variant for DC output characteristics:
+1. Ramp $V_{GS}$ to a fixed value (e.g., 0.3V, 0.5V, 1.0V) using Quasistationary
+2. Sweep $V_{DS}$ from 0V to 2.0V using Quasistationary
+3. Record $I_D$ vs $V_{DS}$ at each $V_{GS}$
+4. Use d0_e = d0_h = 1e5 (maximum II) for this test
+5. Plot $I_D$-$V_{DS}$ and look for kink (sudden slope change)
+
+**Decision tree:**
+- **Kink observed** → Device supports II → Fix transient biasing → Proceed to spiking
+- **No kink up to $V_{DS}$ = 2.0V** → Proceed to Step 2
+
+### Step 2: FE Layer Isolation Test (If No Kink)
+
+**Goal:** Determine if the HZO layer is killing II.
+
+**Action:** Disable FE physics and re-run the same output characteristics:
+```
+* Physics(Material="HZO") {
+*     Polarization
+* }
+```
+
+**Decision tree:**
+- **Kink appears without FE** → HZO is screening the drain field → Need FE stack re-engineering
+- **No kink even without FE** → Base GAA structure doesn't support II → Need structural changes (Step 3)
+
+### Step 3: Structural Root Cause Analysis (If No Kink Without FE)
+
+Investigate why the base GAA FET doesn't produce II:
+1. **Extract electric field profile** along the drain junction from the TDR output
+2. **Compare field magnitude** against UniBo2 critical field ($\sim 10^5$ V/cm)
+3. **Potential fixes:**
+   - Asymmetric drain doping (LDD) to concentrate the field
+   - Increase $T_{si}$ beyond 15nm to create a stronger floating body
+   - Reduce gate coupling (e.g., partial gate coverage) — trades off electrostatic control
+   - Verify channel doping ($1×10^{16}$ cm⁻³) creates sufficient drain-body depletion
+
+### Step 4: Proper Full Calibration (After Structural Fix)
+
+Once II capability is confirmed:
+1. Match full $I_D$-$V_{GS}$ curve shape (not just 2 points) — verify SS, DIBL, $I_{off}$
+2. Calibrate velocity saturation and S/D resistance per paper
+3. Match output characteristics with kink against paper Fig 5
+4. Re-enable FE and verify hysteresis + kink coexist
+5. Set $I_{th}$ from kink analysis (paper: 94 nA)
+6. THEN proceed to transient spiking
+
+### Step 5: Transient Spiking (After Full Calibration)
+
+Use the validated operating point from output characteristics to set up the transient simulation with correct biasing.
+
+---
+
+## 6. Phase II: Novel Device Engineering (Deferred)
+
+Phase II innovations (asymmetric junction, floating body optimization, FE stack engineering) remain valid design directions but are **deferred** until Phase I baseline spiking is achieved. Notably, the asymmetric junction engineering (Section 6.1) may become part of the structural fix if Step 3 reveals insufficient drain junction field.
+
+### 6.1 Asymmetric Junction Engineering for Low-Voltage Firing
+- Engineer an asymmetric drain doping profile or LDD extension to maximize the local electric field near the drain at low $V_{DS}$.
+- TCAD Action: Introduce spatial doping gradient in sdevice structure generation.
+
+### 6.2 Floating Body and Volume Inversion Optimization
+- Optimize nanosheet thickness ($T_{si} \approx 15-25$ nm) to maximize hole-storage capacity.
+- TCAD Action: Transient multi-pulse simulations varying $T_{si}$.
+
+### 6.3 Ferroelectric Stack Engineering for Analog Integration
+- Tune HZO thickness ($T_{fe}$) and interfacial layer ($T_{ox}$) for multi-domain gradual polarization switching.
+- TCAD Action: Enable multi-domain Preisach model, sweep $T_{fe}$ and $T_{ox}$.
+
+---
+
+## 7. File Reference
+
+| File | Location | Purpose |
+|---|---|---|
+| Calibration Log | `Calibration_Log_2026_01_15.md` | Full 16-run calibration history |
+| Spiking Debug Log | `spiking_simulation_debugging_log.md` | Runs 1-8c analysis and root causes |
+| Calibration CMD | `Simulations/calibration data/sdevice_calibration.cmd` | Hysteresis sweep command file |
+| Spiking CMD | `Simulations/sdevice_des.cmd` | LIF transient command file |
+| Parameter File | `Simulations/sdevice_gaafet_lif.par` | Material parameters (d0, FE, mobility) |
+| Calibration Data | `Simulations/calibration data/` | CSV outputs, PLT files, plots |
+| Spiking Outputs | `Simulations/spiking_runs/Run 8*/` | Transient PLT files per run |
+| Analysis Script | `Simulations/py_scripts/analyze_8abc.py` | Run 8a/8b/8c comparison |
+| Plot Script | `Simulations/py_scripts/plot_spiking.py` | Transient visualization |
