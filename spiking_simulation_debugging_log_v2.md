@@ -102,4 +102,67 @@ d0 swept 7× with zero effect. The drain junction field (F_ava) is so far below 
 3. **Fire:** When enough domains switch, Vth < operating VGS → ID spikes abruptly
 4. **Reset:** Negative gate pulse resets polarization → Vth returns to high state
 
-Our device already has everything needed: HZO with Preisach model, tau_E, calibrated hysteresis. See `Step_1_FET_Parameter_Optimization.md` for the new workflow.
+Our device already has everything needed: HZO with Preisach model, tau_E, calibrated hysteresis.
+
+---
+
+## 7. Phase 1A Implementation: SWB-Based Characterization (Mar 23, 2026)
+
+### New Workflow: Three Focused Simulations
+
+Instead of one monolithic `sdevice_des.cmd` with commented sweeps, created **three optimized `.cmd` files** for Sentaurus Workbench (SWB) parameter sweeping:
+
+#### **Sim A: Single Pulse Amplitude** (`sdevice_phase1a_simA.cmd`)
+- Sweeps `@Vpulse@` = 1.0, 1.5, 2.0, 2.5, 3.0 V (5 runs)
+- Measures ΔVth per amplitude → finds optimal pulse for partial switching
+- Extracts partial P-E loop from Polarization(y) CurrentPlot
+
+#### **Sim B: Multi-Pulse Integration** (`sdevice_phase1a_simB.cmd`)
+- Applies N identical pulses (N=1,3,5,10,20) with best Vpulse from Sim A
+- Demonstrates cumulative Vth shift = "integration" behavior
+- Extracts Vth(N) staircase curve
+
+#### **Sim C: Full LIF Cycle** (`sdevice_phase1a_simC.cmd`)
+- 5 pulses with 1μs gaps (observe leak), then reset pulse
+- Sweeps `@Vreset@` = -2.0, -3.0, -4.0 V (3 runs)
+- Demonstrates integrate → leak → fire → reset in one run
+- Extracts ID vs time waveform + reset completeness
+
+### Progressive Sweep Strategy
+
+**Total: ~12–15 runs instead of 100+**
+1. Sim A (5 runs) → pick best Vpulse
+2. Sim B (1 run) → confirm integration
+3. Sim C (3 runs) → sweep Vreset
+4. tau_P manual (3–4 runs) → characterize leak time constant
+5. tau_E manual (2–3 runs, optional) → validate switching speed
+
+Each run: 5–15 min. Total time: ~2–3 hours.
+
+### Expected Outputs Table
+
+| Sim | Parameter | Extract | Desired Output | Paper | Purpose |
+|---|---|---|---|---|---|
+| A | Vpulse | baseline vs postpulse ID-VGS | ΔVth vs Vpulse curve | Frontiers 2020 Fig.3 | Find optimal amplitude |
+| A | Vpulse | pulse_hold Polarization(y) | Partial P-E loop | HZO modeling | Confirm sub-coercive |
+| B | Npulses | postpulse_fwd Vth | Vth(N) staircase | Frontiers 2020 Fig.5 | Demonstrate integration |
+| B | — | pN_hold ID segments | Stepwise ID increase | AFeFET Nature Comms | Show cumulative switching |
+| C | Vreset | Full lif_* ID vs time | LIF waveform | Khanday DG-FE-TFET Fig.7 | Full cycle demo |
+| C | Vreset | postreset vs baseline Vth | Vth recovery | AFeFET paper | Quantify reset |
+| C | — | lif_gap* Polarization(y) | P decay during gaps | HZO modeling | Demonstrate leak |
+| .par | tau_P | Re-run simC, gap decay | Leak time constant τ_m | AFeFET paper | Map to Python SNN |
+| .par | tau_E | Re-run simA, P settling | Switching speed | FeFET_CAM | Validate insensitivity |
+
+### SWB Setup (Brief)
+
+**Sim A:** Add sdevice tool → cmd=`sdevice_phase1a_simA.cmd` → parameter `Vpulse` sweep `1.0 1.5 2.0 2.5 3.0` → run 5 nodes
+
+**Sim B:** Add sdevice tool → cmd=`sdevice_phase1a_simB.cmd` → parameter `Vpulse`=(best from A) → run 1 node
+
+**Sim C:** Add sdevice tool → cmd=`sdevice_phase1a_simC.cmd` → parameters `Vpulse`=(from A), `Vreset` sweep `-2.0 -3.0 -4.0` → run 3 nodes
+
+**tau_P:** Edit `.par` → change `tau_P` to `(0, 1e-6, 0)` → re-run Sim C (1 node) → repeat for `1e-5`, `1e-4`
+
+**tau_E (optional):** Edit `.par` → change `tau_E` to `1e-10` or `1e-8` → re-run Sim A (1 node)
+
+See `Step_1_FET_Parameter_Optimization.md` Section 4 for full details.

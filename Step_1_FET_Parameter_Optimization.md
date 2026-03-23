@@ -90,52 +90,97 @@ Runs 8a/8b/8c (d0 swept from 7.1e5 to 1e5) produced byte-identical output. II ge
 ## 4. Phase 1A: Polarization Switching Characterization (CURRENT PRIORITY)
 
 ### 4.1 Objective
-Characterize the GAA-FeFET's ferroelectric polarization switching dynamics to validate the polarization-based LIF mechanism in TCAD.
+Characterize the GAA-FeFET's ferroelectric polarization switching dynamics to validate the polarization-based LIF mechanism in TCAD using Sentaurus Workbench (SWB) parameter sweeping.
 
-### 4.2 Simulation Plan
+### 4.2 SWB-Based Simulation Structure
 
-**Sweep 1: Transfer Characteristics (Baseline)**
-- Standard $I_D$-$V_{GS}$ at $V_{DS}$ = 50mV and 1.0V
-- Verify SS, DIBL, $I_{off}$, full curve shape
-- Compare virgin state vs. programmed state
+Three focused `.cmd` files replace the monolithic `sdevice_des.cmd`. Each is optimized for SWB `@variable@` parameter sweeping:
 
-**Sweep 2: Partial Polarization Switching (Sub-Coercive Pulses)**
-- Apply gate pulse train: amplitude below $V_c$ (e.g., 0.5V–2.0V in steps)
-- Pulse width: 100ns, 1μs, 10μs
-- After each pulse, read $I_D$ at fixed $V_{GS}$ and $V_{DS}$ = 50mV
-- Map: number of pulses → $\Delta V_{th}$ → $\Delta I_D$
-- This is the "integration" characterization
+#### **Sim A: Single Pulse Amplitude Sweep** (`sdevice_phase1a_simA.cmd`)
+- **Purpose:** Find optimal gate pulse amplitude for partial (sub-coercive) switching
+- **SWB Parameter:** `@Vpulse@` = 1.0, 1.5, 2.0, 2.5, 3.0 V (5 runs)
+- **Fixed:** VDS=0.05V, pulse width=100ns, tau_E=1ns (in .par)
+- **Sequence:**
+  1. Baseline ID-VGS sweep (virgin FE state)
+  2. Single gate pulse (rise → hold → fall)
+  3. Post-pulse ID-VGS sweep
+- **Extract:** ΔVth per amplitude → identify best Vpulse for partial switching
 
-**Sweep 3: Depolarization Dynamics (Leak Characterization)**
-- Program device to a known FE state (partial or full)
-- Remove gate bias, wait variable time (1μs to 1s)
-- Read $V_{th}$ after each wait interval
-- Extract $\tau_{leak}$ (depolarization time constant)
-- This is the "leak" characterization
+#### **Sim B: Multi-Pulse Integration** (`sdevice_phase1a_simB.cmd`)
+- **Purpose:** Demonstrate cumulative Vth shift = "integration" behavior
+- **SWB Parameter:** `@Npulses@` = 1, 3, 5, 10, 20 (5 runs, or use fixed best Vpulse from Sim A)
+- **Fixed:** Vpulse from Sim A result, VDS=0.05V, pw=100ns
+- **Sequence:** Apply N identical pulses with 100ns spacing, read ID-VGS after all pulses
+- **Extract:** Vth(N) staircase → integration curve
 
-**Sweep 4: Firing Threshold Identification**
-- Apply increasing number of sub-coercive pulses
-- Monitor $I_D$ at constant $V_{DS}$
-- Identify the pulse count at which $I_D$ jumps abruptly (= "fire")
-- Characterize the sharpness of the transition (analog vs. abrupt)
+#### **Sim C: Full LIF Cycle** (`sdevice_phase1a_simC.cmd`)
+- **Purpose:** Demonstrate complete Integrate → Leak → Fire → Reset cycle
+- **SWB Parameter:** `@Vreset@` = -2.0, -3.0, -4.0 V (3 runs)
+- **Fixed:** Vpulse from Sim A, VDS=0.05V, 5 pulses with 1μs gaps
+- **Sequence:**
+  1. 5 gate pulses (integrate)
+  2. 1μs gaps between pulses (observe leak decay in ID)
+  3. Negative reset pulse (reset)
+  4. Post-reset ID-VGS sweep (verify recovery)
+- **Extract:** ID vs time waveform, reset completeness per Vreset
 
-**Sweep 5: Reset Verification**
-- After firing, apply negative gate pulse (amplitude, width sweep)
-- Verify $V_{th}$ returns to initial state
-- Measure reset energy
+### 4.3 Expected Outputs & Extraction Methods
 
-### 4.3 Parameters to Sweep (in `sdevice_des.cmd`)
+| Sim | Parameter | Sweep | Extract From .plt | Desired Output | Paper Ref | Purpose |
+|---|---|---|---|---|---|---|
+| A | Vpulse | 1.0–3.0V | baseline_fwd vs postpulse_fwd ID-VGS | ΔVth vs Vpulse curve | Frontiers 2020 Fig.3 | Find optimal amplitude |
+| A | Vpulse | (same) | pulse_hold Polarization(y) | Partial P-E loop | HZO modeling paper | Confirm sub-coercive switching |
+| B | Npulses | 1,3,5,10,20 | postpulse_fwd Vth after all pulses | Vth(N) staircase | Frontiers 2020 Fig.5 | Demonstrate integration |
+| B | — | — | pN_hold ID segments | Stepwise ID increase | AFeFET Nature Comms Fig.2 | Show cumulative switching |
+| C | Vreset | -2.0 to -4.0V | Full lif_* sequence ID vs time | LIF waveform: integrate→leak→fire | Khanday DG-FE-TFET Fig.7 | Full cycle demonstration |
+| C | Vreset | (same) | postreset_fwd vs baseline Vth | Vth recovery per Vreset | AFeFET paper | Quantify reset completeness |
+| C | — | — | lif_gap* Polarization(y) | P decay during gaps | HZO modeling paper | Demonstrate leak mechanism |
+| .par | tau_P | 0, 1μs, 10μs, 100μs | Re-run simC, compare gap decay | Leak time constant τ_m | AFeFET paper | Map to Python SNN model |
+| .par | tau_E | 0.1ns, 1ns, 10ns | Re-run simA, compare P settling | Switching speed | FeFET_CAM example | Validate insensitivity |
 
-| Parameter | Range | Purpose |
-|---|---|---|
-| Gate pulse amplitude | 0.5V – 3.0V (step 0.5V) | Find sub-coercive sweet spot |
-| Gate pulse width | 10ns – 100μs | Speed vs. switching trade-off |
-| Number of pulses | 1 – 50 | Integration depth |
-| Inter-pulse interval | 100ns – 100μs | Leak rate characterization |
-| $V_{DS}$ (read) | 50mV, 0.5V, 1.0V | Sensitivity to drain bias |
-| Reset pulse amplitude | -1V to -4V | Reset completeness |
-| $\tau_E$ | 0.1ns, 1ns, 10ns | Switching speed tuning |
-| $\tau_P$ | 0, 1μs, 10μs, 100μs | Leak rate tuning |
+### 4.4 Progressive Sweep Strategy (Efficiency Optimization)
+
+**Total: ~12–15 runs instead of 100+**
+
+1. **Sim A first** (5 runs) → Find best Vpulse
+2. **Sim B next** (1 run with best Vpulse) → Confirm integration
+3. **Sim C last** (3 runs) → Sweep Vreset, find complete reset
+4. **tau_P manual** (3–4 runs of simC) → Only if simC works, characterize leak
+5. **tau_E manual** (2–3 runs of simA) → Optional, validate switching speed
+
+Each run takes ~5–15 min on Sentaurus server. Total time: ~2–3 hours.
+
+### 4.5 SWB Setup Instructions
+
+**Sim A:**
+1. Create SWB project → add sdevice tool → set cmd file to `sdevice_phase1a_simA.cmd`
+2. Add parameter `Vpulse`: sweep values `1.0  1.5  2.0  2.5  3.0`
+3. Connect mesh TDR to `@tdr@` input
+4. Run 5 nodes
+5. Extract: Open each node's `.plt` → compare `baseline_fwd` and `postpulse_fwd` curves → extract Vth at ID=100nA
+
+**Sim B:**
+1. Add new sdevice tool → cmd file = `sdevice_phase1a_simB.cmd`
+2. Add parameter `Vpulse` = (single best value from Sim A)
+3. Run 1 node
+4. Extract: Plot ID vs time across all `pN_hold` segments; compare `postpulse_fwd` Vth vs Sim A baseline
+
+**Sim C:**
+1. Add new sdevice tool → cmd file = `sdevice_phase1a_simC.cmd`
+2. Add parameters: `Vpulse` = (from Sim A), `Vreset` = sweep `-2.0  -3.0  -4.0`
+3. Run 3 nodes
+4. Extract: Plot full ID vs time; compare `postreset_fwd` Vth vs baseline
+
+**tau_P Manual:**
+1. Edit `.par` → change `tau_P` line to `(0, 1e-6, 0)`
+2. Re-run Sim C (best Vreset only, 1 node)
+3. Repeat for `tau_P = 1e-5` and `1e-4`
+4. Compare gap decay rates across 3 runs
+
+**tau_E Manual (optional):**
+1. Edit `.par` → change `tau_E` to `1e-10` or `1e-8`
+2. Re-run Sim A (best Vpulse only, 1 node)
+3. Compare polarization settling speed
 
 ---
 
