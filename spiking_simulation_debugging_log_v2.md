@@ -191,6 +191,27 @@ The 0→1V Quasistationary readout sweep evolves Pol/y during measurement. For n
 **Vpulse = 2.0V selected for Sim B** — 99 mV/pulse, 20% of F_c, 6.6% of P_r, large headroom for cumulative integration.
 
 ### Next Steps
-1. Apply Sim B adjustments (FEPolarizationIP, Bitlis solver, reduced readout sweep)
-2. Run Sim B with Vpulse=2.0V, Npulses=1,3,5,10,20
-3. Extract Vth(N) staircase to confirm integration behavior
+1. ~~Apply Sim B adjustments~~ ✅
+2. ~~Run Sim B~~ ✅
+3. ~~Extract Vth(N) staircase~~ ✅ → **FLAT LINE (no integration)**
+
+---
+
+## 9. Sim B Results (Apr 2026) — NO INTEGRATION (Diagnosed)
+
+### Outcome
+20 pulses at Vpulse=2.0V. All intermediate reads (N=1,3,5,10,20) show identical ΔVth ≈ 97.4 mV and Pol/y = −1.0507 µC/cm². No cumulative staircase.
+
+### Root Cause
+**τ_E (1 ns) << pulse width (100 ns).** Polarization fully equilibrates to the 2V steady-state within ~5 ns of pulse 1. Subsequent pulses find P already at equilibrium → zero additional switching. Identical to a capacitor that charges fully on the first pulse.
+
+### Fix Applied
+Changed `tau_E` in `.par` file: **1 ns → 1 µs (1e-6 s)**. This gives pw/τ_E = 0.1 → each pulse switches ~10% of remaining P → cumulative staircase over 20 pulses.
+
+Also updated SimC `.cmd`: FEPolarizationIP=1.0, Digits=5, Iterations=50, readout sweep 0→0.3V.
+
+### Corrected Workflow
+1. Re-run SimA with τ_E = 1µs (ΔVth values will be smaller, trend preserved)
+2. Re-run SimB with τ_E = 1µs (expect Vth staircase)
+3. Run SimC with τ_E = 1µs + τ_P > 0 (leak + reset)
+4. Extract Step 2 circuit parameters

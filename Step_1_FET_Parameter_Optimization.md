@@ -2,35 +2,70 @@
 
 ## 1. Introduction and Fundamental Theory
 
-### 1.1 How a GAA-FeFET Works
-A GAA-FET consists of silicon nanosheets surrounded by a gate stack for ultimate electrostatic control. Adding an HZO ferroelectric layer creates a FeFET whose polarization modulates $V_{th}$, enabling non-volatile memory and integration.
+### 1.1 The Higher Purpose: Why Build a FeFET Neuron?
 
-### 1.2 The LIF Neuron Analogy — Polarization-Based Mechanism
-Our GAA-FeFET uses **ferroelectric polarization switching dynamics** as the spiking mechanism — NOT Impact Ionization:
+Biological neurons process information through **integrate-and-fire** dynamics: they accumulate small input signals over time, and when a threshold is crossed, they emit a spike and reset. Spiking Neural Networks (SNNs) replicate this in hardware, but conventional CMOS implementations require 20+ transistors and external capacitors per neuron, limiting density and energy efficiency.
 
-- **Integration:** Sub-coercive gate voltage pulses partially switch FE domains → each pulse shifts $V_{th}$ lower. The ferroelectric polarization state IS the membrane potential.
-- **Leak:** Between pulses, domain relaxation (governed by $\tau_P$ and domain-domain interaction) causes partial depolarization → $V_{th}$ drifts back up.
-- **Fire:** When enough domains have switched that $V_{th}$ drops below the operating $V_{GS}$ (with constant $V_{DS}$), the channel abruptly turns ON → $I_D$ spikes.
-- **Reset:** A negative gate pulse resets polarization to the initial state → $V_{th}$ returns to high state.
+**Our goal:** Replace the entire CMOS LIF neuron circuit with a **single GAA-FeFET transistor** where the ferroelectric layer's polarization state naturally performs integration, leaking, and threshold-based firing — all within the physics of one device. This eliminates the need for external capacitors (the FE layer IS the capacitor) and complex reset circuitry.
 
-### 1.3 Why Not Impact Ionization?
-The Bhatawdekar et al. reference paper uses a **standard GAA FNSFET** (no FE layer) with Impact Ionization + floating body for spiking. Our device adds an HZO ferroelectric layer, which:
-1. Changes the capacitive voltage divider → screens the drain junction field
-2. GAA geometry provides strong gate coupling → further suppresses drain-body reverse bias
-3. Result: $F_{ava}$ is far below critical field → II generates zero carriers (confirmed in Runs 8a/8b/8c — see `spiking_simulation_debugging_log_v2.md`)
+**Why this matters for the thesis:**
+- **Paper 1 (this document):** Prove through TCAD simulation that the GAA-FeFET device physics can reproduce all four LIF behaviors (integrate, leak, fire, reset), then optimize the device structure.
+- **Paper 2 (`Step_2_Circuit_Integration.md`):** Extract the device parameters from TCAD and deploy them in a Python-based SNN to classify real biomedical signals (ECG), demonstrating a complete device-to-system pipeline.
 
-**Literature confirms this:** FeFET-based LIF neurons universally use polarization switching, not II:
-- **Frontiers (2020), Jerry et al.:** 28nm FeFET — sub-coercive pulses → domain switching → $V_{th}$ shift → $I_D$ spike. No II.
-- **Nature Comms (2022), Cao et al.:** AFeFET — inherent polarization/depolarization = integrate/leak, 37 fJ/spike. No II, no external capacitor, no reset circuit.
-- **Khanday et al. (2024):** DG-FE-TFET — BTBT + FE gate, 0.58 aJ/spike. No II.
+### 1.2 How a GAA-FeFET Works — The Physical Picture
 
-### 1.4 Advantages of Polarization-Based LIF
-- **No external capacitor:** FE polarization replaces membrane capacitance
-- **No reset circuitry** (for AFeFET variant) or simple negative pulse reset
-- **CMOS-compatible:** HZO is standard BEOL-compatible material
-- **Multi-level integration:** Gradual domain switching provides analog accumulation
-- **Programmable threshold:** Different FE states = different synaptic weights = different $V_{th}$
-- **Ultra-low energy:** 37 fJ/spike (AFeFET) demonstrated experimentally
+A **Gate-All-Around FET** wraps the gate electrode completely around silicon nanosheet channels, providing the strongest possible electrostatic control. Adding an **HZO ferroelectric layer** ($Hf_{0.5}Zr_{0.5}O_2$) to the gate stack creates a FeFET whose threshold voltage ($V_{th}$) depends on the **polarization state** of the ferroelectric:
+
+- **Polarization UP** (positive charge facing channel) → surface potential increases → $V_{th}$ decreases → device turns ON more easily
+- **Polarization DOWN** (negative charge facing channel) → surface potential decreases → $V_{th}$ increases → device is harder to turn ON
+
+This polarization-$V_{th}$ coupling is the fundamental mechanism that enables the FeFET to act as a neuron.
+
+### 1.3 The LIF Neuron Analogy — Why Each Physical Quantity Matters
+
+| Biological Neuron | FeFET Device Physics | Why It Matters |
+|---|---|---|
+| **Membrane potential** | Ferroelectric polarization state ($P$) | The "memory" that accumulates input — as more domains switch, $P$ changes, shifting $V_{th}$ |
+| **Synaptic input** | Sub-coercive gate voltage pulse | Each pulse nudges some domains to switch — this is one "input spike" being received |
+| **Integration** | Cumulative polarization switching (multiple pulses) | Each pulse adds to what previous pulses did — $V_{th}$ drops progressively |
+| **Leak** | Domain relaxation ($\tau_P$) | Between pulses, unstable domains relax back → $V_{th}$ drifts up → neuron "forgets" |
+| **Firing threshold** | $V_{th}$ crosses below operating $V_{GS}$ | When enough domains switch, $V_{th}$ drops low enough that the channel turns ON abruptly → $I_D$ spikes |
+| **Reset** | Negative gate pulse reverses polarization | Domains switch back → $V_{th}$ returns to initial high state → neuron is ready for next cycle |
+
+### 1.4 What "Sub-Coercive" Means and Why It's Critical
+
+The ferroelectric HZO layer has a **coercive field** $F_c$ = 1.2 MV/cm — the electric field needed to fully switch all domains from one polarization state to the other. When we apply gate voltages:
+
+- **At or above coercive field:** ALL domains switch simultaneously → binary, all-or-nothing → useful for memory (0/1), but NOT for analog integration
+- **Below coercive field (sub-coercive):** Only SOME domains switch — how many depends on the field strength and duration → this gives **gradual, analog control** over the polarization state
+
+**Sub-coercive operation is essential for LIF behavior** because:
+1. Each input pulse should cause a **small, incremental** polarization change (not a full switch)
+2. Multiple pulses must **accumulate** — pulse N starts from where pulse N-1 left off
+3. The amount of switching per pulse must be **rate-limited** by $\tau_E$ (the domain switching time constant) — if switching is too fast, the device reaches equilibrium on the first pulse and subsequent pulses have no additional effect
+
+**Key parameter relationship:** For cumulative integration, $\tau_E$ (switching time) must be **much larger** than the pulse width. This ensures each pulse only partially switches the available domains, leaving room for the next pulse to continue the process.
+
+### 1.5 What $\Delta V_{th}$ Physically Signifies
+
+$\Delta V_{th}$ (threshold voltage shift) is the **primary observable** that tells us integration is working:
+
+- **$\Delta V_{th}$ per pulse** = how much "membrane potential" changes per input spike = **synaptic weight resolution** in the SNN
+- **$\Delta V_{th}$ vs pulse count** = the **integration curve** — should be a rising staircase, showing cumulative memory
+- **Total $\Delta V_{th}$ before firing** = the **integration depth** = how many input spikes are needed to trigger a fire event
+- **$\Delta V_{th}$ vs pulse amplitude** = the **voltage sensitivity** — higher amplitude = stronger synapse = more $V_{th}$ shift per pulse
+
+In the SNN context: if $\Delta V_{th}$ per pulse = 15 mV and the total shift needed to fire = 300 mV, then 20 input spikes are needed → this defines the neuron's **integration depth** and **firing rate sensitivity**.
+
+### 1.6 Why Not Impact Ionization?
+
+The Bhatawdekar et al. reference paper uses Impact Ionization (II) in a standard GAA-FET (no FE layer). Our device adds HZO, which screens the drain junction field below the avalanche threshold. Runs 8a/8b/8c confirmed II generates zero carriers (see `spiking_simulation_debugging_log_v2.md`). All FeFET LIF neurons in literature use polarization switching, not II.
+
+### 1.7 Literature Support
+
+- **Frontiers (2020), Jerry et al.:** 28nm FeFET — sub-coercive domain switching → $V_{th}$ staircase → fire. First demonstration of FeFET LIF.
+- **Nature Comms (2022), Cao et al.:** AFeFET — volatile polarization = natural leak + self-reset, 37 fJ/spike. No external capacitor or reset circuit.
+- **Khanday et al. (2024):** DG-FE-TFET — BTBT + FE gate, 0.58 aJ/spike, 344 GHz spiking frequency.
 
 ---
 
@@ -269,6 +304,76 @@ Changes to apply to `sdevice_phase1a_simB.cmd` before running:
 2. **Reduce readout sweep:** Change post-pulse gate sweep from 0→1.0V to 0→0.3V to minimize read disturb
 3. **Set Vpulse:** Use `@Vpulse@ = 2.0` (single value, not a sweep)
 4. **Npulses sweep:** `@Npulses@` = 1, 3, 5, 10, 20
+
+---
+
+## 4B. Sim B Results & Analysis (Completed — Integration Failed, Diagnosed & Fixed)
+
+### 4B.1 Summary
+
+**Status: NO CUMULATIVE INTEGRATION.** All 20 pulses at Vpulse=2.0V produced identical drain current and polarization state. The Vth(N) "staircase" is a flat line — pulse 1 and pulse 20 are indistinguishable.
+
+**Root cause identified and fixed.** See 4B.3 below.
+
+### 4B.2 Data — Flat Vth(N) Curve
+
+| Read Point | N (pulses) | ID @VGS=0.003V (µA) | ΔVth (mV) | Pol/y hold end (µC/cm²) |
+|------------|-----------|----------------------|-----------|------------------------|
+| Baseline | 0 | 1.886 | 0 | — |
+| read_n01 | 1 | 5.353 | 97.4 | −1.0507 |
+| read_n03 | 3 | 5.356 | 97.5 | −1.0507 |
+| read_n05 | 5 | 5.353 | 97.4 | −1.0507 |
+| read_n10 | 10 | 5.353 | 97.4 | −1.0507 |
+| read_n20 | 20 | 5.353 | 97.4 | −1.0507 |
+
+**Key observation:** ΔVth is constant at ~97.4 mV regardless of pulse count. Polarization is identical to 11 significant digits across P1, P5, P10, P20.
+
+### 4B.3 Root Cause: $\tau_E$ << Pulse Width
+
+**The problem:** $\tau_E$ = 1 ns (domain switching time), pulse width = 100 ns → ratio = 100:1.
+
+**What happens physically:**
+1. Pulse 1 arrives (VGS=2V). The electric field across HZO drives polarization toward the equilibrium value for that field strength.
+2. Because $\tau_E$ (1 ns) is 100× shorter than the pulse duration (100 ns), polarization **fully equilibrates** within the first ~5 ns of the pulse.
+3. For the remaining 95 ns, polarization sits at steady state — no further switching occurs.
+4. When VGS returns to 0V, polarization relaxes to whatever state corresponds to zero gate bias.
+5. Pulse 2 arrives at the same VGS=2V → drives P to the **exact same equilibrium** → no additional switching.
+
+**In biological terms:** It's like a neuron whose membrane capacitor charges fully on the first input spike and then can't accumulate any further — each subsequent spike sees the capacitor already charged to the maximum for that input voltage.
+
+### 4B.4 The Fix: Increase $\tau_E$
+
+For cumulative integration, each pulse must only **partially** switch the domains, leaving room for subsequent pulses to continue the switching process. This requires $\tau_E$ >> pulse width:
+
+| $\tau_E$ | pw/$\tau_E$ | Switching per pulse | Pulses for 90% total | Assessment |
+|----------|------------|--------------------|-----------------------|------------|
+| 1 ns (old) | 100 | 100% (saturated) | 1 | ❌ No integration |
+| 100 ns | 1.0 | ~63% | ~2-3 | ❌ Too fast, saturates quickly |
+| 500 ns | 0.2 | ~18% | ~11 | ⚠️ Borderline |
+| **1 µs** | **0.1** | **~10%** | **~22** | **✅ Good for 20-pulse staircase** |
+| 5 µs | 0.02 | ~2% | ~115 | ⚠️ Very slow, may need many pulses |
+
+**Selected: $\tau_E$ = 1 µs (1e-6 s)**. Updated in `sdevice_gaafet_lif.par`.
+
+### 4B.5 Impact on SimA Results
+
+SimA was run with $\tau_E$ = 1 ns. Those results (Section 4A) demonstrated that **different Vpulse values produce different equilibrium polarization states** — this is valid and physically meaningful. It confirmed sub-coercive operation and voltage-dependent switching.
+
+However, with $\tau_E$ = 1 µs, SimA results will change: each 100ns pulse will only achieve ~10% of the equilibrium shift. The ΔVth values will be smaller but the voltage-dependent trend will remain. **SimA should be re-run after the tau_E fix** to get corrected ΔVth values for the new parameter set.
+
+### 4B.6 Corrected Workflow (After tau_E Fix)
+
+1. **Re-run SimA** with $\tau_E$ = 1 µs → get new ΔVth(Vpulse) curve (smaller values expected)
+2. **Re-run SimB** with $\tau_E$ = 1 µs → expect cumulative Vth(N) staircase
+3. **Run SimC** with $\tau_E$ = 1 µs + $\tau_P$ > 0 → observe leak between pulses + reset
+4. Extract all parameters for Step 2 circuit model
+
+### 4B.7 Plots
+
+See `Simulations/py_scripts/`:
+- `simB_fig1_idvgs_overlay.png` — All intermediate reads overlap (no integration)
+- `simB_fig2_dvth_vs_N.png` — Flat red line (measured) vs expected blue staircase
+- `simB_fig3_pol_vs_pulse.png` — Constant polarization across all pulses
 
 ---
 

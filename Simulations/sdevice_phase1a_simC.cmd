@@ -50,10 +50,11 @@ Physics(MaterialInterface="Silicon/SiO2") {
 Math {
    Extrapolate
    RelErrControl
-   Digits=4
+   Digits=5
    Notdamped=50
-   Iterations=20
+   Iterations=50
    Transient=BE
+   FEPolarizationIP=1.0
    Method=Blocked
    SubMethod=ParDiSo
    GeometricDistances
@@ -322,10 +323,9 @@ Solve {
   NewCurrentPrefix="postreset_fwd_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
-    Goal { Name="gate_contact" Voltage= 1.0 }
+    Goal { Name="gate_contact" Voltage= 0.3 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
-
-  NewCurrentPrefix="postreset_rev_"
+  NewCurrentPrefix="postreset_ret_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
     Goal { Name="gate_contact" Voltage= 0.0 }

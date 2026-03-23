@@ -57,11 +57,15 @@ Polarization {
     F_c = (0, 1.2e6, 0)     * Coercive Field [V/cm]
     * Transient relaxation times (Required for fast transients)
     * Source: FeFET_CAM official example uses tau_E=1e-9
-    * SWEEP tau_E: Controls FE switching speed. Manually change per run.
-    *   tau_E = (0, 1e-10, 0)   * 0.1ns — fast switching
-    *   tau_E = (0, 1e-9, 0)    * 1ns   — baseline (default)
-    *   tau_E = (0, 1e-8, 0)    * 10ns  — slow switching
-    tau_E = (0, 1e-9, 0)    * Auxiliary field relaxation time [s]
+    * SWEEP tau_E: Controls FE switching speed. Must be >> pulse_width for
+    *   cumulative integration (each pulse only partially switches domains).
+    *   If tau_E << pw: P reaches equilibrium on pulse 1, no accumulation.
+    *   tau_E = (0, 1e-9, 0)    * 1ns   — OLD: too fast, no integration
+    *   tau_E = (0, 1e-7, 0)    * 100ns — pw/tau=1, ~63% per pulse
+    *   tau_E = (0, 5e-7, 0)    * 500ns — pw/tau=0.2, ~18% per pulse
+    *   tau_E = (0, 1e-6, 0)    * 1us   — pw/tau=0.1, ~10% per pulse (RECOMMENDED)
+    *   tau_E = (0, 5e-6, 0)    * 5us   — pw/tau=0.02, ~2% per pulse
+    tau_E = (0, 1e-6, 0)    * Auxiliary field relaxation time [s]
     * SWEEP tau_P: Controls depolarization (leak). Manually change per run.
     *   tau_P = (0, 0, 0)       * 0     — no relaxation (non-volatile)
     *   tau_P = (0, 1e-6, 0)    * 1us   — fast leak
