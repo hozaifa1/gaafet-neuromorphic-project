@@ -1,87 +1,141 @@
 # Paper 2: System-Level Evaluation of the Optimized GAA-FeFET LIF Neuron
 
 ## 1. Introduction and Circuit Theory
-Once the highly optimized, novel GAA-FeFET structure is finalized in Phase 1 (Paper 1), this second phase focuses on extracting its behavior and evaluating it within a full-scale Spiking Neural Network (SNN). 
 
 ### 1.1 The Role of the Neuron in an SNN
-In an SNN, information is transmitted via discrete voltage spikes rather than continuous analog values. 
-- **Synapses (Weights):** Convert incoming spikes from previous layers into a continuous input current.
-- **Neurons (LIF):** Accumulate these input currents over time (Integrate). If the accumulated potential exceeds a threshold, the neuron fires an output spike and resets.
+In an SNN, information is transmitted via discrete voltage spikes rather than continuous analog values.
+- **Synapses (Weights):** Convert incoming spikes into input voltage pulses applied to the neuron gate.
+- **Neurons (LIF):** Accumulate these input pulses over time (Integrate). If the accumulated state exceeds a threshold, the neuron fires an output spike and resets.
 
-### 1.2 How the FeFET Circuit Works
-Unlike traditional CMOS LIF neurons that require dozens of transistors and bulky external capacitors, the FeFET-based LIF neuron is highly compact:
-1. **Input Stage:** Presynaptic spikes are converted into an input current ($I_{in}$) that flows into the gate terminal of the FeFET.
-2. **Integration Stage:** The intrinsic gate capacitance ($C_{mem} = C_{gg}$) of the FeFET integrates this current, causing the gate-to-source voltage ($V_{GS}$, the "membrane potential") to rise.
-3. **Firing Stage:** When $V_{GS}$ reaches the FeFET's threshold voltage ($V_{th}$), combined with a constant drain bias ($V_{DS}$), the channel inverts. Due to the optimized Impact Ionization (Kink effect) developed in Phase 1, a massive, sudden drain current ($I_{D}$) is generated at a very low $V_{DS}$.
-4. **Output and Reset Stage:** This sharp $I_{D}$ is detected by a simple output circuit (e.g., a comparator or a pull-down network), which registers the "spike." Simultaneously, a feedback loop applies a reset voltage (e.g., pulling the gate to ground) to deplete the channel and reset the polarization, preparing the neuron for the next cycle.
+### 1.2 How the FeFET Polarization-Based LIF Circuit Works
+Unlike traditional CMOS LIF neurons that require dozens of transistors and bulky external capacitors, the FeFET-based LIF neuron is compact because the **ferroelectric polarization replaces the membrane capacitor**:
+
+1. **Input Stage:** Presynaptic spikes are converted into sub-coercive voltage pulses applied to the FeFET gate.
+2. **Integration Stage:** Each gate pulse partially switches FE domains in the HZO layer, progressively shifting $V_{th}$ lower. The accumulated polarization state IS the membrane potential — no external capacitor needed.
+3. **Leak Stage:** Between pulses, partial domain relaxation (governed by $\tau_P$ and domain-domain interactions) causes $V_{th}$ to drift back up, emulating membrane leakage.
+4. **Firing Stage:** When enough domains have switched that $V_{th}$ drops below the operating $V_{GS}$ (at constant $V_{DS}$), the channel abruptly turns ON → $I_D$ spikes. This is detected by the output circuit.
+5. **Reset Stage:** A negative gate pulse resets polarization → $V_{th}$ returns to its initial high state. For the AFE variant ($Hf_{0.2}Zr_{0.8}O_2$), reset is spontaneous (volatile polarization).
+
+### 1.3 Key Differences from Previous (II-Based) Approach
+
+| Aspect | Old (Impact Ionization) | New (Polarization Switching) |
+|---|---|---|
+| Spiking mechanism | Avalanche at drain junction | FE domain switching at gate |
+| Membrane potential | Floating body charge | FE polarization state |
+| Input terminal | Drain (pulsed) | Gate (pulsed) |
+| Read terminal | Drain current | Drain current (constant $V_{DS}$) |
+| External capacitor | Not needed (floating body) | Not needed (FE layer) |
+| Reset | Hole recombination | Negative gate pulse or AFE self-reset |
+| Energy per spike | ~4.88 fJ (paper) | 37 fJ (AFeFET) / 0.58 aJ (FeTFET) |
+| Literature support | 1 paper (Bhatawdekar) | Multiple (Frontiers, Nature Comms, Khanday) |
 
 ---
 
 ## 2. From TCAD to System: The Integration Pipeline
 
 ### 2.1 Mapping Device Parameters to Circuit Parameters
-To accurately simulate the SNN using a Python framework (like PyTorch or the custom LSNN codebase), we must extract the optimized TCAD parameters and map them to their circuit equivalents.
 
-| TCAD Device Parameter | Python Circuit Parameter | Description & Function in Circuit |
-| :--- | :--- | :--- |
-| **Total Gate Capacitance ($C_{gg}$)** | Membrane Capacitance ($C_{mem}$) | Determines how much input current is required to raise the membrane potential. A larger $C_{mem}$ means slower integration. |
-| **Forward Threshold Voltage ($V_{th}$)** | Firing Threshold ($v_{th}$) | The voltage at which the neuron evaluates the decision to spike. |
-| **Reset/Holding Voltage** | Reset Voltage ($v_{reset}$ / $v_{h}$) | The baseline voltage the neuron returns to after a spike occurs. |
-| **OFF-State Resistance ($R_{off}$)** | Leaky Resistance ($R_{mem}$) | Controls the "Leak." Determines how fast the membrane potential decays. |
-| **ON-State Resistance ($R_{on}$)** | Series Resistance ($R_{h}$) | Governs the maximum current flow during the firing phase. |
-| **Polarization Relaxation Time** | Adaptation Time Constant ($\tau_a$) | For Adaptive LIF (ALIF) neurons, the time it takes for the FE layer's partial polarization to relax back. |
+| TCAD Device Parameter | Python Circuit Parameter | Description |
+|---|---|---|
+| **Polarization state ($P$)** | Membrane potential ($u$) | The internal state that accumulates with input pulses |
+| **Forward $V_{th}$ (at current $P$)** | Firing threshold ($v_{th}$) | Voltage at which neuron fires; shifts with $P$ |
+| **$V_{th}$ at virgin $P$ state** | Resting potential ($v_{rest}$) | Baseline after reset |
+| **$\tau_P$ (depolarization time)** | Leak time constant ($\tau_{leak}$) | Controls how fast membrane decays |
+| **$\tau_E$ (switching speed)** | Integration time constant ($\tau_{int}$) | Controls how fast membrane charges |
+| **$\Delta V_{th}$ per pulse** | Synaptic weight resolution | Minimum distinguishable input |
+| **Number of pulses to fire** | Integration depth | Determines firing rate sensitivity |
+| **Energy per spike** | $E_{spike}$ | $\int V_{DS} \cdot I_D \, dt$ during firing transient |
+| **$I_D$ ON/OFF ratio** | Spike amplitude | Signal-to-noise of output spike |
 
-### 2.2 Compact Model Extraction (Bridging the Gap)
-Instead of relying on idealized mathematical LIF equations, we will extract a physics-informed compact model directly from our Sentaurus TCAD simulations.
-- **Parameters to Extract:**
-  - $V_{th\_effective}$ (modulating with polarization state).
-  - $I_{spike}$ (peak current from the engineered impact ionization).
-  - Membrane Capacitance ($C_{mem}$) derived from the optimized $C_{ox}$ and $C_{fe}$ stack.
-  - Leakage Time Constant ($\tau_{leak}$) derived from the optimized floating-body recombination rates.
-  - Energy per Spike (calculated from $\int V_{DS} \cdot I_D \, dt$ during the firing transient).
+### 2.2 Compact Model Extraction
+Extract a physics-informed compact model from TCAD Phase 1A/1B results:
+
+- **$V_{th}(N_{pulses})$ curve:** Maps number of input pulses to threshold voltage shift → defines integration dynamics
+- **$V_{th}(t_{wait})$ curve:** Maps wait time to threshold recovery → defines leak dynamics
+- **$I_D$ vs $V_{th}$ transfer:** Steep SS (60.8 mV/dec confirmed) → sharp firing transition
+- **Reset characteristics:** Negative pulse amplitude/width required for full $V_{th}$ recovery
+- **Energy per spike:** From transient $I_D$ waveform during firing event
+- **Stochasticity:** Cycle-to-cycle variation in pulse count to fire (from domain nucleation randomness)
 
 ### 2.3 Python SNN Implementation (PyTorch / snnTorch)
-We will modify standard SNN neuron models to incorporate the extracted hardware constraints.
-- **Custom Neuron Class:** Build a Python class that closely mimics the non-linear integration and abrupt firing characteristics of our specific GAA-FeFET.
-- **Multi-Domain Behavior:** Implement the gradual threshold shift observed in our Phase 1 multi-domain ferroelectric optimization, modeling it as a state-dependent capacitance or adaptive threshold.
+
+**Custom FeFET Neuron Class:**
+```python
+class FeFET_LIF(nn.Module):
+    def __init__(self, Vth_virgin, dVth_per_pulse, tau_leak, tau_int, Vth_fire):
+        # Vth_virgin: initial threshold (from TCAD calibration)
+        # dVth_per_pulse: threshold shift per input pulse (from Phase 1A Sweep 2)
+        # tau_leak: depolarization time constant (from Phase 1A Sweep 3)
+        # tau_int: integration speed (from tau_E)
+        # Vth_fire: threshold at which ID spikes (from Phase 1A Sweep 4)
+    
+    def forward(self, input_spikes, dt):
+        # Integration: each input spike shifts Vth by dVth_per_pulse
+        # Leak: Vth drifts back toward Vth_virgin with time constant tau_leak
+        # Fire: when Vth < Vth_fire, emit spike and reset
+```
+
+**Key model features:**
+- Non-linear integration (domain switching is inherently non-linear, especially near saturation)
+- State-dependent leak (relaxation rate depends on how many domains have switched — per Frontiers 2020)
+- Stochastic firing (optional — domain nucleation randomness)
+- Adaptive threshold (optional — partial reset leaves residual polarization)
 
 ---
 
-## 3. System-Level Benchmarking (The Value Proposition)
+## 3. System-Level Benchmarking
 
 ### 3.1 Task: ECG Arrhythmia Classification
-- **Dataset:** MIT-BIH Arrhythmia Database.
-- **Encoding:** Convert physiological time-series data into asynchronous spike trains using delta-modulation or rate coding.
+- **Dataset:** MIT-BIH Arrhythmia Database
+- **Encoding:** Delta-modulation or rate coding from physiological time-series to spike trains
 
 ### 3.2 Key Performance Indicators (KPIs)
-To prove the value of the Phase 1 innovations, we will benchmark our SNN against standard hardware implementations (e.g., CMOS-only LIF, standard FinFET LIF).
-1. **System Energy Efficiency:** Multiply the network's total spike count for a classification inference by the TCAD-derived Energy per Spike. Our asymmetric junction optimization should dramatically lower this.
-2. **Classification Accuracy:** Evaluate if the multi-domain, non-linear integration of our optimized FeFET improves the network's ability to recognize complex temporal patterns in ECGs compared to a rigid, standard mathematical LIF.
-3. **Latency:** Determine how fast the network can confidently classify an ECG beat, leveraging the newly engineered high-frequency spiking capability of the device.
+
+| KPI | Metric | How Measured |
+|---|---|---|
+| **Energy efficiency** | Total spikes × $E_{spike}$ per inference | From TCAD energy extraction |
+| **Classification accuracy** | % correct on MIT-BIH test set | Standard ML evaluation |
+| **Latency** | Time to classify one ECG beat | From network simulation |
+| **Area** | Transistor count per neuron | 1 FeFET vs. ~20 CMOS transistors |
+| **Endurance** | Cycles before degradation | From FE cycling data (>10¹² for AFE) |
+
+### 3.3 Benchmarking Targets
+
+| Baseline | Our FeFET LIF | Source |
+|---|---|---|
+| CMOS LIF (20+ transistors) | 1 FeFET + 3 transistors (Frontiers) | Area reduction |
+| VO2 memristor neuron | FeFET neuron | CMOS compatibility |
+| Standard math LIF | Hardware-constrained LIF | Accuracy comparison |
+| Capacitor-based LIF | Capacitor-free FeFET LIF | Integration density |
 
 ---
 
-## 4. Algorithm for Circuit Integration (Hyper-Specific Workflow)
+## 4. Algorithm for Circuit Integration (Workflow)
 
-### Phase A: Parameter Extraction (from TCAD)
-1. **Capacitance Extraction ($C_{mem}$):**
-   - Run a Small-Signal AC simulation in TCAD. Sweep $V_{GS}$ from 0 to 2V at a high frequency (e.g., 1 MHz). Extract the $C_{gg}$ curve and record the average value in the subthreshold region.
-2. **Resistance Extraction ($R_{on}$, $R_{off}$):**
-   - Run a standard DC $I_{D}-V_{GS}$ sweep. Calculate $R_{off} = V_{DS} / I_{D}$ at $V_{GS} = 0\text{V}$, and $R_{on}$ at $V_{GS} = 2.0\text{V}$.
-3. **Threshold and Reset Extraction ($v_{th}$, $v_{reset}$):**
-   - Run a Transient Hysteresis loop. Extract the point where $I_{D}$ suddenly spikes (Forward $V_{th}$) and drops (Reverse $V_{th}$).
-4. **Transient Pulse Extraction:**
-   - Apply transient voltage pulses (e.g., 10$\mu$s) to observe multi-state resistance transitions for the multi-domain behavior.
+### Phase A: Parameter Extraction (from TCAD Phase 1A/1B)
+
+1. **Integration curve:** From Phase 1A Sweep 2 → $V_{th}$ vs $N_{pulses}$ → fit to $\Delta V_{th}(N) = A \cdot (1 - e^{-N/\lambda})$ or piecewise linear
+2. **Leak curve:** From Phase 1A Sweep 3 → $V_{th}$ vs $t_{wait}$ → fit exponential decay → extract $\tau_{leak}$
+3. **Fire threshold:** From Phase 1A Sweep 4 → critical $N_{pulses}$ at which $I_D$ jumps
+4. **Capacitance ($C_{gg}$):** AC simulation at 1 MHz, sweep $V_{GS}$ 0–2V → average subthreshold $C_{gg}$
+5. **ON/OFF resistance:** From DC $I_D$-$V_{GS}$ → $R_{off} = V_{DS}/I_D$ at $V_{GS}=0V$, $R_{on}$ at $V_{GS}=2V$
+6. **Energy per spike:** From transient firing waveform → $E = \int V_{DS} \cdot I_D \, dt$
 
 ### Phase B: Python Model Update & Single Neuron Verification
-1. **Locate Target Scripts:** Open the existing SNN scripts (e.g., `main_ecg.py`, `model.py`, `vo2_encoder.py`).
-2. **Update Hardcoded Values:** Replace the legacy VO2 memristor parameters with the newly extracted FeFET parameters.
-   - Example: Change `Vth = 3.4 V` to `v_threshold = 0.25 V` (or the optimized TCAD value).
-   - Example: Update the membrane time constant equation to use the new $C_{mem}$ and $R_{off}$.
-3. **Adjust Input Scaling:** Scale down input weights/currents to match the new, highly efficient $v_{th}$.
-4. **Pulse Testing:** Before running the full ECG dataset, write a simple Python script to inject a series of constant current pulses into a single isolated FeFET LIF model. Verify gradual charging (Integration), slight decay (Leak), and immediate reset upon crossing $v_{th}$ (Fire).
+
+1. Build `FeFET_LIF` class with TCAD-extracted parameters
+2. Single neuron pulse test: inject constant-rate input spikes → verify:
+   - Gradual $V_{th}$ decrease (Integration)
+   - Partial $V_{th}$ recovery during gaps (Leak)
+   - Abrupt $I_D$ spike at threshold (Fire)
+   - Full $V_{th}$ recovery after reset (Reset)
+3. Sweep input spike rate → verify firing rate increases with input rate
+4. Compare against ideal mathematical LIF to quantify hardware effects
 
 ### Phase C: Full Network Deployment & System Evaluation
-1. **Network Integration:** Deploy the custom FeFET LIF model across the entire hidden layer (e.g., 60 LIF + 40 ALIF neurons).
-2. **Training:** Train the network using Surrogate Gradient Descent (since spikes are non-differentiable). Apply regularization to keep the network within hardware thermal/power constraints.
-3. **Publication Result:** Run the trained model on the unseen test set. Calculate total system power, area, and accuracy to comprehensively demonstrate that bottom-up device engineering (Paper 1) yields a globally optimal neuromorphic system (Paper 2).
+
+1. Deploy FeFET LIF across hidden layer (e.g., 60 LIF + 40 ALIF neurons)
+2. Train with Surrogate Gradient Descent (spikes are non-differentiable)
+3. Apply hardware-aware regularization (energy budget, endurance limits)
+4. Evaluate on MIT-BIH test set → report accuracy, energy, latency
+5. Compare against CMOS-only and VO2-based SNN baselines

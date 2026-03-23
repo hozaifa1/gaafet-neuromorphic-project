@@ -1,6 +1,5 @@
 *===================================================================
 *== Block 1: FILE I/O
-*== Purpose: Define input/output files for the FeFET simulation.
 *===================================================================
 File {
     Grid = "@tdr@"
@@ -12,49 +11,42 @@ File {
 
 *===================================================================
 *== Block 2: ELECTRODES
-*== Purpose: Define contacts and their properties.
-*== Note:    The top and bottom gates are combined into a single
-*==          electrode for simultaneous biasing.
+*== Note: Source grounded, drain at small read bias.
+*==       Gate receives pulse train for polarization switching.
 *===================================================================
 Electrode {
-  { Name="source_contact"     Voltage= -0.25 }   * LIF: Negative source bias per paper line 210
-  { Name="drain_contact"      Voltage= -0.25 }   * MUST equal source initially so V_DS = 0V
-  { Name="gate_contact"       Voltage= 0.0  Workfunction=4.35 }   * CALIBRATION: Increased to 4.35eV to compensate for FE shift (Target Vth ~0.25V)
+  { Name="source_contact"     Voltage= 0.0 }
+  { Name="drain_contact"      Voltage= 0.0 }
+  { Name="gate_contact"       Voltage= 0.0  Workfunction=4.35 }
 }
 
 *===================================================================
 *== Block 3: PHYSICS
+*== Simplified for polarization-based LIF (no II needed).
+*== Avalanche and Hydrodynamic removed — not relevant.
 *===================================================================
-* --- Physics models for Silicon (default material) ---
 Physics {
   Temperature= 300
-  Areafactor=0.071  * Calibrated for 600uA target (Run 03 Fine-tune)
-  
+  Areafactor=0.071
+
   Fermi
-	EffectiveIntrinsicDensity( OldSlotboom )
-  
+  EffectiveIntrinsicDensity( OldSlotboom )
+
   Mobility(
-    PhuMob  * Philips unified mobility model for thin channels
+    PhuMob
     Enormal
   )
   Recombination(
     SRH (DopingDependence TempDependence)
     Auger
-    Avalanche(UniBo2 BandgapDependence)  * Paper uses BandgapDependence for d0 to affect d(T)
-    Band2Band(Model=Hurkx)  * Critical for nanoscale BTBT current
+    Band2Band(Model=Hurkx)
   )
-	Hydrodynamic(eTemperature hTemperature)
-
 }
 
-* --- Physics model for the Ferroelectric material ---
 Physics(Material="HZO") {
     Polarization
 }
 
-* --- CALIBRATION: Fixed Charge to tune Vth ---
-* Run 02: Reduced Fixed Charge (3.5e12) to shift Vth Positive.
-* Workfunction kept at 4.35eV.
 Physics(MaterialInterface="Silicon/SiO2") {
     Traps(
         (FixedCharge Conc=4e12 Level EnergyMid=0.0 fromMidBandGap)
@@ -63,7 +55,6 @@ Physics(MaterialInterface="Silicon/SiO2") {
 
 *===================================================================
 *== Block 4: MATH
-*== Purpose: Set numerical solver parameters for convergence.
 *===================================================================
 Math {
    Extrapolate
@@ -74,20 +65,17 @@ Math {
    Transient=BE
    Method=Blocked
    SubMethod=ParDiSo
-   
-   * Required for quantum models
+
    GeometricDistances
    Derivative
-   
+
    ComputeGradQuasiFermiAtContacts= UseQuasiFermi
    RefDens_eGradQuasiFermi_ElectricField_HFS= 1.000e+12
    RefDens_hGradQuasiFermi_ElectricField_HFS= 1.000e+12
 }
 
-
 *===================================================================
 *== Block 5: PLOT
-*== Purpose: Specify variables to save in the output TDR file.
 *===================================================================
 Plot {
   eDensity hDensity
@@ -99,23 +87,14 @@ Plot {
   ValenceBand
   Doping
   Polarization/Vector
-	BandGap
-	BandGapNarrowing
-	eTrappedCharge
-	hTrappedCharge
-	eBarrierTunneling hBarrierTunneling 
-	eDirectTunnel hDirectTunnel
-	AvalancheGeneration eAvalancheGeneration hAvalancheGeneration
-	SRHRecombination AugerRecombination
-	eMobility hMobility
-	eVelocity hVelocity
+  BandGap
+  SRHRecombination AugerRecombination
+  eMobility hMobility
 }
 
 *===================================================================
 *== Block 5b: CURRENT PLOT
-*== Purpose: Save specific internal variables to the .plt file.
-*== Syntax: Following sat_loop_des.cmd using point probe (( x y ))
-*== Location: Center of Top HZO (x=0, y=0.0145)
+*== Probe at center of top HZO (x=0, y=0.0145)
 *===================================================================
 CurrentPlot {
   Polarization/Vector (( 0 0.0145 ))
@@ -123,71 +102,179 @@ CurrentPlot {
 }
 
 *===================================================================
-*== Block 6: SOLVE (PHASE 3: LIF TRANSIENT FIRING)
-*== Purpose: Test Integrate-and-Fire behavior.
-*== Paper Biasing (Bhatawdekar Fig.4):
-*==   - VSG is set FIRST as constant DC bias ("synaptic weight")
-*==   - VD is PULSED to trigger Impact Ionization buildup
-*== Our Sequence (matching paper):
-*==   1. Initialize Poisson
-*==   2. Ramp Gate to 0.3V (Quasistationary, VDS=0V) -> set weight
-*==   3. Pulse Drain 0V -> 1.0V (Transient, 10ns rise) -> trigger II
-*==   4. Hold (5us) -> observe integration -> fire
-*== WHY: If drain is set first, device immediately reaches steady-state
-*==       with no room for gradual II buildup. Paper pulses drain AFTER
-*==       gate bias is set, so current starts near 0 and builds via II.
+*== Block 6: SOLVE — PHASE 1A: POLARIZATION SWITCHING CHARACTERIZATION
+*==
+*== NEW PARADIGM: Polarization-based LIF (not Impact Ionization).
+*== The FE polarization switching IS the spiking mechanism.
+*==   - Gate receives sub-coercive pulse train (integration)
+*==   - Each pulse partially switches FE domains -> Vth decreases
+*==   - When Vth < operating VGS -> ID spikes (fire)
+*==   - Negative gate pulse resets polarization (reset)
+*==
+*== SWEEP PARAMETERS (commented values to iterate):
+*==   Gate pulse amplitude:  0.5V, 1.0V, 1.5V, 2.0V, 2.5V, 3.0V
+*==   Gate pulse width:      10ns, 100ns, 1us, 10us, 100us
+*==   Number of pulses:      1, 5, 10, 20, 50
+*==   Inter-pulse interval:  100ns, 1us, 10us, 100us
+*==   V_DS (read bias):      0.05V, 0.5V, 1.0V
+*==   Reset pulse amplitude: -1.0V, -2.0V, -3.0V, -4.0V
+*==   tau_E (in .par file):  0.1ns, 1ns, 10ns
+*==   tau_P (in .par file):  0, 1us, 10us, 100us
 *===================================================================
+
 Solve {
-  * --- STEP 1: INITIALIZE ---
+
+  *=== STEP 0: INITIALIZE ===
   Transient (
     InitialTime=0 FinalTime=1
   ) { Coupled (Iterations = 100) { Poisson } }
 
-  * --- STEP 2: SET GATE BIAS (VGS -> Target) [VDS still 0V] ---
-  * This is the "synaptic weight" input. Applied BEFORE drain pulse.
-  * RUN 8: Using TWO transient data points to extrapolate correct V_GS:
-  *   Run 6: V_GS=-0.32V -> I_D=74pA | Run 7b: V_GS=-0.20V -> I_D=6.95nA
-  *   SS = 0.12V / log10(6.95e-9/74e-12) = 60.8 mV/dec
-  *   For target ~200nA: V_GS = -0.20 + 0.0608*log10(200/6.95) = -0.111V
-  *   V_G = V_S + V_GS = -0.25 + (-0.111) = -0.361V -> round to -0.36V
-  * At V_D = -0.25V and V_S = -0.25V, V_DS = 0V. No initial drain current.
-  NewCurrentPrefix="gate_bias_"
+  *=== STEP 1: SET DRAIN READ BIAS ===
+  * Constant V_DS during entire pulse train.
+  * SWEEP: 0.05V (linear), 0.5V (moderate), 1.0V (saturation)
+  NewCurrentPrefix="drain_bias_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
-    Goal { Name="gate_contact" Voltage= -0.36 }
+    Goal { Name="drain_contact" Voltage= 0.05 }
+    * Goal { Name="drain_contact" Voltage= 0.5 }
+    * Goal { Name="drain_contact" Voltage= 1.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
-  * --- STEP 3: FIRE (Drain Pulse -0.25V -> 1.0V) ---
-  * Paper: VD pulse triggers II at the drain-channel junction.
-  * Current starts near 0, then II generates holes -> accumulate in
-  * floating body -> positive feedback -> gradual current rise -> spike.
-  
-  * 3a. Rise (0 -> 10ns) - Drain ramp -0.25V -> 1.0V
-  * CRITICAL: Transient+Goal uses NORMALIZED step sizes (fractions 0-1).
-  * InitialStep=1e-3 -> 1e-3 * 10ns = 10ps effective
-  * MaxStep=5e-2    -> 5e-2 * 10ns = 500ps effective
-  * MinStep=1e-7    -> 1e-7 * 10ns = 1fs effective
-  NewCurrentPrefix="fire_rise_"
+  *=== STEP 2: GATE PULSE #1 (Sub-coercive — Integration) ===
+  * Rise: ramp gate from 0V to pulse amplitude
+  * SWEEP amplitude: 0.5V, 1.0V, 1.5V, 2.0V, 2.5V, 3.0V
+  * SWEEP pulse width: 10ns, 100ns, 1us, 10us, 100us
+  * NOTE: Transient+Goal uses NORMALIZED step sizes (fractions 0-1)
+
+  * --- Pulse 1 Rise ---
+  NewCurrentPrefix="pulse1_rise_"
   Transient (
-    InitialTime=0 FinalTime=10e-9
+    InitialTime=0 FinalTime=1e-9
     InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
-    Goal { Name="drain_contact" Voltage= 1.0 }
-  ) { 
-      Coupled (Iterations = 100) {Poisson Electron Hole} 
-      CurrentPlot( Time = (Range=(0 10e-9) Intervals=200) )
+    Goal { Name="gate_contact" Voltage= 1.5 }
+    * Goal { Name="gate_contact" Voltage= 0.5 }
+    * Goal { Name="gate_contact" Voltage= 1.0 }
+    * Goal { Name="gate_contact" Voltage= 2.0 }
+    * Goal { Name="gate_contact" Voltage= 2.5 }
+    * Goal { Name="gate_contact" Voltage= 3.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(0 1e-9) Intervals=100) )
   }
 
-  * 3b. Hold (10ns -> 5us) - Observe LIF integration and firing
-  * No Goal needed: drain stays at 1.0V, gate at 0.3V.
-  * Without Goal, step sizes are ABSOLUTE seconds.
-  NewCurrentPrefix="fire_hold_"
+  * --- Pulse 1 Hold (at pulse amplitude) ---
+  * Duration = pulse width. SWEEP: 10ns, 100ns, 1us, 10us
+  * No Goal -> step sizes are ABSOLUTE seconds.
+  NewCurrentPrefix="pulse1_hold_"
   Transient (
-    InitialTime=10e-9 FinalTime=5e-6
+    InitialTime=1e-9 FinalTime=101e-9
+    * InitialTime=1e-9 FinalTime=11e-9       * 10ns pulse
+    * InitialTime=1e-9 FinalTime=1.001e-6    * 1us pulse
+    * InitialTime=1e-9 FinalTime=10.001e-6   * 10us pulse
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1e-9 101e-9) Intervals=200) )
+  }
+
+  * --- Pulse 1 Fall (return gate to 0V) ---
+  NewCurrentPrefix="pulse1_fall_"
+  Transient (
+    InitialTime=101e-9 FinalTime=102e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(101e-9 102e-9) Intervals=100) )
+  }
+
+  *=== STEP 3: INTER-PULSE INTERVAL (Leak observation) ===
+  * Wait with gate at 0V. Monitor Vth relaxation via ID.
+  * SWEEP interval: 100ns, 1us, 10us, 100us
+  NewCurrentPrefix="wait1_"
+  Transient (
+    InitialTime=102e-9 FinalTime=1.102e-6
+    * InitialTime=102e-9 FinalTime=202e-9       * 100ns wait
+    * InitialTime=102e-9 FinalTime=10.102e-6    * 10us wait
+    * InitialTime=102e-9 FinalTime=100.102e-6   * 100us wait
     InitialStep=1e-10 MaxStep=50e-9 MinStep=1e-15
     Increment=1.4
-  ) { 
-      Coupled (Iterations = 100) {Poisson Electron Hole} 
-      CurrentPlot( Time = (Range=(10e-9 5e-6) Intervals=2000) )
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(102e-9 1.102e-6) Intervals=500) )
   }
+
+  *=== STEP 4: READ AFTER PULSE 1 ===
+  * Quick ID-VGS sweep to extract Vth shift from single pulse.
+  * Sweep VGS from -0.5V to +1.0V at fixed VDS.
+  NewCurrentPrefix="read1_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= -0.5 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 1.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+
+  * Return gate to 0V for next pulse
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+
+  *=== STEP 5: ADDITIONAL PULSES (Copy pulse 1 block N times) ===
+  * For multi-pulse integration test, duplicate Steps 2-4 above
+  * with updated InitialTime/FinalTime for pulses 2, 3, ... N.
+  * Track cumulative Vth shift after each pulse.
+  *
+  * For initial characterization, start with 1 pulse (above),
+  * then extend to 5, 10, 20, 50 pulses programmatically or
+  * via Sentaurus Workbench parameter sweep.
+
+  *=== STEP 6: RESET VERIFICATION ===
+  * After N pulses, apply negative gate pulse to reset FE.
+  * SWEEP reset amplitude: -1.0V, -2.0V, -3.0V, -4.0V
+  * SWEEP reset width: 10ns, 100ns, 1us
+  *
+  * NewCurrentPrefix="reset_rise_"
+  * Transient (
+  *   InitialTime=<after_last_pulse> FinalTime=<+1ns>
+  *   InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+  *   Increment=1.4
+  *   Goal { Name="gate_contact" Voltage= -3.0 }
+  *   * Goal { Name="gate_contact" Voltage= -1.0 }
+  *   * Goal { Name="gate_contact" Voltage= -2.0 }
+  *   * Goal { Name="gate_contact" Voltage= -4.0 }
+  * ) {
+  *     Coupled (Iterations = 100) {Poisson Electron Hole}
+  *     CurrentPlot( Time = (Range=(<start> <end>) Intervals=100) )
+  * }
+  *
+  * NewCurrentPrefix="reset_hold_"
+  * Transient (
+  *   InitialTime=<+1ns> FinalTime=<+101ns>
+  *   InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+  *   Increment=1.4
+  * ) {
+  *     Coupled (Iterations = 100) {Poisson Electron Hole}
+  *     CurrentPlot( Time = (Range=(<start> <end>) Intervals=200) )
+  * }
+  *
+  * NewCurrentPrefix="reset_fall_"
+  * Transient (
+  *   InitialTime=<+101ns> FinalTime=<+102ns>
+  *   InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+  *   Increment=1.4
+  *   Goal { Name="gate_contact" Voltage= 0.0 }
+  * ) {
+  *     Coupled (Iterations = 100) {Poisson Electron Hole}
+  * }
+  *
+  * Then re-run ID-VGS read sweep to verify Vth recovered.
+
 }
