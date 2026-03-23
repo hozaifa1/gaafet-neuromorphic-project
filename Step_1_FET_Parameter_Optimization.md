@@ -184,6 +184,94 @@ Each run takes ~5–15 min on Sentaurus server. Total time: ~2–3 hours.
 
 ---
 
+## 4A. Sim A Results & Analysis (Completed)
+
+### 4A.1 Summary
+
+**Status: SUCCESS — Partial polarization switching confirmed.** All 5 Vpulse nodes produced monotonically increasing ΔVth and polarization shifts, validating the sub-coercive switching mechanism.
+
+**Recommended Vpulse for Sim B: 2.0V**
+
+### 4A.2 ΔVth Extraction (Constant-Current at VGS=0.01V)
+
+Threshold voltage shift extracted from drain current ratio at VGS=0.01V (VDS=0.05V) using linear-regime approximation with estimated baseline Vth ≈ −50 mV:
+
+| Node | Vpulse (V) | Baseline ID (μA) | Post-pulse ID (μA) | Ratio | ΔVth (mV) |
+|------|-----------|-------------------|---------------------|-------|-----------|
+| n3 | 1.0 | 2.128 | 3.044 | 1.43 | ~26 |
+| n4 | 1.5 | 2.128 | 4.353 | 2.05 | ~63 |
+| n5 | 2.0 | 2.128 | 5.627 | 2.64 | ~99 |
+| n6 | 2.5 | 2.128 | 6.784 | 3.19 | ~131 |
+| n7 | 3.0 | 2.128 | 7.803 | 3.67 | ~160 |
+
+**Trend:** Monotonic increase — each 0.5V increment adds ~30–35 mV of ΔVth. Excellent linearity.
+
+### 4A.3 Polarization State After 100ns Pulse Hold
+
+| Vpulse (V) | Pol/y end (μC/cm²) | E/y end (MV/cm) | E/F_c (%) | P/P_r (%) |
+|-----------|---------------------|-----------------|-----------|-----------|
+| 1.0 | −0.260 | −0.067 | 5.6 | 1.6 |
+| 1.5 | −0.641 | −0.156 | 13.0 | 4.0 |
+| 2.0 | −1.051 | −0.241 | 20.1 | 6.6 |
+| 2.5 | −1.484 | −0.321 | 26.8 | 9.3 |
+| 3.0 | −1.938 | −0.398 | 33.2 | 12.1 |
+
+**Key:** All nodes operate well within the sub-coercive regime (E < 33% of F_c). Even at Vpulse=3.0V, only 12% of P_r is switched — large headroom for cumulative multi-pulse integration.
+
+### 4A.4 Read Disturb Issue (Design Caveat)
+
+The baseline and postpulse ID-VGS sweeps (0→1V) cause polarization evolution during readout because `Physics(Material="HZO") { Polarization }` is active globally and the `Quasistationary` solver equilibrates P at each VGS step.
+
+**Evidence:**
+- Baseline Pol/y shifts from +0.128 to −0.260 μC/cm² during the 0→1V sweep (Δ = −0.388 μC/cm²)
+- For n3 (1V pulse): postpulse Pol/y converges to baseline at VGS=1.0V → **readout erases the pulse effect**
+- For n7 (3V pulse): postpulse Pol/y remains distinct at VGS=1.0V (−1.103 vs −0.260 μC/cm²) → **state partially retained**
+
+**Impact:** Lower Vpulse states are more vulnerable to read disturb. The ΔVth values above (extracted at VGS=0.01V, first data point) are minimally contaminated, but the full sweep curves are affected.
+
+**Mitigation for Sim B:**
+1. Reduce readout sweep range to 0→0.3V (enough to extract Vth without erasing stored state)
+2. Or use single-point current measurement at fixed VGS (e.g., 0.1V)
+
+### 4A.5 SimA vs Calibration Comparison
+
+| Feature | Calibration (worked, MW=683mV) | SimA | Issue? |
+|---------|-------------------------------|------|--------|
+| Gate sweep | ±6.0V (Transient) | 0→1V (Quasistationary) | Intentional: different purpose |
+| VDS | 1.0V (saturation) | 0.05V (linear readout) | Intentional |
+| FEPolarizationIP | 1.0 | Missing | ⚠️ Add for consistency |
+| Method | Bitlis (Restart=100) | Blocked/ParDiSo | ⚠️ Bitlis more robust |
+| Digits/Iterations | 5 / 50 | 4 / 20 | Minor |
+| Avalanche | UniBo2 | Removed | Intentional |
+| Hydrodynamic | Yes | Removed | Intentional |
+
+**Conclusion:** All critical differences are intentional (calibration measures full hysteresis; simA measures partial switching). The missing `FEPolarizationIP=1.0` and weaker solver settings should be added to SimB for robustness.
+
+### 4A.6 Vpulse Recommendation for Sim B
+
+**Selected: Vpulse = 2.0V**
+
+| Criterion | Value | Assessment |
+|-----------|-------|------------|
+| ΔVth per pulse | ~99 mV | Clear, measurable signal |
+| E_HZO / F_c | 20.1% | Well within sub-coercive |
+| P / P_r | 6.6% | Large headroom for accumulation |
+| 5-pulse projected ΔVth | ~300–500 mV | Comparable to calibration MW/2 |
+| CMOS compatibility | 2.0V | Standard I/O voltage |
+| Read disturb resilience | Moderate | Better than 1.0/1.5V |
+
+**Fallback:** If Sim B shows weak accumulation at 2.0V, repeat with Vpulse=2.5V.
+
+### 4A.7 Sim B Setup Adjustments (Based on SimA Findings)
+
+Changes to apply to `sdevice_phase1a_simB.cmd` before running:
+1. **Add to Math block:** `FEPolarizationIP=1.0` and `Method = Bitlis (Restart=100, Tolerance=1e-5, Iterations=200)`
+2. **Reduce readout sweep:** Change post-pulse gate sweep from 0→1.0V to 0→0.3V to minimize read disturb
+3. **Set Vpulse:** Use `@Vpulse@ = 2.0` (single value, not a sweep)
+4. **Npulses sweep:** `@Npulses@` = 1, 3, 5, 10, 20
+
+---
+
 ## 5. Phase 1B: LIF Transient Demonstration
 
 ### 5.1 Objective

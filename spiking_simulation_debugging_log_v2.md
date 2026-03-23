@@ -166,3 +166,31 @@ Each run: 5–15 min. Total time: ~2–3 hours.
 **tau_E (optional):** Edit `.par` → change `tau_E` to `1e-10` or `1e-8` → re-run Sim A (1 node)
 
 See `Step_1_FET_Parameter_Optimization.md` Section 4 for full details.
+
+---
+
+## 8. Sim A Results (Apr 2026) — SUCCESS
+
+### Outcome
+All 5 Vpulse nodes (1.0–3.0V) completed successfully. Partial polarization switching confirmed with monotonic ΔVth increase.
+
+### Data Summary
+
+| Vpulse | ΔVth (mV) | Pol/y end (μC/cm²) | E/F_c (%) | P/P_r (%) |
+|--------|-----------|---------------------|-----------|-----------|
+| 1.0V | ~26 | −0.260 | 5.6 | 1.6 |
+| 1.5V | ~63 | −0.641 | 13.0 | 4.0 |
+| 2.0V | ~99 | −1.051 | 20.1 | 6.6 |
+| 2.5V | ~131 | −1.484 | 26.8 | 9.3 |
+| 3.0V | ~160 | −1.938 | 33.2 | 12.1 |
+
+### Key Finding: Read Disturb
+The 0→1V Quasistationary readout sweep evolves Pol/y during measurement. For n3 (1V pulse), the postpulse P state converges to baseline at VGS=1V (full erasure). For n7 (3V pulse), the state persists. **Sim B must reduce readout range to 0→0.3V.**
+
+### Decision
+**Vpulse = 2.0V selected for Sim B** — 99 mV/pulse, 20% of F_c, 6.6% of P_r, large headroom for cumulative integration.
+
+### Next Steps
+1. Apply Sim B adjustments (FEPolarizationIP, Bitlis solver, reduced readout sweep)
+2. Run Sim B with Vpulse=2.0V, Npulses=1,3,5,10,20
+3. Extract Vth(N) staircase to confirm integration behavior
