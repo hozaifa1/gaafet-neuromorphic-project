@@ -2,11 +2,11 @@
 *== PHASE 1A — SIM B: MULTI-PULSE INTEGRATION
 *== Purpose: Apply N identical gate pulses, read ID-VGS after each.
 *==          Shows cumulative Vth shift = "integration" behavior.
-*== SWB Sweep: @Npulses@ = 1, 3, 5, 10, 20 (5 runs)
-*== Fixed: Vpulse from Sim A best result, VDS=0.05V, pw=100ns
-*== NOTE: @Vpulse@ should be set to the best amplitude from Sim A.
-*==        Set it as a fixed SWB parameter (not swept here).
-*== Output: ID-VGS after N pulses -> Vth(N) integration curve
+*== DESIGN: 20 pulses total + intermediate reads at N=1,3,5,10,20.
+*== Fixed: @Vpulse@ = 2.0V (from Sim A), VDS=0.05V, pw=100ns
+*== NOTE: All readout sweeps 0->0.3V to minimize read disturb.
+*==        Vth(N) staircase extracted from read_nXX_fwd .plt files.
+*== Output: read_nXX_fwd .plt -> Vth(N) integration staircase
 *===================================================================
 
 File {
@@ -49,10 +49,11 @@ Physics(MaterialInterface="Silicon/SiO2") {
 Math {
    Extrapolate
    RelErrControl
-   Digits=4
+   Digits=5
    Notdamped=50
-   Iterations=20
+   Iterations=50
    Transient=BE
+   FEPolarizationIP=1.0
    Method=Blocked
    SubMethod=ParDiSo
    GeometricDistances
@@ -88,6 +89,18 @@ Solve {
     Goal { Name="drain_contact" Voltage= 0.05 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
+  *=== BASELINE ID-VGS (virgin FE state, gate 0->0.3->0V) ===
+  NewCurrentPrefix="baseline_fwd_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.3 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  NewCurrentPrefix="baseline_ret_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+
   *=== PULSE 1 ===
   NewCurrentPrefix="p1_rise_"
   Transient (
@@ -118,6 +131,18 @@ Solve {
       Coupled (Iterations = 100) {Poisson Electron Hole}
       CurrentPlot( Time = (Range=(101e-9 102e-9) Intervals=20) )
   }
+
+  *=== READ N=1: ID-VGS (gate 0->0.3->0V) ===
+  NewCurrentPrefix="read_n01_fwd_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.3 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  NewCurrentPrefix="read_n01_ret_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
   *=== PULSE 2 ===
   NewCurrentPrefix="p2_rise_"
@@ -181,6 +206,18 @@ Solve {
       CurrentPlot( Time = (Range=(305e-9 306e-9) Intervals=20) )
   }
 
+  *=== READ N=3: ID-VGS (gate 0->0.3->0V) ===
+  NewCurrentPrefix="read_n03_fwd_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.3 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  NewCurrentPrefix="read_n03_ret_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+
   *=== PULSE 4 ===
   NewCurrentPrefix="p4_rise_"
   Transient (
@@ -243,10 +280,20 @@ Solve {
       CurrentPlot( Time = (Range=(509e-9 510e-9) Intervals=20) )
   }
 
-  *=== PULSE 6-10 (only runs if @Npulses@ >= 10) ===
-  * Pulses 6-10 follow the same pattern as 1-5.
-  * Time continues from 510e-9.
-  * Each pulse: 1ns rise + 100ns hold + 1ns fall = 102ns per pulse
+  *=== READ N=5: ID-VGS (gate 0->0.3->0V) ===
+  NewCurrentPrefix="read_n05_fwd_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.3 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  NewCurrentPrefix="read_n05_ret_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+
+  *=== PULSES 6-10 ===
+  * Time continues from 510e-9. Each pulse: rise(1ns)+hold(100ns)+fall(1ns)=102ns.
 
   NewCurrentPrefix="p6_rise_"
   Transient (
@@ -398,14 +445,328 @@ Solve {
       CurrentPlot( Time = (Range=(1019e-9 1020e-9) Intervals=20) )
   }
 
-  *=== POST-PULSE READ: ID-VGS sweep to extract final Vth ===
-  NewCurrentPrefix="postpulse_fwd_"
+  *=== READ N=10: ID-VGS (gate 0->0.3->0V) ===
+  NewCurrentPrefix="read_n10_fwd_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
-    Goal { Name="gate_contact" Voltage= 1.0 }
+    Goal { Name="gate_contact" Voltage= 0.3 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  NewCurrentPrefix="read_n10_ret_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
-  NewCurrentPrefix="postpulse_rev_"
+  *=== PULSES 11-20 ===
+  * Time continues from 1020e-9. Each pulse: rise(1ns)+hold(100ns)+fall(1ns)=102ns.
+
+  NewCurrentPrefix="p11_rise_"
+  Transient (
+    InitialTime=1020e-9 FinalTime=1021e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1020e-9 1021e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p11_hold_"
+  Transient (
+    InitialTime=1021e-9 FinalTime=1121e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1021e-9 1121e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p11_fall_"
+  Transient (
+    InitialTime=1121e-9 FinalTime=1122e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1121e-9 1122e-9) Intervals=20) )
+  }
+
+  NewCurrentPrefix="p12_rise_"
+  Transient (
+    InitialTime=1122e-9 FinalTime=1123e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1122e-9 1123e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p12_hold_"
+  Transient (
+    InitialTime=1123e-9 FinalTime=1223e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1123e-9 1223e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p12_fall_"
+  Transient (
+    InitialTime=1223e-9 FinalTime=1224e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1223e-9 1224e-9) Intervals=20) )
+  }
+
+  NewCurrentPrefix="p13_rise_"
+  Transient (
+    InitialTime=1224e-9 FinalTime=1225e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1224e-9 1225e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p13_hold_"
+  Transient (
+    InitialTime=1225e-9 FinalTime=1325e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1225e-9 1325e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p13_fall_"
+  Transient (
+    InitialTime=1325e-9 FinalTime=1326e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1325e-9 1326e-9) Intervals=20) )
+  }
+
+  NewCurrentPrefix="p14_rise_"
+  Transient (
+    InitialTime=1326e-9 FinalTime=1327e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1326e-9 1327e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p14_hold_"
+  Transient (
+    InitialTime=1327e-9 FinalTime=1427e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1327e-9 1427e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p14_fall_"
+  Transient (
+    InitialTime=1427e-9 FinalTime=1428e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1427e-9 1428e-9) Intervals=20) )
+  }
+
+  NewCurrentPrefix="p15_rise_"
+  Transient (
+    InitialTime=1428e-9 FinalTime=1429e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1428e-9 1429e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p15_hold_"
+  Transient (
+    InitialTime=1429e-9 FinalTime=1529e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1429e-9 1529e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p15_fall_"
+  Transient (
+    InitialTime=1529e-9 FinalTime=1530e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1529e-9 1530e-9) Intervals=20) )
+  }
+
+  NewCurrentPrefix="p16_rise_"
+  Transient (
+    InitialTime=1530e-9 FinalTime=1531e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1530e-9 1531e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p16_hold_"
+  Transient (
+    InitialTime=1531e-9 FinalTime=1631e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1531e-9 1631e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p16_fall_"
+  Transient (
+    InitialTime=1631e-9 FinalTime=1632e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1631e-9 1632e-9) Intervals=20) )
+  }
+
+  NewCurrentPrefix="p17_rise_"
+  Transient (
+    InitialTime=1632e-9 FinalTime=1633e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1632e-9 1633e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p17_hold_"
+  Transient (
+    InitialTime=1633e-9 FinalTime=1733e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1633e-9 1733e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p17_fall_"
+  Transient (
+    InitialTime=1733e-9 FinalTime=1734e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1733e-9 1734e-9) Intervals=20) )
+  }
+
+  NewCurrentPrefix="p18_rise_"
+  Transient (
+    InitialTime=1734e-9 FinalTime=1735e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1734e-9 1735e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p18_hold_"
+  Transient (
+    InitialTime=1735e-9 FinalTime=1835e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1735e-9 1835e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p18_fall_"
+  Transient (
+    InitialTime=1835e-9 FinalTime=1836e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1835e-9 1836e-9) Intervals=20) )
+  }
+
+  NewCurrentPrefix="p19_rise_"
+  Transient (
+    InitialTime=1836e-9 FinalTime=1837e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1836e-9 1837e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p19_hold_"
+  Transient (
+    InitialTime=1837e-9 FinalTime=1937e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1837e-9 1937e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p19_fall_"
+  Transient (
+    InitialTime=1937e-9 FinalTime=1938e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1937e-9 1938e-9) Intervals=20) )
+  }
+
+  NewCurrentPrefix="p20_rise_"
+  Transient (
+    InitialTime=1938e-9 FinalTime=1939e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1938e-9 1939e-9) Intervals=20) )
+  }
+  NewCurrentPrefix="p20_hold_"
+  Transient (
+    InitialTime=1939e-9 FinalTime=2039e-9
+    InitialStep=1e-10 MaxStep=10e-9 MinStep=1e-15
+    Increment=1.4
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1939e-9 2039e-9) Intervals=50) )
+  }
+  NewCurrentPrefix="p20_fall_"
+  Transient (
+    InitialTime=2039e-9 FinalTime=2040e-9
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= 0.0 }
+  ) {
+      Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(2039e-9 2040e-9) Intervals=20) )
+  }
+
+  *=== READ N=20: final ID-VGS (gate 0->0.3->0V) ===
+  NewCurrentPrefix="read_n20_fwd_"
+  Quasistationary (
+    InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+    Goal { Name="gate_contact" Voltage= 0.3 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+  NewCurrentPrefix="read_n20_ret_"
   Quasistationary (
     InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
     Goal { Name="gate_contact" Voltage= 0.0 }
