@@ -34,8 +34,8 @@ Sentaurus_Tutorials/
 Thumbs.db
 .DS_Store
 
-# Large binary files (keep in Papers)
-# *.pdf  # Uncomment if you want to exclude PDFs
+# Large binary files
+*.pdf
 
 # Python cache (if using Python scripts)
 __pycache__/
