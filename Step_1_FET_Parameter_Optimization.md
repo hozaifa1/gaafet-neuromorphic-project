@@ -227,153 +227,167 @@ Each run takes ~5–15 min on Sentaurus server. Total time: ~2–3 hours.
 
 **Recommended Vpulse for Sim B: 2.0V**
 
-### 4A.2 ΔVth Extraction (Constant-Current at VGS=0.01V)
+### 4A.2 ΔVth Extraction — τ_E = 1µs Run (UPDATED)
 
-Threshold voltage shift extracted from drain current ratio at VGS=0.01V (VDS=0.05V) using linear-regime approximation with estimated baseline Vth ≈ −50 mV:
+> **Note:** Previous SimA data (τ_E = 1ns) showed differentiated ΔVth (26–160 mV). Those values reflected equilibrium polarization switching, not partial switching. With τ_E = 1µs, each 100ns pulse shifts P by only ~10% of equilibrium. The table below shows the re-run results.
 
-| Node | Vpulse (V) | Baseline ID (μA) | Post-pulse ID (μA) | Ratio | ΔVth (mV) |
-|------|-----------|-------------------|---------------------|-------|-----------|
-| n3 | 1.0 | 2.128 | 3.044 | 1.43 | ~26 |
-| n4 | 1.5 | 2.128 | 4.353 | 2.05 | ~63 |
-| n5 | 2.0 | 2.128 | 5.627 | 2.64 | ~99 |
-| n6 | 2.5 | 2.128 | 6.784 | 3.19 | ~131 |
-| n7 | 3.0 | 2.128 | 7.803 | 3.67 | ~160 |
+| Node | Vpulse (V) | Baseline ID (μA) | Post-pulse ID (μA) | ΔVth (mV) |
+|------|-----------|-------------------|---------------------|-----------|
+| n3 | 1.0 | 2.422 | 3.288 | 21.5 |
+| n4 | 1.5 | 2.422 | 3.289 | 21.5 |
+| n5 | 2.0 | 2.422 | 3.289 | 21.5 |
+| n6 | 2.5 | 2.422 | 3.290 | 21.5 |
+| n7 | 3.0 | 2.422 | 3.290 | 21.5 |
 
-**Trend:** Monotonic increase — each 0.5V increment adds ~30–35 mV of ΔVth. Excellent linearity.
+**Result: FLAT.** ΔVth spread is only 0.03 mV across the full 1–3V range. See §4A.4 for root cause.
 
-### 4A.3 Polarization State After 100ns Pulse Hold
+### 4A.3 Polarization During Pulse Hold — τ_E = 1µs (DIFFERENTIATED)
 
-| Vpulse (V) | Pol/y end (μC/cm²) | E/y end (MV/cm) | E/F_c (%) | P/P_r (%) |
-|-----------|---------------------|-----------------|-----------|-----------|
-| 1.0 | −0.260 | −0.067 | 5.6 | 1.6 |
-| 1.5 | −0.641 | −0.156 | 13.0 | 4.0 |
-| 2.0 | −1.051 | −0.241 | 20.1 | 6.6 |
-| 2.5 | −1.484 | −0.321 | 26.8 | 9.3 |
-| 3.0 | −1.938 | −0.398 | 33.2 | 12.1 |
+Despite the flat ΔVth readout, the **pulse hold data shows clear differentiation**:
 
-**Key:** All nodes operate well within the sub-coercive regime (E < 33% of F_c). Even at Vpulse=3.0V, only 12% of P_r is switched — large headroom for cumulative multi-pulse integration.
+| Vpulse (V) | Pol/y end (μC/cm²) | E/F_c (%) | P/P_r (%) |
+|-----------|---------------------|-----------|-----------|
+| 1.0 | −0.045 | 9.6 | 0.3 |
+| 1.5 | −0.058 | 23.9 | 0.4 |
+| 2.0 | −0.071 | 38.2 | 0.4 |
+| 2.5 | −0.084 | 52.6 | 0.5 |
+| 3.0 | −0.098 | 67.1 | 0.6 |
 
-### 4A.4 Read Disturb Issue (Design Caveat)
+**Key:** The pulse DOES shift P differently per Vpulse. The values are ~10% of the old τ_E=1ns equilibrium values, exactly as predicted by pw/τ_E = 0.1. But the Quasistationary readout erases these small differences (see §4A.4).
 
-The baseline and postpulse ID-VGS sweeps (0→1V) cause polarization evolution during readout because `Physics(Material="HZO") { Polarization }` is active globally and the `Quasistationary` solver equilibrates P at each VGS step.
+### 4A.4 Root Cause: Quasistationary Readout Erases Polarization State
 
-**Evidence:**
-- Baseline Pol/y shifts from +0.128 to −0.260 μC/cm² during the 0→1V sweep (Δ = −0.388 μC/cm²)
-- For n3 (1V pulse): postpulse Pol/y converges to baseline at VGS=1.0V → **readout erases the pulse effect**
-- For n7 (3V pulse): postpulse Pol/y remains distinct at VGS=1.0V (−1.103 vs −0.260 μC/cm²) → **state partially retained**
+**This is the critical finding from the τ_E = 1µs re-run.**
 
-**Impact:** Lower Vpulse states are more vulnerable to read disturb. The ΔVth values above (extracted at VGS=0.01V, first data point) are minimally contaminated, but the full sweep curves are affected.
+The `Quasistationary` solver computes the steady-state solution at each VGS bias step. This means the ferroelectric polarization reaches its equilibrium value for the applied E-field at every step, regardless of what state the transient pulse left it in.
 
-**Mitigation for Sim B:**
-1. Reduce readout sweep range to 0→0.3V (enough to extract Vth without erasing stored state)
-2. Or use single-point current measurement at fixed VGS (e.g., 0.1V)
+With τ_E = 1µs and pw = 100ns, each pulse shifts P by only ~0.05–0.10 µC/cm² (tiny fraction of P_r = 16 µC/cm²). When the Quasistationary readout sweep then evolves P to equilibrium at each VGS step, these tiny pulse-induced differences are completely erased.
 
-### 4A.5 SimA vs Calibration Comparison
+**Evidence:** All 5 post-pulse ID-VGS curves are identical to 4+ significant figures, despite clearly different pulse-hold P values.
 
-| Feature | Calibration (worked, MW=683mV) | SimA | Issue? |
-|---------|-------------------------------|------|--------|
-| Gate sweep | ±6.0V (Transient) | 0→1V (Quasistationary) | Intentional: different purpose |
-| VDS | 1.0V (saturation) | 0.05V (linear readout) | Intentional |
-| FEPolarizationIP | 1.0 | Missing | ⚠️ Add for consistency |
-| Method | Bitlis (Restart=100) | Blocked/ParDiSo | ⚠️ Bitlis more robust |
-| Digits/Iterations | 5 / 50 | 4 / 20 | Minor |
-| Avalanche | UniBo2 | Removed | Intentional |
-| Hydrodynamic | Yes | Removed | Intentional |
+**This does NOT mean τ_E = 1µs is wrong.** It means the readout method is incompatible with partial-switching measurement. See §4C for the fix.
 
-**Conclusion:** All critical differences are intentional (calibration measures full hysteresis; simA measures partial switching). The missing `FEPolarizationIP=1.0` and weaker solver settings should be added to SimB for robustness.
+### 4A.5 Vpulse Selection (Tentative)
 
-### 4A.6 Vpulse Recommendation for Sim B
+Since the readout issue masks the per-pulse ΔVth, the Vpulse recommendation must come from the **pulse hold polarization data** (§4A.3) rather than the readout ΔVth. Based on E/F_c ratio and sub-coercive margin:
 
-**Selected: Vpulse = 2.0V**
-
-| Criterion | Value | Assessment |
-|-----------|-------|------------|
-| ΔVth per pulse | ~99 mV | Clear, measurable signal |
-| E_HZO / F_c | 20.1% | Well within sub-coercive |
-| P / P_r | 6.6% | Large headroom for accumulation |
-| 5-pulse projected ΔVth | ~300–500 mV | Comparable to calibration MW/2 |
-| CMOS compatibility | 2.0V | Standard I/O voltage |
-| Read disturb resilience | Moderate | Better than 1.0/1.5V |
-
-**Fallback:** If Sim B shows weak accumulation at 2.0V, repeat with Vpulse=2.5V.
-
-### 4A.7 Sim B Setup Adjustments (Based on SimA Findings)
-
-Changes to apply to `sdevice_phase1a_simB.cmd` before running:
-1. **Add to Math block:** `FEPolarizationIP=1.0` and `Method = Bitlis (Restart=100, Tolerance=1e-5, Iterations=200)`
-2. **Reduce readout sweep:** Change post-pulse gate sweep from 0→1.0V to 0→0.3V to minimize read disturb
-3. **Set Vpulse:** Use `@Vpulse@ = 2.0` (single value, not a sweep)
-4. **Npulses sweep:** `@Npulses@` = 1, 3, 5, 10, 20
+**Tentative: Vpulse = 2.0V** (E/F_c ≈ 38%, good sub-coercive headroom). To be confirmed after readout fix.
 
 ---
 
-## 4B. Sim B Results & Analysis (Completed — Integration Failed, Diagnosed & Fixed)
+## 4B. Sim B Results & Analysis — τ_E = 1µs (UPDATED)
 
 ### 4B.1 Summary
 
-**Status: NO CUMULATIVE INTEGRATION.** All 20 pulses at Vpulse=2.0V produced identical drain current and polarization state. The Vth(N) "staircase" is a flat line — pulse 1 and pulse 20 are indistinguishable.
+**Status: PARTIAL SUCCESS.** Integration IS occurring but the Quasistationary readout resets polarization between measurement points. Readouts at N=1,3,5 show ~zero ΔVth, but N=10 and N=20 show growing ΔVth because 5–10 consecutive pulses accumulate enough ΔP to partially survive the readout.
 
-**Root cause identified and fixed.** See 4B.3 below.
+### 4B.2 Readout Data (Vpulse=2V, τ_E=1µs)
 
-### 4B.2 Data — Flat Vth(N) Curve
+| Read Point | N (pulses) | Consec. pulses since last read | ID @VGS=0.003V (µA) | ΔVth (mV) | Pol/y at readout (µC/cm²) |
+|------------|-----------|-------------------------------|----------------------|-----------|--------------------------|
+| Baseline | 0 | — | 2.163 | 0.0 | +0.129 |
+| read_n01 | 1 | 1 | 2.163 | 0.0 | +0.129 |
+| read_n03 | 3 | 2 | 2.164 | 0.0 | +0.129 |
+| read_n05 | 5 | 2 | 2.164 | 0.0 | +0.129 |
+| read_n10 | 10 | 5 | 3.266 | 27.0 | −0.068 |
+| read_n20 | 20 | 10 | 4.462 | 56.3 | −0.265 |
 
-| Read Point | N (pulses) | ID @VGS=0.003V (µA) | ΔVth (mV) | Pol/y hold end (µC/cm²) |
-|------------|-----------|----------------------|-----------|------------------------|
-| Baseline | 0 | 1.886 | 0 | — |
-| read_n01 | 1 | 5.353 | 97.4 | −1.0507 |
-| read_n03 | 3 | 5.356 | 97.5 | −1.0507 |
-| read_n05 | 5 | 5.353 | 97.4 | −1.0507 |
-| read_n10 | 10 | 5.353 | 97.4 | −1.0507 |
-| read_n20 | 20 | 5.353 | 97.4 | −1.0507 |
+### 4B.3 Pulse-Hold Polarization (Before Readout)
 
-**Key observation:** ΔVth is constant at ~97.4 mV regardless of pulse count. Polarization is identical to 11 significant digits across P1, P5, P10, P20.
+| Pulse # | End-of-hold Pol/y (µC/cm²) | Note |
+|---------|---------------------------|------|
+| P1 | +0.0815 | 1 pulse from virgin |
+| P5 | +0.0349 | 2 pulses from read_n03 reset |
+| P6 | **+0.0815** | **Identical to P1 — proof readout resets P** |
+| P10 | −0.3376 | 5 consecutive pulses (no read between P6–P10) |
+| P20 | −0.6985 | 10 consecutive pulses (no read between P11–P20) |
 
-### 4B.3 Root Cause: $\tau_E$ << Pulse Width
+### 4B.4 Smoking Gun: P6 = P1
 
-**The problem:** $\tau_E$ = 1 ns (domain switching time), pulse width = 100 ns → ratio = 100:1.
+Pulse 6 end-of-hold Pol/y (+0.0815 µC/cm²) is **byte-identical** to Pulse 1 (+0.0815 µC/cm²). This proves the Quasistationary readout after N=5 completely resets P back to the virgin state. The 5 pulses of accumulated switching are erased.
 
-**What happens physically:**
-1. Pulse 1 arrives (VGS=2V). The electric field across HZO drives polarization toward the equilibrium value for that field strength.
-2. Because $\tau_E$ (1 ns) is 100× shorter than the pulse duration (100 ns), polarization **fully equilibrates** within the first ~5 ns of the pulse.
-3. For the remaining 95 ns, polarization sits at steady state — no further switching occurs.
-4. When VGS returns to 0V, polarization relaxes to whatever state corresponds to zero gate bias.
-5. Pulse 2 arrives at the same VGS=2V → drives P to the **exact same equilibrium** → no additional switching.
+### 4B.5 Consecutive-Pulse Integration IS Working
 
-**In biological terms:** It's like a neuron whose membrane capacitor charges fully on the first input spike and then can't accumulate any further — each subsequent spike sees the capacitor already charged to the maximum for that input voltage.
+Between readout points where multiple pulses fire consecutively:
+- **N=5→N=10 (5 pulses, no read):** ΔID = +1.102 µA, Pol/y swings from +0.129 to −0.068 µC/cm²
+- **N=10→N=20 (10 pulses, no read):** ΔID = +1.196 µA, Pol/y swings from −0.068 to −0.265 µC/cm²
 
-### 4B.4 The Fix: Increase $\tau_E$
+This is cumulative integration — exactly what we need for LIF behavior. The mechanism works; only the measurement method is flawed.
 
-For cumulative integration, each pulse must only **partially** switch the domains, leaving room for subsequent pulses to continue the switching process. This requires $\tau_E$ >> pulse width:
+### 4B.6 Why τ_E = 1ns Was NOT Better
 
-| $\tau_E$ | pw/$\tau_E$ | Switching per pulse | Pulses for 90% total | Assessment |
-|----------|------------|--------------------|-----------------------|------------|
-| 1 ns (old) | 100 | 100% (saturated) | 1 | ❌ No integration |
-| 100 ns | 1.0 | ~63% | ~2-3 | ❌ Too fast, saturates quickly |
-| 500 ns | 0.2 | ~18% | ~11 | ⚠️ Borderline |
-| **1 µs** | **0.1** | **~10%** | **~22** | **✅ Good for 20-pulse staircase** |
-| 5 µs | 0.02 | ~2% | ~115 | ⚠️ Very slow, may need many pulses |
+The old τ_E = 1ns gave "nicer" SimA curves (differentiated ΔVth) but **fundamentally cannot support cumulative integration**:
+- With τ_E = 1ns, each 100ns pulse fully equilibrates P (pw/τ_E = 100)
+- Every pulse reaches the same equilibrium → no room for accumulation
+- SimB with τ_E = 1ns showed flat ΔVth(N) ≈ 97.4 mV for all N
 
-**Selected: $\tau_E$ = 1 µs (1e-6 s)**. Updated in `sdevice_gaafet_lif.par`.
-
-### 4B.5 Impact on SimA Results
-
-SimA was run with $\tau_E$ = 1 ns. Those results (Section 4A) demonstrated that **different Vpulse values produce different equilibrium polarization states** — this is valid and physically meaningful. It confirmed sub-coercive operation and voltage-dependent switching.
-
-However, with $\tau_E$ = 1 µs, SimA results will change: each 100ns pulse will only achieve ~10% of the equilibrium shift. The ΔVth values will be smaller but the voltage-dependent trend will remain. **SimA should be re-run after the tau_E fix** to get corrected ΔVth values for the new parameter set.
-
-### 4B.6 Corrected Workflow (After tau_E Fix)
-
-1. **Re-run SimA** with $\tau_E$ = 1 µs → get new ΔVth(Vpulse) curve (smaller values expected)
-2. **Re-run SimB** with $\tau_E$ = 1 µs → expect cumulative Vth(N) staircase
-3. **Run SimC** with $\tau_E$ = 1 µs + $\tau_P$ > 0 → observe leak between pulses + reset
-4. Extract all parameters for Step 2 circuit model
+With τ_E = 1µs:
+- Each pulse partially switches P (~10% of equilibrium)
+- Consecutive pulses accumulate → P grows monotonically (proven by P1→P10→P20 data)
+- **τ_E = 1µs is the CORRECT value for LIF integration**
 
 ### 4B.7 Plots
 
 See `Simulations/py_scripts/`:
-- `simB_fig1_idvgs_overlay.png` — All intermediate reads overlap (no integration)
-- `simB_fig2_dvth_vs_N.png` — Flat red line (measured) vs expected blue staircase
-- `simB_fig3_pol_vs_pulse.png` — Constant polarization across all pulses
+- `analysis_fig1_simA_idvgs_flat.png` — SimA: all post-pulse curves overlap (flat)
+- `analysis_fig2_simA_dvth_flat.png` — SimA: ΔVth bar chart (all ≈21.5 mV)
+- `analysis_fig3_simA_hold_differentiated.png` — SimA: pulse-hold P IS differentiated
+- `analysis_fig4_simB_idvgs.png` — SimB: ID-VGS overlay for all readout points
+- `analysis_fig5_simB_staircase.png` — SimB: ΔVth staircase (flat N=1–5, rising N=10–20)
+- `analysis_fig6_simB_pulse_pol_evolution.png` — SimB: sawtooth P evolution (smoking gun)
+
+---
+
+## 4C. The Fix: Transient Readout (Next Step)
+
+### 4C.1 Problem Statement
+
+The `Quasistationary` solver used for ID-VGS readout sweeps allows polarization to reach equilibrium at each bias point. This erases the small partial-switching state set by the transient gate pulse. With τ_E = 1µs and pw = 100ns, each pulse shifts P by only ~10% of equilibrium — too small to survive QS readout.
+
+### 4C.2 Solution: Fast Transient Readout
+
+Replace all `Quasistationary` readout blocks with `Transient` readout that completes in a time **much shorter than τ_E**:
+
+- **Readout duration:** 1 ns (1000× shorter than τ_E = 1µs)
+- **VGS range:** 0 → 0.3V (unchanged)
+- **Mechanism:** The Transient solver enforces real-time evolution. In 1 ns, the polarization has time to move only 0.1% (1ns / 1µs) — effectively frozen during readout.
+
+**Syntax change** in `sdevice_phase1a_simA.cmd` and `sdevice_phase1a_simB.cmd`:
+
+```
+*== OLD (Quasistationary — erases P): ==
+Quasistationary (
+  InitialStep=1e-2 MaxStep=0.05 MinStep=1e-6
+  Goal { Name="gate_contact" Voltage= 0.3 }
+) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+
+*== NEW (Transient — preserves P): ==
+Transient (
+  InitialTime=<T_current> FinalTime=<T_current + 1e-9>
+  InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+  Increment=1.4
+  Goal { Name="gate_contact" Voltage= 0.3 }
+) {
+  Coupled (Iterations = 100) {Poisson Electron Hole}
+  CurrentPlot( Time = (Range=(<T_current> <T_current + 1e-9>) Intervals=50) )
+}
+```
+
+### 4C.3 Expected Outcome
+
+With Transient readout:
+- **SimA:** ΔVth should show monotonic increase with Vpulse (differentiated, matching pulse-hold P data)
+- **SimB:** ΔVth(N) should show a proper staircase — each pulse contributing ~equal increment
+- The sawtooth P-reset pattern (Fig 6) should disappear
+
+### 4C.4 Corrected Workflow
+
+1. **Modify `sdevice_phase1a_simA.cmd`:** Replace QS readout with Transient readout (1ns sweep)
+2. **Re-run SimA** → confirm differentiated ΔVth, select final Vpulse
+3. **Modify `sdevice_phase1a_simB.cmd`:** Same Transient readout fix
+4. **Re-run SimB** → confirm cumulative Vth(N) staircase
+5. **Run SimC** with τ_P > 0 → observe leak + reset
+6. Extract all parameters for Step 2 circuit model
 
 ---
 

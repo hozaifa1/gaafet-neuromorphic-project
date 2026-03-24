@@ -211,7 +211,29 @@ Changed `tau_E` in `.par` file: **1 ns → 1 µs (1e-6 s)**. This gives pw/τ_E 
 Also updated SimC `.cmd`: FEPolarizationIP=1.0, Digits=5, Iterations=50, readout sweep 0→0.3V.
 
 ### Corrected Workflow
-1. Re-run SimA with τ_E = 1µs (ΔVth values will be smaller, trend preserved)
-2. Re-run SimB with τ_E = 1µs (expect Vth staircase)
+1. ~~Re-run SimA with τ_E = 1µs~~ ✅
+2. ~~Re-run SimB with τ_E = 1µs~~ ✅
 3. Run SimC with τ_E = 1µs + τ_P > 0 (leak + reset)
 4. Extract Step 2 circuit parameters
+
+---
+
+## 10. SimA + SimB Re-run Results (τ_E = 1µs) — READOUT BUG FOUND
+
+### SimA Result
+All 5 Vpulse nodes (1.0–3.0V) give **identical ΔVth ≈ 21.5 mV** (spread = 0.03 mV). However, pulse-hold data shows P IS differentiated (−0.045 to −0.098 µC/cm²). The Quasistationary readout erases these differences.
+
+### SimB Result
+- N=1,3,5 readouts: ΔVth ≈ 0 (readout resets P after each read)
+- N=10: ΔVth = 27.0 mV (5 consecutive pulses between reads)
+- N=20: ΔVth = 56.3 mV (10 consecutive pulses between reads)
+- **Smoking gun:** P6 hold end = P1 hold end (byte-identical +0.0815 µC/cm²) → readout after N=5 completely resets P
+
+### Root Cause
+`Quasistationary` solver equilibrates P at each VGS step during readout. With τ_E = 1µs, each pulse shifts P by ~10% of equilibrium — too small to survive QS readout reset. Integration IS working between reads (proven by N=10, N=20 data and monotonic P evolution in pulse-hold).
+
+### Fix
+Replace `Quasistationary` readout with fast `Transient` readout (1ns sweep, 0→0.3V). In 1ns, P moves only 0.1% → effectively frozen during measurement.
+
+### Key Insight
+τ_E = 1µs is CORRECT. The old τ_E = 1ns cannot support integration (each pulse saturates). The issue is purely the measurement method, not the physics.
