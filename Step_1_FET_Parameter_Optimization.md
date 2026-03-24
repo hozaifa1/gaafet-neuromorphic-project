@@ -391,6 +391,65 @@ With Transient readout:
 
 ---
 
+## 4D. SimA Results — TRANSIENT READOUT SUCCESS (τ_E = 1µs)
+
+### 4D.1 Summary
+
+**Status: COMPLETE SUCCESS.** The Transient readout fix (1ns sweep) perfectly preserves the partial-switching state. ΔVth now shows clear monotonic increase from 7.4mV to 26.4mV across 1–3V pulse amplitudes.
+
+### 4D.2 Results Table (Transient Readout)
+
+| Vpulse (V) | ΔVth (mV) | ID_base (µA) | ID_post (µA) | Pol_end (µC/cm²) | E/F_c (%) |
+|-----------|-----------|--------------|--------------|------------------|-----------|
+| 1.0 | 7.4 | 2.055 | 2.361 | +0.107 | 12.5 |
+| 1.5 | 11.8 | 2.055 | 2.542 | +0.095 | 26.7 |
+| 2.0 | 16.5 | 2.055 | 2.733 | +0.081 | 41.0 |
+| 2.5 | 21.3 | 2.055 | 2.933 | +0.068 | 55.4 |
+| 3.0 | 26.4 | 2.055 | 3.142 | +0.054 | 69.9 |
+
+**Key metrics:**
+- **ΔVth range:** 19.0 mV (clear differentiation vs 0.03 mV with QS)
+- **Linearity:** Excellent monotonic increase
+- **Sub-coercive:** All nodes E/F_c < 70% (well below saturation)
+
+### 4D.3 Validation Against Expectations
+
+✅ **Partial switching preserved:** Transient readout (1ns << τ_E=1µs) freezes P state  
+✅ **Voltage-dependent response:** Clear ΔVth(Vpulse) trend  
+✅ **Sub-coercive operation:** Maximum E/F_c = 69.9% (still below 100% saturation)  
+✅ **Reasonable signal:** ΔVth per pulse 7–26 mV (measurable, not overwhelming)  
+
+### 4D.4 Vpulse Recommendation for SimB
+
+**Selected: Vpulse = 2.0V** (balanced choice)
+
+| Criterion | Value | Assessment |
+|-----------|-------|------------|
+| ΔVth per pulse | 16.5 mV | Good signal, room for 20-pulse accumulation |
+| E/F_c ratio | 41.0% | Well within sub-coercive (good headroom) |
+| Pol shift | +0.081 µC/cm² | ~0.5% of P_r (appropriate partial switching) |
+| Expected 20-pulse ΔVth | ~330 mV | Comparable to calibration MW/2 |
+| CMOS compatibility | 2.0V | Standard I/O voltage |
+
+**Alternative:** Vpulse = 2.5V (ΔVth = 21.3 mV, E/F_c = 55.4%) if stronger signal needed.
+
+### 4D.5 Plots
+
+See `Simulations/py_scripts/`:
+- `simA_transient_fig1_idvgs.png` — Clear separation of ID-VGS curves
+- `simA_transient_fig2_dvth.png` — Differentiated ΔVth bar chart (SUCCESS)
+- `simA_transient_fig3_hold.png` — Pulse-hold polarization dynamics
+- `simA_transient_fig4_comparison.png` — Transient vs QS readout comparison
+
+### 4D.6 Physics Confirmation
+
+The results confirm the fundamental design principle:
+- **τ_E = 1µs** enables partial switching (pw/τ_E = 0.1)
+- **Transient readout** preserves the small P shifts during measurement
+- **Cumulative integration** is now physically achievable in SimB
+
+---
+
 ## 5. Phase 1B: LIF Transient Demonstration
 
 ### 5.1 Objective

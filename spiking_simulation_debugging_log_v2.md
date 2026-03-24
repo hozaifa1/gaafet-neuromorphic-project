@@ -237,3 +237,36 @@ Replace `Quasistationary` readout with fast `Transient` readout (1ns sweep, 0→
 
 ### Key Insight
 τ_E = 1µs is CORRECT. The old τ_E = 1ns cannot support integration (each pulse saturates). The issue is purely the measurement method, not the physics.
+
+---
+
+## 11. SimA Transient Readout — SUCCESS (Mar 2026)
+
+### Fix Applied
+Replaced `Quasistationary` readout with `Transient` readout (1ns sweep) in `sdevice_phase1a_simA_transient.cmd`.
+
+### Results
+| Vpulse (V) | ΔVth (mV) | E/F_c (%) | Status |
+|-----------|-----------|-----------|--------|
+| 1.0 | 7.4 | 12.5 | ✅ |
+| 1.5 | 11.8 | 26.7 | ✅ |
+| 2.0 | 16.5 | 41.0 | ✅ |
+| 2.5 | 21.3 | 55.4 | ✅ |
+| 3.0 | 26.4 | 69.9 | ✅ |
+
+**ΔVth range: 19.0 mV** (vs 0.03 mV with QS readout)
+
+### Validation
+✅ Partial switching preserved during measurement  
+✅ Clear voltage-dependent ΔVth response  
+✅ All nodes sub-coercive (E/F_c < 70%)  
+✅ Ready for SimB multi-pulse integration  
+
+### Vpulse Recommendation
+**Vpulse = 2.0V** (ΔVth = 16.5 mV/pulse, E/F_c = 41%)
+
+### Next Steps
+1. Apply same Transient readout fix to SimB
+2. Run SimB with Vpulse = 2.0V  
+3. Verify cumulative Vth(N) staircase
+4. Proceed to SimC (τ_P > 0)
