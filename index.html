@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAA FeFET Neuromorphic Simulator</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const PHASES = [
+          {
+            id: "resting",
+            label: "RESTING",
+            color: "#00e5ff",
+            desc: "No input. HZO polarization fully UP (P↑). Vth at maximum. Channel depleted. Neuron silent.",
+            vth: 1.0,
+            ids: 0.02,
+            pol: 0.05,
+          },
+          {
+            id: "integrate1",
+            label: "INTEGRATING (Pulse 1)",
+            color: "#b2ff59",
+            desc: "Sub-coercive pulse arrives. Partial domain flip in HZO. Vth drops slightly. I_DS rises — membrane potential building.",
+            vth: 0.75,
+            ids: 0.22,
+            pol: 0.3,
+          },
+          {
+            id: "integrate2",
+            label: "INTEGRATING (Pulse 2)",
+            color: "#ffeb3b",
+            desc: "Second pulse. More domains switch. ΔP accumulates further. Vth continues to fall. Neuron closer to threshold.",
+            vth: 0.5,
+            ids: 0.45,
+            pol: 0.58,
+          },
+          {
+            id: "leak",
+            label: "LEAKING",
+            color: "#ff9800",
+            desc: "No pulse arrives. HZO relaxes thermally. Partial domains flip back. Vth rises. I_DS drops — membrane potential decaying.",
+            vth: 0.65,
+            ids: 0.3,
+            pol: 0.4,
+          },
+          {
+            id: "integrate3",
+            label: "INTEGRATING (Pulse 3)",
+            color: "#ff5722",
+            desc: "Pulses resume. Polarization accumulates past coercive field threshold. Avalanche domain switching imminent.",
+            vth: 0.22,
+            ids: 0.72,
+            pol: 0.85,
+          },
+          {
+            id: "fire",
+            label: "FIRING! ⚡",
+            color: "#ff1744",
+            desc: "THRESHOLD CROSSED! Full domain avalanche in HZO. Vth collapses. I_DS spikes — OUTPUT ACTION POTENTIAL generated!",
+            vth: 0.02,
+            ids: 1.0,
+            pol: 1.0,
+          },
+          {
+            id: "refractory",
+            label: "REFRACTORY / RESET",
+            color: "#7c4dff",
+            desc: "Negative reset pulse applied. HZO repolarized to P↑. Vth restored. Neuron enters absolute refractory period. Ready to integrate again.",
+            vth: 1.0,
+            ids: 0.02,
+            pol: 0.05,
+          },
+        ];
+
+        function lerp(a, b, t) {
+          return a + (b - a) * t;
+        }
+
+        // ── Waveform history ──────────────────────────────────────────────────────────
+        const MAX_HIST = 120;
+
+        function useWaveform(value, max = 1) {
+          const hist = React.useRef(Array(MAX_HIST).fill(0));
+          React.useEffect(() => {
+            hist.current = [...hist.current.slice(1), value / max];
+          }, [value, max]);
+          return hist.current;
+        }
+
+        // ── SVG Waveform ──────────────────────────────────────────────────────────────
+        function Waveform({ data, color, label, unit, currentVal, width = 260, height = 70 }) {
+          const pts = data
+            .map((v, i) => `${(i / (MAX_HIST - 1)) * width},${height - 4 - v * (height - 8)}`)
+            .join(" ");
+          return React.createElement('div', { style: { marginBottom: 10 } },
+            React.createElement('div', { style: { display: "flex", justifyContent: "space-between", marginBottom: 2 } },
+              React.createElement('span', { style: { fontSize: 10, color: "#aaa", fontFamily: "monospace", letterSpacing: 1 } }, label),
+              React.createElement('span', { style: { fontSize: 11, color, fontFamily: "monospace", fontWeight: 700 } }, currentVal)
+            ),
+            React.createElement('svg', { width, height, style: { display: "block", background: "#0a0a0f", borderRadius: 4, border: "1px solid #1a1a2e" } },
+              React.createElement('polyline', { points: pts, fill: "none", stroke: color, strokeWidth: 1.5, strokeLinejoin: "round" }),
+              React.createElement('line', { x1: 0, y1: height - 4, x2: width, y2: height - 4, stroke: "#222", strokeWidth: 1 })
+            )
+          );
+        }
+
+        // ── GAA Cross-section SVG ─────────────────────────────────────────────────────
+        function GAASection({ pol, phase }) {
+          const firing = phase.id === "fire";
+          const leaking = phase.id === "leak";
+          const cx = 80, cy = 80, r = 42;
+          const domainCount = 12;
+          const polFrac = pol;
+
+          return React.createElement('svg', { width: 160, height: 160, viewBox: "0 0 160 160" },
+            // Gate metal ring
+            React.createElement('circle', { cx, cy, r: r + 18, fill: "#1a1a2e", stroke: "#4fc3f7", strokeWidth: 2 }),
+            React.createElement('text', { x: cx, y: cy - r - 10, textAnchor: "middle", fill: "#4fc3f7", fontSize: 8, fontFamily: "monospace" }, "GATE (TiN)"),
+
+            // HZO ring
+            React.createElement('circle', { cx, cy, r: r + 10, fill: "none", stroke: firing ? "#ff1744" : leaking ? "#ff9800" : "#7c4dff", strokeWidth: 8, opacity: 0.7 }),
+            React.createElement('text', { x: cx + r + 14, y: cy + 4, fill: firing ? "#ff1744" : "#b39ddb", fontSize: 7, fontFamily: "monospace" }, "HZO"),
+
+            // IL ring
+            React.createElement('circle', { cx, cy, r: r + 2, fill: "none", stroke: "#90caf9", strokeWidth: 3, opacity: 0.5 }),
+
+            // Channel
+            React.createElement('circle', { cx, cy, r, fill: firing ? "#ff572255" : "#0d47a1" }),
+            React.createElement('text', { x: cx, y: cy + 4, textAnchor: "middle", fill: "#fff", fontSize: 9, fontFamily: "monospace", fontWeight: 700 }, "Si Ch"),
+
+            // Domain arrows
+            ...Array.from({ length: domainCount }).map((_, i) => {
+              const angle = (i / domainCount) * Math.PI * 2;
+              const rx = cx + (r + 6) * Math.cos(angle);
+              const ry = cy + (r + 6) * Math.sin(angle);
+              const flipped = i < Math.round(polFrac * domainCount);
+              const arrowColor = flipped ? (firing ? "#ff1744" : "#b2ff59") : "#4fc3f7";
+              return React.createElement('g', { key: i },
+                React.createElement('circle', { cx: rx, cy: ry, r: 4, fill: arrowColor, opacity: 0.85 }),
+                React.createElement('line', {
+                  x1: rx,
+                  y1: ry + (flipped ? 3 : -3),
+                  x2: rx,
+                  y2: ry - (flipped ? 3 : -3),
+                  stroke: "#000",
+                  strokeWidth: 1.2,
+                  markerEnd: "url(#arr)"
+                })
+              );
+            }),
+
+            // Firing animation
+            firing && React.createElement(React.Fragment, null,
+              React.createElement('circle', { 
+                cx, cy, r: r + 24, fill: "none", stroke: "#ff1744", strokeWidth: 2, opacity: 0.4,
+                children: [
+                  React.createElement('animate', { attributeName: "r", values: `${r + 18};${r + 34};${r + 18}`, dur: "0.6s", repeatCount: "indefinite" }),
+                  React.createElement('animate', { attributeName: "opacity", values: "0.5;0;0.5", dur: "0.6s", repeatCount: "indefinite" })
+                ]
+              }),
+              React.createElement('text', { x: cx, y: cy + r + 30, textAnchor: "middle", fill: "#ff1744", fontSize: 10, fontFamily: "monospace", fontWeight: 700 }, "⚡ SPIKE!")
+            ),
+
+            React.createElement('defs', null,
+              React.createElement('marker', { id: "arr", markerWidth: 4, markerHeight: 4, refX: 2, refY: 2, orient: "auto" },
+                React.createElement('path', { d: "M0,0 L4,2 L0,4 Z", fill: "#000" })
+              )
+            )
+          );
+        }
+
+        // ── Main circuit SVG ──────────────────────────────────────────────────────────
+        function CircuitDiagram({ phase, animT }) {
+          const firing = phase.id === "fire";
+          const leaking = phase.id === "leak";
+          const integrating = phase.id.startsWith("integrate");
+          const resting = phase.id === "resting";
+          const refractory = phase.id === "refractory";
+
+          const wireColor = (active) => active ? phase.color : "#2a2a4a";
+          const glowFilter = firing ? "url(#glow)" : "none";
+
+          // Current flow animation offset
+          const dashOffset = firing ? animT * -30 : integrating ? animT * -15 : 0;
+
+          return React.createElement('svg', { width: "100%", viewBox: "0 0 520 340", style: { fontFamily: "monospace" } },
+            React.createElement('defs', null,
+              React.createElement('filter', { id: "glow" },
+                React.createElement('feGaussianBlur', { stdDeviation: 3, result: "blur" }),
+                React.createElement('feMerge', null,
+                  React.createElement('feMergeNode', { in: "blur" }),
+                  React.createElement('feMergeNode', { in: "SourceGraphic" })
+                )
+              ),
+              React.createElement('filter', { id: "softglow" },
+                React.createElement('feGaussianBlur', { stdDeviation: 1.5, result: "blur" }),
+                React.createElement('feMerge', null,
+                  React.createElement('feMergeNode', { in: "blur" }),
+                  React.createElement('feMergeNode', { in: "SourceGraphic" })
+                )
+              ),
+              React.createElement('marker', { id: "arrowB", markerWidth: 6, markerHeight: 6, refX: 3, refY: 3, orient: "auto" },
+                React.createElement('path', { d: "M0,0 L6,3 L0,6 Z", fill: phase.color })
+              ),
+              React.createElement('marker', { id: "arrowW", markerWidth: 6, markerHeight: 6, refX: 3, refY: 3, orient: "auto" },
+                React.createElement('path', { d: "M0,0 L6,3 L0,6 Z", fill: "#4fc3f7" })
+              )
+            ),
+
+            // Background grid
+            React.createElement('rect', { width: 520, height: 340, fill: "#050510", rx: 8 }),
+            ...Array.from({ length: 26 }).map((_, i) =>
+              React.createElement('line', { key: `v${i}`, x1: i * 20, y1: 0, x2: i * 20, y2: 340, stroke: "#0d0d20", strokeWidth: 1 })
+            ),
+            ...Array.from({ length: 17 }).map((_, i) =>
+              React.createElement('line', { key: `h${i}`, x1: 0, y1: i * 20, x2: 520, y2: i * 20, stroke: "#0d0d20", strokeWidth: 1 })
+            ),
+
+            // VDD Rail
+            React.createElement('line', { x1: 260, y1: 10, x2: 260, y2: 30, stroke: "#ff5252", strokeWidth: 2 }),
+            React.createElement('text', { x: 270, y: 22, fill: "#ff5252", fontSize: 10, fontWeight: 700 }, "VDD"),
+            React.createElement('line', { x1: 220, y1: 30, x2: 300, y2: 30, stroke: "#ff5252", strokeWidth: 2 }),
+
+            // R_load
+            React.createElement('rect', { x: 245, y: 30, width: 30, height: 50, rx: 3, fill: "#1a1a3a", stroke: "#4fc3f7", strokeWidth: 1.5 }),
+            React.createElement('text', { x: 260, y: 50, textAnchor: "middle", fill: "#4fc3f7", fontSize: 8 }, "R"),
+            React.createElement('text', { x: 260, y: 62, textAnchor: "middle", fill: "#4fc3f7", fontSize: 7 }, "LOAD"),
+            React.createElement('line', { x1: 260, y1: 80, x2: 260, y2: 100, stroke: wireColor(firing || integrating), strokeWidth: 2 }),
+
+            // DRAIN node
+            React.createElement('circle', { cx: 260, cy: 100, r: 4, fill: wireColor(firing || integrating) }),
+            React.createElement('text', { x: 275, y: 104, fill: "#aaa", fontSize: 8 }, "DRAIN"),
+            // Drain → Output spike line
+            React.createElement('line', { 
+              x1: 260, y1: 100, x2: 360, y2: 100,
+              stroke: wireColor(firing),
+              strokeWidth: firing ? 2.5 : 1.5,
+              strokeDasharray: firing ? "6,3" : "none",
+              strokeDashoffset: dashOffset,
+              markerEnd: firing ? "url(#arrowB)" : "",
+              filter: firing ? glowFilter : ""
+            }),
+            React.createElement('text', { x: 370, y: 97, fill: firing ? phase.color : "#555", fontSize: 8 }, "SPIKE OUT"),
+            React.createElement('rect', { 
+              x: 368, y: 101, width: 60, height: 20, rx: 3,
+              fill: firing ? "#1a0005" : "#0a0a14",
+              stroke: firing ? "#ff1744" : "#222",
+              strokeWidth: 1 
+            }),
+            React.createElement('text', { x: 398, y: 114, textAnchor: "middle", fill: firing ? "#ff1744" : "#444", fontSize: 8 },
+              firing ? "HIGH" : "LOW"
+            ),
+
+            // GAA FeFET Body
+            React.createElement('line', { x1: 260, y1: 100, x2: 260, y2: 115, stroke: wireColor(firing || integrating), strokeWidth: 2 }),
+            React.createElement('rect', { 
+              x: 200, y: 115, width: 120, height: 110, rx: 6,
+              fill: "#080818",
+              stroke: phase.color,
+              strokeWidth: firing ? 2.5 : 1.5,
+              filter: firing ? glowFilter : ""
+            }),
+            React.createElement('text', { x: 260, y: 132, textAnchor: "middle", fill: phase.color, fontSize: 9, fontWeight: 700 }, "GAA FeFET"),
+
+            // Nanosheet channel inside box
+            React.createElement('rect', { x: 230, y: 140, width: 60, height: 30, rx: 12, fill: "#0d1b4a", stroke: "#1565c0", strokeWidth: 1.5 }),
+            React.createElement('text', { x: 260, y: 158, textAnchor: "middle", fill: "#90caf9", fontSize: 7 }, "NANOSHEET Ch"),
+
+            // HZO layer around nanosheet
+            React.createElement('rect', { 
+              x: 222, y: 136, width: 76, height: 38, rx: 14, fill: "none",
+              stroke: leaking ? "#ff9800" : firing ? "#ff1744" : "#7c4dff",
+              strokeWidth: 3,
+              strokeDasharray: leaking ? "4,2" : "none",
+              opacity: 0.8
+            }),
+            React.createElement('text', { x: 303, y: 147, fill: "#b39ddb", fontSize: 6.5 }, "HZO"),
+
+            // Gate metal
+            React.createElement('rect', { x: 214, y: 130, width: 92, height: 52, rx: 16, fill: "none", stroke: "#4fc3f7", strokeWidth: 1, strokeDasharray: "3,2", opacity: 0.5 }),
+            React.createElement('text', { x: 310, y: 160, fill: "#4fc3f7", fontSize: 6.5 }, "TiN Gate"),
+
+            // Polarization indicator
+            React.createElement('text', { 
+              x: 260, y: 182, textAnchor: "middle", fill: leaking ? "#ff9800" : phase.color, fontSize: 7
+            },
+              leaking ? "P: ↓ relaxing" : firing ? "P: ↑ FULL SWITCH" : `P: ↑ ${Math.round(PHASES.find(p => p.id === phase.id)?.pol * 100)}%`
+            ),
+
+            // S/D labels
+            React.createElement('text', { x: 205, y: 126, fill: "#4fc3f7", fontSize: 7 }, "D"),
+            React.createElement('text', { x: 205, y: 232, fill: "#4fc3f7", fontSize: 7 }, "S"),
+
+            // Gate input line
+            React.createElement('line', { 
+              x1: 214, y1: 155, x2: 130, y2: 155,
+              stroke: wireColor(integrating || refractory),
+              strokeWidth: 1.5,
+              strokeDasharray: integrating ? "5,3" : "none",
+              strokeDashoffset: dashOffset,
+              markerEnd: integrating ? "url(#arrowB)" : ""
+            }),
+            React.createElement('text', { x: 70, y: 150, fill: "#aaa", fontSize: 7.5 }, "VIN PULSES"),
+
+            // Input pulse source
+            React.createElement('rect', { x: 28, y: 140, width: 50, height: 30, rx: 4, fill: "#0a1520", stroke: wireColor(integrating), strokeWidth: 1.5 }),
+            React.createElement('text', { x: 53, y: 153, textAnchor: "middle", fill: integrating ? phase.color : "#556", fontSize: 7 }, "SYN"),
+            React.createElement('text', { x: 53, y: 163, textAnchor: "middle", fill: integrating ? phase.color : "#556", fontSize: 7 }, "INPUT"),
+
+            // Sub-coercive pulse label
+            integrating && React.createElement('text', { x: 130, y: 167, fill: phase.color, fontSize: 6.5 }, "sub-coercive Vg"),
+
+            // Reset pulse path
+            refractory && React.createElement(React.Fragment, null,
+              React.createElement('line', { x1: 130, y1: 155, x2: 90, y2: 155, stroke: "#7c4dff", strokeWidth: 2, markerEnd: "url(#arrowB)" }),
+              React.createElement('text', { x: 55, y: 148, fill: "#7c4dff", fontSize: 7 }, "−Vg RESET")
+            ),
+
+            // Source to GND
+            React.createElement('line', { x1: 260, y1: 225, x2: 260, y2: 250, stroke: wireColor(firing || integrating), strokeWidth: 2 }),
+            React.createElement('circle', { cx: 260, cy: 225, r: 3, fill: wireColor(firing || integrating) }),
+            React.createElement('text', { x: 275, y: 229, fill: "#aaa", fontSize: 8 }, "SOURCE"),
+
+            // GND symbol
+            React.createElement('line', { x1: 240, y1: 250, x2: 280, y2: 250, stroke: "#4fc3f7", strokeWidth: 2 }),
+            React.createElement('line', { x1: 246, y1: 256, x2: 274, y2: 256, stroke: "#4fc3f7", strokeWidth: 1.5 }),
+            React.createElement('line', { x1: 252, y1: 262, x2: 268, y2: 262, stroke: "#4fc3f7", strokeWidth: 1 }),
+            React.createElement('text', { x: 288, y: 256, fill: "#4fc3f7", fontSize: 8 }, "GND"),
+
+            // Feedback cap
+            React.createElement('line', { x1: 360, y1: 100, x2: 420, y2: 100, stroke: "#4fc3f7", strokeWidth: 1, opacity: 0.4 }),
+            React.createElement('line', { x1: 420, y1: 90, x2: 420, y2: 160, stroke: "#4fc3f7", strokeWidth: 1, opacity: 0.4 }),
+            React.createElement('line', { x1: 415, y1: 160, x2: 425, y2: 160, stroke: "#4fc3f7", strokeWidth: 1.5, opacity: 0.6 }),
+            React.createElement('line', { x1: 412, y1: 165, x2: 428, y2: 165, stroke: "#4fc3f7", strokeWidth: 1.5, opacity: 0.6 }),
+            React.createElement('text', { x: 430, y: 164, fill: "#4fc3f7", fontSize: 7, opacity: 0.7 }, "C_fb"),
+            React.createElement('line', { x1: 420, y1: 165, x2: 420, y2: 210, stroke: "#4fc3f7", strokeWidth: 1, opacity: 0.4 }),
+            React.createElement('line', { x1: 420, y1: 210, x2: 290, y2: 210, stroke: "#4fc3f7", strokeWidth: 1, opacity: 0.4 }),
+            React.createElement('line', { x1: 290, y1: 210, x2: 290, y2: 250, stroke: "#4fc3f7", strokeWidth: 1, opacity: 0.4 }),
+            React.createElement('text', { x: 340, y: 208, fill: "#4fc3f7", fontSize: 6.5, opacity: 0.6 }, "feedback loop"),
+
+            // Current flow animation
+            (firing || integrating) && React.createElement('line', {
+              x1: 260, y1: 30,
+              x2: 260, y2: 225,
+              stroke: phase.color,
+              strokeWidth: 2,
+              strokeDasharray: "4,4",
+              strokeDashoffset: dashOffset,
+              opacity: 0.4,
+              markerEnd: "url(#arrowB)"
+            }),
+
+            // Phase label
+            React.createElement('rect', { x: 10, y: 275, width: 500, height: 55, rx: 5, fill: "#0a0a20", stroke: phase.color, strokeWidth: 1 }),
+            React.createElement('text', { x: 20, y: 291, fill: phase.color, fontSize: 9, fontWeight: 700 }, phase.label),
+            React.createElement('text', { 
+              x: 20, y: 307, fill: "#ccc", fontSize: 7.5, style: { whiteSpace: "pre" }
+            },
+              phase.desc.length > 90 ? phase.desc.slice(0, 90) + "…" : phase.desc
+            ),
+            React.createElement('text', { 
+              x: 20, y: 321, fill: "#888", fontSize: 7
+            },
+              phase.desc.length > 90 ? phase.desc.slice(90) : ""
+            )
+          );
+        }
+
+        // ── Polarization Bar ──────────────────────────────────────────────────────────
+        function PolarizationBar({ pol, color }) {
+          return React.createElement('div', null,
+            React.createElement('div', { style: { display: "flex", justifyContent: "space-between", marginBottom: 3 } },
+              React.createElement('span', { style: { fontSize: 10, color: "#aaa", fontFamily: "monospace" } }, "HZO POLARIZATION ΔP"),
+              React.createElement('span', { style: { fontSize: 10, color, fontFamily: "monospace" } }, `${Math.round(pol * 100)}%`)
+            ),
+            React.createElement('div', { style: { background: "#0a0a1e", borderRadius: 4, height: 14, border: "1px solid #1a1a3e", overflow: "hidden" } },
+              React.createElement('div', {
+                style: {
+                  width: `${pol * 100}%`,
+                  height: "100%",
+                  background: `linear-gradient(90deg, #7c4dff, ${color})`,
+                  transition: "width 0.4s ease",
+                  borderRadius: 4,
+                  boxShadow: `0 0 8px ${color}88`,
+                }
+              })
+            )
+          );
+        }
+
+        // ── Main App ──────────────────────────────────────────────────────────────────
+        function App() {
+          const [phaseIdx, setPhaseIdx] = React.useState(0);
+          const [playing, setPlaying] = React.useState(false);
+          const [animT, setAnimT] = React.useState(0);
+          const [displayVth, setDisplayVth] = React.useState(PHASES[0].vth);
+          const [displayIds, setDisplayIds] = React.useState(PHASES[0].ids);
+          const [displayPol, setDisplayPol] = React.useState(PHASES[0].pol);
+
+          const animRef = React.useRef(null);
+          const tRef = React.useRef(0);
+          const interpRef = React.useRef({ vth: PHASES[0].vth, ids: PHASES[0].ids, pol: PHASES[0].pol });
+
+          const phase = PHASES[phaseIdx];
+
+          // Animate t
+          React.useEffect(() => {
+            const tick = () => {
+              tRef.current += 0.016;
+              setAnimT(tRef.current);
+              const target = PHASES[phaseIdx];
+              interpRef.current.vth = lerp(interpRef.current.vth, target.vth, 0.07);
+              interpRef.current.ids = lerp(interpRef.current.ids, target.ids, 0.07);
+              interpRef.current.pol = lerp(interpRef.current.pol, target.pol, 0.07);
+              setDisplayVth(interpRef.current.vth);
+              setDisplayIds(interpRef.current.ids);
+              setDisplayPol(interpRef.current.pol);
+              animRef.current = requestAnimationFrame(tick);
+            };
+            animRef.current = requestAnimationFrame(tick);
+            return () => cancelAnimationFrame(animRef.current);
+          }, [phaseIdx]);
+
+          // Auto-play
+          React.useEffect(() => {
+            if (!playing) return;
+            const timer = setTimeout(() => {
+              setPhaseIdx((p) => (p + 1) % PHASES.length);
+            }, 2800);
+            return () => clearTimeout(timer);
+          }, [playing, phaseIdx]);
+
+          const vthHist = useWaveform(displayVth);
+          const idsHist = useWaveform(displayIds);
+          const polHist = useWaveform(displayPol);
+
+          return React.createElement('div', {
+            style: {
+              minHeight: "100vh",
+              background: "#030309",
+              color: "#eee",
+              fontFamily: "'Courier New', monospace",
+              padding: "16px",
+              boxSizing: "border-box",
+            }
+          },
+            // Header
+            React.createElement('div', { style: { textAlign: "center", marginBottom: 16 } },
+              React.createElement('div', { style: { fontSize: 9, letterSpacing: 6, color: "#4fc3f7", textTransform: "uppercase", marginBottom: 4 } },
+                "Neuromorphic Device Simulator"
+              ),
+              React.createElement('h1', {
+                style: {
+                  fontSize: "clamp(16px, 3vw, 22px)",
+                  fontWeight: 900,
+                  margin: 0,
+                  letterSpacing: 2,
+                  background: "linear-gradient(90deg, #4fc3f7, #7c4dff, #ff1744)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }
+              }, "GAA FeFET — Leaky Integrate & Fire Neuron"),
+              React.createElement('div', { style: { fontSize: 8, color: "#556", letterSpacing: 3, marginTop: 4 } },
+                "HZO · NANOSHEET · 360° GATE WRAP · POLARIZATION DYNAMICS"
+              )
+            ),
+
+            // Main grid
+            React.createElement('div', {
+              style: {
+                display: "grid",
+                gridTemplateColumns: "1fr 280px",
+                gap: 12,
+                maxWidth: 1100,
+                margin: "0 auto",
+              }
+            },
+              // Left — circuit
+              React.createElement('div', {
+                style: {
+                  background: "#070712",
+                  border: `1px solid ${phase.color}44`,
+                  borderRadius: 8,
+                  padding: 12,
+                  boxShadow: `0 0 20px ${phase.color}22`,
+                  transition: "box-shadow 0.3s",
+                }
+              },
+                React.createElement('div', { style: { fontSize: 8, color: "#4fc3f7", letterSpacing: 3, marginBottom: 8 } },
+                  "◈ CIRCUIT SCHEMATIC"
+                ),
+                React.createElement(CircuitDiagram, { phase, animT })
+              ),
+
+              // Right panel
+              React.createElement('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
+
+                // GAA cross section
+                React.createElement('div', {
+                  style: {
+                    background: "#070712",
+                    border: "1px solid #1a1a3a",
+                    borderRadius: 8,
+                    padding: 10,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                  }
+                },
+                  React.createElement('div', { style: { fontSize: 8, color: "#4fc3f7", letterSpacing: 3, marginBottom: 8 } },
+                    "◈ DEVICE CROSS-SECTION"
+                  ),
+                  React.createElement(GAASection, { pol: displayPol, phase })
+                ),
+
+                // Waveforms
+                React.createElement('div', {
+                  style: {
+                    background: "#070712",
+                    border: "1px solid #1a1a3a",
+                    borderRadius: 8,
+                    padding: 10,
+                  }
+                },
+                  React.createElement('div', { style: { fontSize: 8, color: "#4fc3f7", letterSpacing: 3, marginBottom: 8 } },
+                    "◈ REAL-TIME TELEMETRY"
+                  ),
+                  React.createElement(Waveform, { data: vthHist, color: phase.color, label: "VTH (V)", unit: "V", currentVal: displayVth.toFixed(2) }),
+                  React.createElement(Waveform, { data: idsHist, color: phase.color, label: "IDS (μA)", unit: "μA", currentVal: (displayIds * 1000).toFixed(0) }),
+                  React.createElement(Waveform, { data: polHist, color: phase.color, label: "ΔP (norm)", unit: "", currentVal: displayPol.toFixed(2) })
+                ),
+
+                // Polarization bar
+                React.createElement('div', {
+                  style: {
+                    background: "#070712",
+                    border: "1px solid #1a1a3a",
+                    borderRadius: 8,
+                    padding: 10,
+                  }
+                },
+                  React.createElement(PolarizationBar, { pol: displayPol, color: phase.color })
+                ),
+
+                // Controls
+                React.createElement('div', {
+                  style: {
+                    background: "#070712",
+                    border: "1px solid #1a1a3a",
+                    borderRadius: 8,
+                    padding: 10,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }
+                },
+                  React.createElement('div', { style: { fontSize: 8, color: "#4fc3f7", letterSpacing: 3, marginBottom: 4 } },
+                    "◈ SIMULATION CONTROLS"
+                  ),
+                  
+                  React.createElement('div', { style: { display: "flex", gap: 8 } },
+                    React.createElement('button', {
+                      onClick: () => setPlaying(!playing),
+                      style: {
+                        flex: 1,
+                        padding: "8px 12px",
+                        background: playing ? phase.color : "#1a1a3a",
+                        color: "#fff",
+                        border: `1px solid ${phase.color}`,
+                        borderRadius: 4,
+                        fontFamily: "monospace",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }
+                    }, playing ? "⏸ PAUSE" : "▶ PLAY"),
+                    
+                    React.createElement('button', {
+                      onClick: () => {
+                        setPlaying(false);
+                        setPhaseIdx(0);
+                        tRef.current = 0;
+                        interpRef.current = { vth: PHASES[0].vth, ids: PHASES[0].ids, pol: PHASES[0].pol };
+                        setDisplayVth(PHASES[0].vth);
+                        setDisplayIds(PHASES[0].ids);
+                        setDisplayPol(PHASES[0].pol);
+                      },
+                      style: {
+                        padding: "8px 12px",
+                        background: "#1a1a3a",
+                        color: "#4fc3f7",
+                        border: "1px solid #4fc3f7",
+                        borderRadius: 4,
+                        fontFamily: "monospace",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }
+                    }, "↺ RESET")
+                  ),
+
+                  React.createElement('div', { style: { display: "flex", flexDirection: "column", gap: 4 } },
+                    React.createElement('div', { style: { fontSize: 8, color: "#aaa", marginBottom: 2 } }, "PHASE SELECTOR"),
+                    React.createElement('div', { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 } },
+                      ...PHASES.map((p, i) =>
+                        React.createElement('button', {
+                          key: p.id,
+                          onClick: () => {
+                            setPhaseIdx(i);
+                            setPlaying(false);
+                          },
+                          style: {
+                            padding: "6px 4px",
+                            background: i === phaseIdx ? p.color : "#1a1a3a",
+                            color: i === phaseIdx ? "#000" : "#666",
+                            border: `1px solid ${i === phaseIdx ? p.color : "#2a2a4a"}`,
+                            borderRadius: 3,
+                            fontFamily: "monospace",
+                            fontSize: 7,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                          }
+                        }, p.label.split(' ')[0])
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
