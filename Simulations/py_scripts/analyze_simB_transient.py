@@ -210,22 +210,99 @@ fig2.savefig(os.path.join(OUT_DIR, "simB_transient_fig2_staircase.png"), dpi=150
 print("Saved simB_transient_fig2_staircase.png")
 
 # ── Fig 3: Polarization evolution during pulse holds ──
-fig3, ax3 = plt.subplots(figsize=(8, 5))
+fig3, (ax3a, ax3b) = plt.subplots(2, 1, figsize=(10, 8))
+
+# Panel A: All pulses overlaid with time alignment
 cmap = plt.get_cmap("plasma")
 for i, pulse_num in enumerate(SELECTED_PULSES):
     t_ns = simb_pulse_hold[pulse_num][TIME_COL] * 1e9
     poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
     color = cmap(i / (len(SELECTED_PULSES) - 1))
-    ax3.plot(t_ns, poly_uc, color=color, lw=1.8, 
-             label=f"Pulse {pulse_num} (Pol_end = {poly_uc[-1]:+.3f})")
-ax3.set_xlabel("Time (ns)")
-ax3.set_ylabel("Pol/y (µC/cm²)")
-ax3.set_title("SimB — Polarization Evolution During Selected Pulse Holds")
-ax3.legend(fontsize=9)
-ax3.grid(True, alpha=0.3)
+    
+    # Plot with thicker lines and markers for better visibility
+    ax3a.plot(t_ns, poly_uc, color=color, lw=2.5, alpha=0.8,
+             label=f"Pulse {pulse_num}")
+    
+    # Add markers at start and end points
+    ax3a.plot(t_ns[0], poly_uc[0], 'o', color=color, markersize=6, alpha=0.9)
+    ax3a.plot(t_ns[-1], poly_uc[-1], 's', color=color, markersize=6, alpha=0.9)
+
+ax3a.set_xlabel("Time within pulse (ns)")
+ax3a.set_ylabel("Pol/y (µC/cm²)")
+ax3a.set_title("SimB — Polarization Evolution During Pulse Holds (Overlaid)")
+ax3a.legend(fontsize=9, loc='best')
+ax3a.grid(True, alpha=0.3)
+ax3a.set_xlim(0, 110)  # Set consistent x-axis
+
+# Add annotations for key points
+for i, pulse_num in enumerate([1, 20]):  # Annotate first and last
+    t_ns = simb_pulse_hold[pulse_num][TIME_COL] * 1e9
+    poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
+    color = cmap([0, 3][i] / 3)  # Get appropriate color
+    
+    # Annotate end point
+    ax3a.annotate(f"P{pulse_num}: {poly_uc[-1]:+.3f}", 
+                 xy=(t_ns[-1], poly_uc[-1]), 
+                 xytext=(t_ns[-1]+5, poly_uc[-1]+0.02),
+                 fontsize=8, color=color,
+                 arrowprops=dict(arrowstyle='->', color=color, alpha=0.7))
+
+# Panel B: Sequential timeline showing cumulative evolution
+fig3b, ax3b = plt.subplots(figsize=(10, 4))
+
+# Create a continuous timeline showing all pulses sequentially
+total_time = 0
+pulse_times = []
+pulse_pol_values = []
+
+for i, pulse_num in enumerate(SELECTED_PULSES):
+    t_ns = simb_pulse_hold[pulse_num][TIME_COL] * 1e9
+    poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
+    
+    # Add gap between pulses for visualization
+    if i > 0:
+        total_time += 20  # 20ns gap
+    
+    # Shift time to create continuous timeline
+    shifted_time = t_ns + total_time
+    pulse_times.extend(shifted_time)
+    pulse_pol_values.extend(poly_uc)
+    
+    # Plot this pulse segment
+    color = cmap(i / (len(SELECTED_PULSES) - 1))
+    ax3b.plot(shifted_time, poly_uc, color=color, lw=2.5, alpha=0.8,
+             label=f"Pulse {pulse_num}")
+    
+    # Add vertical line to show pulse boundaries
+    ax3b.axvline(x=total_time, color='gray', linestyle='--', alpha=0.3)
+    
+    total_time = shifted_time[-1]
+
+ax3b.set_xlabel("Absolute Time (ns)")
+ax3b.set_ylabel("Pol/y (µC/cm²)")
+ax3b.set_title("SimB — Sequential Pulse Evolution Timeline")
+ax3b.grid(True, alpha=0.3)
+
+# Add pulse number labels
+for i, pulse_num in enumerate(SELECTED_PULSES):
+    if i < len(SELECTED_PULSES) - 1:
+        next_pulse_start = (i + 1) * 120  # Approximate pulse start times
+        ax3b.text(next_pulse_start - 60, ax3b.get_ylim()[1] * 0.9, 
+                f"Pulse {pulse_num}", ha='center', fontsize=8,
+                bbox=dict(boxstyle="round,pad=0.2", facecolor='lightblue', alpha=0.5))
+
+# Save the main figure (Panel A)
 fig3.tight_layout()
 fig3.savefig(os.path.join(OUT_DIR, "simB_transient_fig3_pulse_pol.png"), dpi=150)
 print("Saved simB_transient_fig3_pulse_pol.png")
+
+# Save the timeline figure (Panel B) as separate figure
+fig3b.tight_layout()
+fig3b.savefig(os.path.join(OUT_DIR, "simB_transient_fig3_timeline.png"), dpi=150)
+print("Saved simB_transient_fig3_timeline.png")
+
+# Close the timeline figure to free memory
+plt.close(fig3b)
 
 # ── Fig 4: Polarization at readout points (showing accumulation) ──
 fig4, ax4 = plt.subplots(figsize=(7, 5))
