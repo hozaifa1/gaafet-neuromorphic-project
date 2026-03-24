@@ -210,99 +210,152 @@ fig2.savefig(os.path.join(OUT_DIR, "simB_transient_fig2_staircase.png"), dpi=150
 print("Saved simB_transient_fig2_staircase.png")
 
 # ── Fig 3: Polarization evolution during pulse holds ──
-fig3, (ax3a, ax3b) = plt.subplots(2, 1, figsize=(10, 8))
+fig3, axes = plt.subplots(2, 2, figsize=(14, 10))
+fig3.suptitle("SimB — Polarization Evolution During Pulse Holds", fontsize=14, fontweight='bold')
 
-# Panel A: All pulses overlaid with time alignment
+# Panel A: Normalized time overlay (all pulses aligned to 0-100ns)
+ax3a = axes[0, 0]
 cmap = plt.get_cmap("plasma")
+
 for i, pulse_num in enumerate(SELECTED_PULSES):
     t_ns = simb_pulse_hold[pulse_num][TIME_COL] * 1e9
     poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
+    
+    # Normalize time to 0-100ns range
+    t_norm = t_ns - t_ns[0]
+    
     color = cmap(i / (len(SELECTED_PULSES) - 1))
     
-    # Plot with thicker lines and markers for better visibility
-    ax3a.plot(t_ns, poly_uc, color=color, lw=2.5, alpha=0.8,
+    # Plot with thicker lines
+    ax3a.plot(t_norm, poly_uc, color=color, lw=2.5, alpha=0.8,
              label=f"Pulse {pulse_num}")
     
-    # Add markers at start and end points
-    ax3a.plot(t_ns[0], poly_uc[0], 'o', color=color, markersize=6, alpha=0.9)
-    ax3a.plot(t_ns[-1], poly_uc[-1], 's', color=color, markersize=6, alpha=0.9)
+    # Add markers at key points
+    ax3a.plot(t_norm[0], poly_uc[0], 'o', color=color, markersize=6)
+    ax3a.plot(t_norm[-1], poly_uc[-1], 's', color=color, markersize=6)
 
 ax3a.set_xlabel("Time within pulse (ns)")
 ax3a.set_ylabel("Pol/y (µC/cm²)")
-ax3a.set_title("SimB — Polarization Evolution During Pulse Holds (Overlaid)")
+ax3a.set_title("Panel A: Time-Normalized Overlay")
 ax3a.legend(fontsize=9, loc='best')
 ax3a.grid(True, alpha=0.3)
-ax3a.set_xlim(0, 110)  # Set consistent x-axis
+ax3a.set_xlim(0, 105)
 
-# Add annotations for key points
-for i, pulse_num in enumerate([1, 20]):  # Annotate first and last
-    t_ns = simb_pulse_hold[pulse_num][TIME_COL] * 1e9
-    poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
-    color = cmap([0, 3][i] / 3)  # Get appropriate color
-    
-    # Annotate end point
-    ax3a.annotate(f"P{pulse_num}: {poly_uc[-1]:+.3f}", 
-                 xy=(t_ns[-1], poly_uc[-1]), 
-                 xytext=(t_ns[-1]+5, poly_uc[-1]+0.02),
-                 fontsize=8, color=color,
-                 arrowprops=dict(arrowstyle='->', color=color, alpha=0.7))
-
-# Panel B: Sequential timeline showing cumulative evolution
-fig3b, ax3b = plt.subplots(figsize=(10, 4))
-
-# Create a continuous timeline showing all pulses sequentially
-total_time = 0
-pulse_times = []
-pulse_pol_values = []
+# Panel B: Absolute time view (showing actual simulation times)
+ax3b = axes[0, 1]
 
 for i, pulse_num in enumerate(SELECTED_PULSES):
     t_ns = simb_pulse_hold[pulse_num][TIME_COL] * 1e9
     poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
     
-    # Add gap between pulses for visualization
-    if i > 0:
-        total_time += 20  # 20ns gap
-    
-    # Shift time to create continuous timeline
-    shifted_time = t_ns + total_time
-    pulse_times.extend(shifted_time)
-    pulse_pol_values.extend(poly_uc)
-    
-    # Plot this pulse segment
     color = cmap(i / (len(SELECTED_PULSES) - 1))
-    ax3b.plot(shifted_time, poly_uc, color=color, lw=2.5, alpha=0.8,
+    
+    # Plot with absolute time
+    ax3b.plot(t_ns, poly_uc, color=color, lw=2.5, alpha=0.8,
              label=f"Pulse {pulse_num}")
-    
-    # Add vertical line to show pulse boundaries
-    ax3b.axvline(x=total_time, color='gray', linestyle='--', alpha=0.3)
-    
-    total_time = shifted_time[-1]
 
 ax3b.set_xlabel("Absolute Time (ns)")
 ax3b.set_ylabel("Pol/y (µC/cm²)")
-ax3b.set_title("SimB — Sequential Pulse Evolution Timeline")
+ax3b.set_title("Panel B: Absolute Time View")
+ax3b.legend(fontsize=9, loc='best')
 ax3b.grid(True, alpha=0.3)
 
-# Add pulse number labels
-for i, pulse_num in enumerate(SELECTED_PULSES):
-    if i < len(SELECTED_PULSES) - 1:
-        next_pulse_start = (i + 1) * 120  # Approximate pulse start times
-        ax3b.text(next_pulse_start - 60, ax3b.get_ylim()[1] * 0.9, 
-                f"Pulse {pulse_num}", ha='center', fontsize=8,
-                bbox=dict(boxstyle="round,pad=0.2", facecolor='lightblue', alpha=0.5))
+# Panel C: Polarization change per pulse (delta from start)
+ax3c = axes[1, 0]
 
-# Save the main figure (Panel A)
-fig3.tight_layout()
-fig3.savefig(os.path.join(OUT_DIR, "simB_transient_fig3_pulse_pol.png"), dpi=150)
+for i, pulse_num in enumerate(SELECTED_PULSES):
+    t_ns = simb_pulse_hold[pulse_num][TIME_COL] * 1e9
+    poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
+    
+    # Calculate change from starting value
+    pol_change = poly_uc - poly_uc[0]
+    t_norm = t_ns - t_ns[0]
+    
+    color = cmap(i / (len(SELECTED_PULSES) - 1))
+    
+    ax3c.plot(t_norm, pol_change, color=color, lw=2.5, alpha=0.8,
+             label=f"Pulse {pulse_num} (Δ={pol_change[-1]:+.3f})")
+
+ax3c.set_xlabel("Time within pulse (ns)")
+ax3c.set_ylabel("ΔPol/y (µC/cm²)")
+ax3c.set_title("Panel C: Polarization Change from Start")
+ax3c.legend(fontsize=9, loc='best')
+ax3c.grid(True, alpha=0.3)
+ax3c.set_xlim(0, 105)
+
+# Panel D: End-point polarization vs pulse number
+ax3d = axes[1, 1]
+
+end_pol_values = []
+pulse_numbers = []
+
+for pulse_num in SELECTED_PULSES:
+    poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
+    end_pol_values.append(poly_uc[-1])
+    pulse_numbers.append(pulse_num)
+
+# Create bar chart with colors
+colors = [cmap(i / (len(SELECTED_PULSES) - 1)) for i in range(len(SELECTED_PULSES))]
+bars = ax3d.bar(pulse_numbers, end_pol_values, color=colors, alpha=0.7, edgecolor='black', linewidth=1)
+
+# Add value labels on bars
+for bar, val in zip(bars, end_pol_values):
+    height = bar.get_height()
+    ax3d.text(bar.get_x() + bar.get_width()/2., height + 0.02 if height >= 0 else height - 0.05,
+             f'{val:+.3f}', ha='center', va='bottom' if height >= 0 else 'top', 
+             fontsize=9, fontweight='bold')
+
+ax3d.set_xlabel("Pulse Number")
+ax3d.set_ylabel("End Pol/y (µC/cm²)")
+ax3d.set_title("Panel D: End-Point Polarization vs Pulse")
+ax3d.grid(True, alpha=0.3, axis='y')
+ax3d.axhline(y=0, color='black', linestyle='-', alpha=0.3)
+
+# Adjust layout and save
+plt.tight_layout()
+fig3.savefig(os.path.join(OUT_DIR, "simB_transient_fig3_pulse_pol.png"), dpi=150, bbox_inches='tight')
 print("Saved simB_transient_fig3_pulse_pol.png")
 
-# Save the timeline figure (Panel B) as separate figure
-fig3b.tight_layout()
-fig3b.savefig(os.path.join(OUT_DIR, "simB_transient_fig3_timeline.png"), dpi=150)
-print("Saved simB_transient_fig3_timeline.png")
+# Create additional simplified single plot for quick view
+fig3_simple, ax3_simple = plt.subplots(figsize=(10, 6))
 
-# Close the timeline figure to free memory
-plt.close(fig3b)
+for i, pulse_num in enumerate(SELECTED_PULSES):
+    t_ns = simb_pulse_hold[pulse_num][TIME_COL] * 1e9
+    poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
+    
+    # Normalize time
+    t_norm = t_ns - t_ns[0]
+    
+    color = cmap(i / (len(SELECTED_PULSES) - 1))
+    
+    ax3_simple.plot(t_norm, poly_uc, color=color, lw=3, alpha=0.9,
+                   label=f"Pulse {pulse_num}: {poly_uc[-1]:+.3f}")
+
+ax3_simple.set_xlabel("Time within pulse (ns)", fontsize=12)
+ax3_simple.set_ylabel("Pol/y (µC/cm²)", fontsize=12)
+ax3_simple.set_title("SimB — Polarization Evolution During Pulse Holds", fontsize=14, fontweight='bold')
+ax3_simple.legend(fontsize=10, loc='best')
+ax3_simple.grid(True, alpha=0.3)
+ax3_simple.set_xlim(0, 105)
+
+# Add annotations
+for i, pulse_num in enumerate([1, 20]):
+    t_ns = simb_pulse_hold[pulse_num][TIME_COL] * 1e9
+    poly_uc = simb_pulse_hold[pulse_num][POLY_COL] * 1e6
+    t_norm = t_ns - t_ns[0]
+    color = cmap([0, 3][i] / 3)
+    
+    ax3_simple.annotate(f"P{pulse_num}: {poly_uc[-1]:+.3f}", 
+                       xy=(t_norm[-1], poly_uc[-1]), 
+                       xytext=(t_norm[-1]-10, poly_uc[-1]+0.1 if i == 0 else poly_uc[-1]-0.15),
+                       fontsize=10, color=color, fontweight='bold',
+                       arrowprops=dict(arrowstyle='->', color=color, alpha=0.8))
+
+plt.tight_layout()
+fig3_simple.savefig(os.path.join(OUT_DIR, "simB_transient_fig3_simple.png"), dpi=150, bbox_inches='tight')
+print("Saved simB_transient_fig3_simple.png")
+
+plt.close(fig3_simple)
 
 # ── Fig 4: Polarization at readout points (showing accumulation) ──
 fig4, ax4 = plt.subplots(figsize=(7, 5))
