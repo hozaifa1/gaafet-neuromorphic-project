@@ -50,18 +50,17 @@ Math {
    RelErrControl
    Digits=5
    Notdamped=50
-   Iterations=200
+   Iterations=50
    Transient=BE
-   FEPolarizationIP=1.0
-   Method=Bitlis
+   Method=Blocked
    SubMethod=ParDiSo
-   Restart=100
-   Tolerance=1e-5
    GeometricDistances
    Derivative
    ComputeGradQuasiFermiAtContacts= UseQuasiFermi
    RefDens_eGradQuasiFermi_ElectricField_HFS= 1.000e+12
    RefDens_hGradQuasiFermi_ElectricField_HFS= 1.000e+12
+   FEPolarizationIP=1.0
+   Method = Bitlis (Restart=100, Tolerance=1e-5, Iterations=200)
 }
 
 Plot {

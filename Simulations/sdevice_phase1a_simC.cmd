@@ -62,6 +62,7 @@ Math {
    ComputeGradQuasiFermiAtContacts= UseQuasiFermi
    RefDens_eGradQuasiFermi_ElectricField_HFS= 1.000e+12
    RefDens_hGradQuasiFermi_ElectricField_HFS= 1.000e+12
+   Method = Bitlis (Restart=100, Tolerance=1e-5, Iterations=200)
 }
 
 Plot {
@@ -93,7 +94,7 @@ Solve {
   *=== PULSE TRAIN: 5 pulses with 1us gaps (Integrate + Leak) ===
   * Each cycle: 1ns rise + 100ns hold + 1ns fall + 1us gap = ~1.1us
   * Total 5 cycles: ~5.5us
-  * @Vpulse@ = fixed from Sim A result
+  * 2.0 = fixed from Sim A result
 
   *--- PULSE 1 ---
   NewCurrentPrefix="lif_p1r_"
@@ -101,7 +102,7 @@ Solve {
     InitialTime=0 FinalTime=1e-9
     InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
-    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+    Goal { Name="gate_contact" Voltage= 2.0 }
   ) {
       Coupled (Iterations = 100) {Poisson Electron Hole}
       CurrentPlot( Time = (Range=(0 1e-9) Intervals=10) )
@@ -142,7 +143,7 @@ Solve {
     InitialTime=1.102e-6 FinalTime=1.103e-6
     InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
-    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+    Goal { Name="gate_contact" Voltage= 2.0 }
   ) {
       Coupled (Iterations = 100) {Poisson Electron Hole}
       CurrentPlot( Time = (Range=(1.102e-6 1.103e-6) Intervals=10) )
@@ -182,7 +183,7 @@ Solve {
     InitialTime=2.204e-6 FinalTime=2.205e-6
     InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
-    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+    Goal { Name="gate_contact" Voltage= 2.0 }
   ) {
       Coupled (Iterations = 100) {Poisson Electron Hole}
       CurrentPlot( Time = (Range=(2.204e-6 2.205e-6) Intervals=10) )
@@ -222,7 +223,7 @@ Solve {
     InitialTime=3.306e-6 FinalTime=3.307e-6
     InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
-    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+    Goal { Name="gate_contact" Voltage= 2.0 }
   ) {
       Coupled (Iterations = 100) {Poisson Electron Hole}
       CurrentPlot( Time = (Range=(3.306e-6 3.307e-6) Intervals=10) )
@@ -262,7 +263,7 @@ Solve {
     InitialTime=4.408e-6 FinalTime=4.409e-6
     InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
-    Goal { Name="gate_contact" Voltage= @Vpulse@ }
+    Goal { Name="gate_contact" Voltage= 2.0 }
   ) {
       Coupled (Iterations = 100) {Poisson Electron Hole}
       CurrentPlot( Time = (Range=(4.408e-6 4.409e-6) Intervals=10) )
