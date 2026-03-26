@@ -1,7 +1,5 @@
 # Sentaurus TCAD Output Files
 *.tdr
-*.plt
-*.log
 *.out
 *.dat
 
