@@ -17,9 +17,6 @@
 *.bak
 *~
 
-# Node-specific output directories
-n*_*
-
 # IDE and system files
 .windsurf/
 marker_tool/
