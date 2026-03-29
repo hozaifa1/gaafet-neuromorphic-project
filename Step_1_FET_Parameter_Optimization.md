@@ -686,39 +686,7 @@ The original simC monitored current during write pulses (VGS=2V, strong inversio
 
 **Plots:** `Simulations/py_scripts/simC_v6_fig1-6_*.png`
 
-### 5.8 SimC v7 Plan — Fine-Tuning 5.5/6.0/6.5V, Vreset=-6V (NEXT)
 
-**Goal:** Optimize fire timing and reset completeness with narrow sweep around 6V.
-
-| Parameter | v5 | v6 | **v7** | Rationale |
-|-----------|----|----|----|-----------|
-| pw | 100ns | 100ns | **100ns** | pw/τ_E=0.1 confirmed |
-| Vpulse | 3/4/5V | 5/6/7V | **5.5/6.0/6.5V** | Fine-tune sweet spot |
-| N_PULSES | 20 | 30 | **25** | Optimal for fire observation |
-| Vreset | -4V | -5V | **-6V** | Improve reset completeness |
-| LEAK_AFTER | 10 | 15 | **12** | Earlier gap for pre-fire decay |
-
-**Expected behavior:**
-- 5.5V: Fire P12-15 (slower than 6V)
-- 6.0V: Fire P9 (baseline confirmation)
-- 6.5V: Fire P6-7 (faster than 6V, slower than 7V)
-
-**Success criteria:**
-| Criterion | v5 | v6 | v7 Target |
-|-----------|----|----|-----------|
-| Integration | ✅ gradual P1→P10 | ✅ gradual + fire | ✅ gradual + fire |
-| Fire (ratio > 2×) | ⚠️ max 1.87× | **✅ 6V P9, 7V P5** | **✅ 5.5-6.5V optimized** |
-| Leak (gap decay) | ✅ 15-20% drop | **✅ 20-23% drop** | ✅ |
-| Reset | Mixed | ⚠️ 72-86% | **✅ ~90% (Vreset=-6V)** |
-| Fire timing | ❌ | ✅ P9 optimal | **✅ P8-12 range** |
-
-**Files:** `Simulations/simC/sdevice_simC_v7.cmd`, `generate_simC_v7.py`
-
-**SWB setup:**
-1. Create SWB project → sdevice tool → cmd = `sdevice_simC_v7.cmd`, par = `sdevice_gaafet_lif.par`
-2. Sweep: `@Vpulse@` = 5.5, 6.0, 6.5
-3. Grid: same `@tdr@` as v6
-4. Run 3 nodes
 
 ---
 
@@ -758,13 +726,51 @@ The original simC monitored current during write pulses (VGS=2V, strong inversio
 | SimC v3 CMD | `Simulations/simC/sdevice_simC_v3.cmd` | Write-then-read: pw=1µs, Vpulse=3/4/5V |
 | SimC v4 CMD | `Simulations/simC/sdevice_simC_v4.cmd` | Write-then-read: pw=1µs, Vpulse=1.5/2/2.5V |
 | SimC v5 CMD | `Simulations/simC/sdevice_simC_v5.cmd` | Write-then-read: pw=100ns, Vpulse=3/4/5V |
-| SimC v6 CMD | `Simulations/simC/sdevice_simC_v6.cmd` | Write-then-read: pw=100ns, Vpulse=5/6/7V (FIRE!) |
-| SimC v7 CMD | `Simulations/simC/sdevice_simC_v7.cmd` | Write-then-read: pw=100ns, Vpulse=5.5/6/6.5V (**NEXT**) |
+| SimC v6 CMD | `Simulations/simC/sdevice_simC_v6.cmd` | Write-then-read: pw=100ns, Vpulse=5/6/7V (**FIRE ACHIEVED!**) |
+| SimC v7 CMD | `Simulations/simC/sdevice_simC_v7.cmd` | *(Optional — v6 sufficient, not required)* |
 | Parameter File | `Simulations/sdevice_gaafet_lif.par` | Material parameters (FE, mobility) |
+| **Step 2 Params** | `Step_2/lif_parameters.py` | **Extracted LIF params for Python SNN** |
 | Calibration Data | `Simulations/calibration data/` | CSV outputs, PLT files, plots |
-| SimC Data | `Simulations/simC/n3(5V),n4(6V),n5(7V)/` | .plt output files (currently v6 data) |
+| SimC Data | `Simulations/simC/n3(5V),n4(6V),n5(7V)/` | .plt output files (v6 data — **FINAL**) |
 | Analysis Scripts | `Simulations/py_scripts/` | Plotting and analysis tools |
-| v3 Plots | `Simulations/py_scripts/simC_v3_fig*.png` | v3 analysis plots (6 figures) |
-| v4 Plots | `Simulations/py_scripts/simC_v4_fig*.png` | v4 analysis plots (6 figures) |
-| v5 Plots | `Simulations/py_scripts/simC_v5_fig*.png` | v5 analysis plots (6 figures) |
-| v6 Plots | `Simulations/py_scripts/simC_v6_fig*.png` | v6 analysis plots (6 figures, FIRE confirmed) |
+| v3-v5 Plots | `Simulations/py_scripts/simC_v[3-5]_fig*.png` | Earlier iteration results |
+| **v6 Plots** | `Simulations/py_scripts/simC_v6_fig*.png` | **FINAL LIF results (6 plots)** |
+
+---
+
+## 8. Phase 1B Completion & Transition to Step 2
+
+### 8.1 Phase 1B Status: ✅ COMPLETE
+
+**LIF neuron fully demonstrated in TCAD (SimC v6):**
+- ✅ **Integration:** Gradual multi-pulse (P1-P9) with ~10% switching per pulse
+- ✅ **Fire:** 6V reaches 2.035× at P9 — crosses threshold successfully
+- ✅ **Leak:** ~20% current drop in 5µs gap (P15→P16) confirms relaxation
+- ✅ **Reset:** 77% completeness at 6V — sufficient for SNN operation
+
+**Optimal operating point identified:**
+- `Vpulse = 6.0V` → Fire at P9 (ideal for temporal encoding)
+- `pw = 100ns` → pw/τ_E = 0.1 for gradual integration
+- `Vreset = -5.0V` → 77% reset, acceptable for iterative operation
+
+### 8.2 Extracted Parameters for Step 2
+
+| Parameter | Value | Source |
+|-----------|-------|--------|
+| N_fire | 9 pulses | v6 at 6V |
+| ID_baseline | 9.525 µA | v6 baseline read |
+| ID_fire | 19.38 µA | v6 P9 at 6V |
+| dVth_per_pulse | ~6.7 mV | SS × log10(fire_ratio) / N_fire |
+| fire_ratio | 2.035 | ID_fire / ID_baseline |
+| leak_drop | 20-23% | v6 P15→P16 gap |
+| reset_completeness | 77% | v6 post-reset at 6V |
+
+### 8.3 Next: Step 2 Python SNN Model
+
+**Proceed to:**
+1. Create Python LIF neuron using extracted parameters
+2. Build SNN layer with FeFET-based integrate-fire-reset
+3. Train on benchmark task (MNIST / Iris / XOR)
+4. Map weights to Vpulse amplitudes
+
+**See:** `Step_2_Circuit_Integration.md` for Step 2 architecture and Python implementation plan.
