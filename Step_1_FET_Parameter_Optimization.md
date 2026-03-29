@@ -534,23 +534,76 @@ See `Simulations/py_scripts/`:
 
 ---
 
+## 4F. SimC Results — CORRECTED ANALYSIS
+
+### 4F.1 Summary
+
+**Status: PARTIAL — Integration and Reset validated; Fire detection INVALID.**
+
+The original simC analysis (March 24) incorrectly claimed "Fire detected at pulse 5 with 6.8x ratio." This was an artifact of comparing drain current at VGS=2V (pulse hold) vs VGS≈0.05V (QS baseline) — simply the device's transconductance, not a threshold-crossing event. See `simC_analysis_summary.md` for full correction details.
+
+### 4F.2 What IS Valid from SimC
+
+| Result | Value | Status |
+|--------|-------|--------|
+| Integration ΔVth (5 pulses, n5) | 16.1 mV | Valid |
+| Reset completeness (Vreset=-4V) | 100% | Valid |
+| Pulse-hold polarization shift | -0.018 µC/cm² total | Valid |
+| Cumulative switching confirmed | Yes | Valid |
+
+### 4F.3 What IS NOT Valid from SimC
+
+| Claim | Status | Reason |
+|-------|--------|--------|
+| "Fire at pulse 5, 6.8x ratio" | Invalid | Comparing I(VGS=2V) to I(VGS≈0.05V) |
+| "E_spike = 75 fJ" | Invalid | No spike occurred |
+| "R_on/R_off = 1.9kΩ/13kΩ" | Invalid | From bogus fire/baseline currents |
+| "Leak rate = 0.620 µA/µs" | Invalid | Device settling, not FE relaxation (τ_P=0) |
+
+### 4F.4 Root Cause
+
+SimC monitors current during pulse holds (VGS=2V, device in strong inversion) and gaps (VGS=0V, device near threshold). Neither operating point is suitable for observing fire:
+- At VGS=2V: 16 mV Vth shift → 0.06% current change (undetectable)
+- At VGS=0V: No separate "read" at constant bias near Vth
+
+A **write-then-read protocol** is required — see §4F.5.
+
+### 4F.5 Required Redesign: Write-Then-Read SimC
+
+**Protocol (modeled after Lizzit et al. Multi-level FeFET, Fig 3-7):**
+1. Set constant **read bias** VGS_read ≈ 0.20V (63 mV below Vth_virgin = 0.263V)
+2. Apply **write pulse**: VGS_read → 2.0V (1ns rise) → hold 100ns → fall to VGS_read (1ns)
+3. **Read phase**: Hold at VGS_read for ~100ns, monitor ID (transient read preserves P)
+4. Repeat write+read for N=10-20 pulses
+5. **Expected fire:** When cumulative ΔVth shifts Vth below 0.20V, ID at VGS_read jumps from subthreshold to above-threshold (orders of magnitude change at SS=60.8 mV/dec)
+6. **Reset:** Negative gate pulse → verify ID at VGS_read returns to initial value
+
+**Expected fire threshold:** With dVth_per_pulse ≈ 11 mV (simB) and margin = 63 mV, fire should occur around pulse 6-8.
+
+---
+
 ## 5. Phase 1B: LIF Transient Demonstration
 
 ### 5.1 Objective
-Demonstrate a complete Integrate → Leak → Fire → Reset cycle in a single TCAD transient simulation.
+Demonstrate a complete Integrate → Leak → Fire → Reset cycle in a single TCAD transient simulation using the **write-then-read** protocol.
 
-### 5.2 Simulation Sequence
-1. **Initialize:** Set $V_{DS}$ = constant (e.g., 0.5V), $V_{GS}$ = 0V (device OFF, high-$V_{th}$ state)
-2. **Integrate:** Apply N sub-coercive gate pulses (amplitude, width from Phase 1A results)
-3. **Observe Fire:** After N pulses, $V_{th}$ should drop → $I_D$ spikes
-4. **Leak Test:** Insert wait periods between pulse groups → verify $I_D$ partially decays
-5. **Reset:** Apply negative gate pulse → verify $V_{th}$ recovers
+### 5.2 Simulation Sequence (CORRECTED)
+1. **Initialize:** Set $V_{DS}$ = 0.05V, $V_{GS}$ = VGS_read ≈ 0.20V (device in subthreshold, below Vth_virgin)
+2. **Write pulse:** Brief gate excursion VGS_read → 2.0V → VGS_read (sub-coercive, shifts Vth)
+3. **Read phase:** Monitor $I_D$ at constant VGS_read for ~100ns after each write pulse
+4. **Repeat** write+read for N pulses until fire
+5. **Fire criterion:** $I_D$ at VGS_read increases by >10x compared to initial read (Vth has crossed below VGS_read)
+6. **Leak Test:** Insert 1µs wait at VGS_read between some pulse groups (with τ_P > 0)
+7. **Reset:** Negative gate pulse → verify $I_D$ at VGS_read recovers to initial level
 
 ### 5.3 Success Criteria
-- $I_D$ shows clear step-wise increase with each pulse (integration) ✅
-- $I_D$ partially decays during inter-pulse gaps (leak) ✅
-- $I_D$ jumps abruptly after sufficient pulses (fire) ✅
-- Negative pulse resets device (reset) ✅
+- $I_D$ at constant VGS_read shows step-wise increase with each write pulse (integration) — PENDING
+- $I_D$ partially decays during inter-pulse waits at VGS_read (leak) — PENDING (requires τ_P > 0)
+- $I_D$ at VGS_read jumps abruptly after sufficient pulses (fire) — PENDING
+- Negative pulse resets device (reset) ✅ (confirmed in simC)
+
+### 5.4 Key Difference from Original SimC
+The original simC monitored current during write pulses (VGS=2V) and during gaps (VGS=0V). The corrected protocol monitors current at a **constant read voltage** (VGS_read=0.20V) where the subthreshold-to-above-threshold transition amplifies small Vth shifts into large current changes.
 
 ---
 

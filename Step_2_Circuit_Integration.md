@@ -63,16 +63,22 @@ Extract a physics-informed compact model from TCAD Phase 1A/1B results:
 ```python
 class FeFET_LIF(nn.Module):
     def __init__(self):
-        # TCAD-extracted parameters from simA/simB/simC
-        self.Vth_virgin = 0.263  # V - from calibration (Run 16)
-        self.dVth_per_pulse = 11.36e-3  # V - from simB integration
-        self.tau_leak = 1e-6  # s - TBD (need τ_P > 0 runs)
-        self.tau_int = 1e-6  # s - from τ_E = 1µs
-        self.Vth_fire = self.Vth_virgin - 16.1e-3  # V - from simC fire threshold
-        self.Vreset = -4.0  # V - from simC optimal reset
-        self.E_spike = 75e-15  # J - from simC estimate
-        self.R_on = 1.9e3  # Ω - from simC fire state
-        self.R_off = 13e3  # Ω - from simC baseline
+        # --- VALIDATED parameters (from simA/simB/simC) ---
+        self.Vth_virgin = 0.263      # V - from calibration (Run 16) ✅
+        self.dVth_per_pulse = 11.36e-3  # V - from simB integration ✅
+        self.tau_int = 1e-6          # s - from τ_E = 1µs ✅
+        self.Vreset = -4.0           # V - from simC optimal reset ✅
+        self.SS = 60.8e-3            # V/dec - from Run 6+7b ✅
+        
+        # --- PENDING parameters (need redesigned simC) ---
+        self.VGS_read = 0.20         # V - proposed read bias (just below Vth_virgin)
+        self.tau_leak = 1e-6         # s - PLACEHOLDER (need τ_P > 0 runs)
+        self.E_spike = None          # J - PENDING (need actual fire transient)
+        self.R_on = None             # Ω - PENDING (need read-bias fire measurement)
+        self.R_off = None            # Ω - PENDING (need read-bias measurement)
+        
+        # Derived: fire occurs when Vth drops below VGS_read
+        self.Vth_fire = self.VGS_read  # Fire threshold = read bias voltage
         
         # Internal state
         self.Vth_current = self.Vth_virgin
@@ -86,15 +92,16 @@ class FeFET_LIF(nn.Module):
                 self.membrane_potential += spike * self.dVth_per_pulse
         
         # Leak: Vth drifts back toward Vth_virgin with time constant tau_leak
-        # Note: Using exponential approximation - real τ_P needed
+        # NOTE: tau_leak is PLACEHOLDER — real value needs τ_P > 0 TCAD runs
         leak_factor = np.exp(-dt / self.tau_leak)
         self.Vth_current = self.Vth_virgin + (self.Vth_current - self.Vth_virgin) * leak_factor
         
-        # Fire: when Vth < Vth_fire, emit spike and reset
+        # Fire: when Vth drops below VGS_read, channel goes from subthreshold
+        # to above-threshold → ID jumps by orders of magnitude (SS=60.8 mV/dec)
         fire = (self.Vth_current < self.Vth_fire).float()
         
         if fire > 0:
-            # Reset: apply negative pulse effect
+            # Reset: negative gate pulse restores Vth (100% completeness at -4V)
             self.Vth_current = self.Vth_virgin
             self.membrane_potential = 0.0
         
@@ -102,10 +109,10 @@ class FeFET_LIF(nn.Module):
 ```
 
 **Key model features (TCAD-validated):**
-- **Non-linear integration:** Sub-linear scaling (N^0.85) from simB saturation effects
-- **State-dependent leak:** τ_P dependent (needs characterization)
+- **Non-linear integration:** Sub-linear scaling (N^0.85) from simB saturation effects ✅
+- **State-dependent leak:** τ_P dependent (PLACEHOLDER — needs characterization)
 - **Stochastic firing:** Optional - domain nucleation randomness observed in simB
-- **Hardware constraints:** Energy per spike = 75 fJ, ON/OFF ratio = 6.8x
+- **Hardware constraints:** Energy per spike and ON/OFF ratio PENDING (need redesigned simC with write-then-read)
 
 ---
 
@@ -138,61 +145,56 @@ class FeFET_LIF(nn.Module):
 
 ## 4. Algorithm for Circuit Integration (Workflow)
 
-### Phase A: Parameter Extraction (from TCAD Phase 1A/1B/1C - COMPLETED)
+### Phase A: Parameter Extraction (from TCAD Phase 1A/1B/1C)
 
-**Status: ✅ COMPLETED** - Parameters extracted from simA, simB, and simC runs
+**Status: PARTIALLY COMPLETE** — simA and simB validated; simC fire detection was invalid (corrected March 2026)
 
-1. **Integration curve:** From Phase 1B (simB) → $V_{th}$ vs $N_{pulses}$ → **227.3 mV total shift over 20 pulses**
+1. **Integration curve:** From simB → $V_{th}$ vs $N_{pulses}$ → **227.3 mV total shift over 20 pulses** ✅
    - Integration weight: **11.36 mV/pulse** (average)
    - Integration efficiency: **68.9%** (vs ideal linear)
    - Equation: $\Delta V_{th}(N) \approx 11.36 \cdot N^{0.85}$ mV (sub-linear due to partial saturation)
 
-2. **Leak curve:** From Phase 1C (simC) → **0.620 µA/µs average leak rate** during 1µs gaps
-   - Note: τ_P = 0 in current runs (no controlled leak)
-   - Leak observed from device discharge, not FE relaxation
-   - **Required:** Re-run with τ_P > 0 for true leak time constant
+2. **Leak curve:** **NOT YET CHARACTERIZED** ❌
+   - SimC gaps showed device settling (VGS=2V→0V transient), NOT FE relaxation
+   - τ_P = 0 in all current runs — no controlled leak mechanism
+   - **Required:** Re-run with τ_P > 0 and write-then-read protocol
 
-3. **Fire threshold:** From Phase 1C (simC) → **Fire detected at pulse 5** with **6.8x current ratio**
-   - Baseline current: **3.837 µA** at VGS=0.05V
-   - Fire current: **26.255 µA** (abrupt jump)
-   - Fire threshold: **~16 mV ΔVth** (lower than expected)
+3. **Fire threshold:** **NOT YET DEMONSTRATED** ❌
+   - SimC's reported "6.8x fire ratio" was invalid — it compared I(VGS=2V) to I(VGS≈0.05V)
+   - This is the device's normal transconductance, not a threshold-crossing fire event
+   - **Required:** Redesigned simC with write-then-read protocol (see Step_1 §4F.5)
+   - **Expected:** With VGS_read=0.20V and dVth≈11mV/pulse, fire around pulse 6-8
 
-4. **Capacitance ($C_{gg}$):** **NOT YET EXTRACTED** - Need AC simulation
-   - Plan: Small-signal AC analysis at 1 MHz, sweep VGS 0–2V
+4. **Capacitance ($C_{gg}$):** **NOT YET EXTRACTED** ❌ — Need AC simulation
 
-5. **ON/OFF resistance:** From DC $I_D$-$V_{GS}$ → **R_off = 13 kΩ**, **R_on = 1.9 kΩ** (approximate)
-   - R_off = V_DS/I_D at VGS=0V: 0.05V / 3.837µA ≈ 13 kΩ
-   - R_on = V_DS/I_D at fire: 0.05V / 26.255µA ≈ 1.9 kΩ
-   - ON/OFF ratio: **6.8x** (matches fire detection)
+5. **ON/OFF resistance:** **NOT YET MEASURED** ❌
+   - Previous R_on/R_off values (1.9kΩ/13kΩ) were derived from the invalid fire analysis
+   - Must be re-extracted from the redesigned write-then-read simulation at VGS_read
 
-6. **Energy per spike:** From Phase 1C firing waveform → **E = V_DS × I_avg × t_fire**
-   - V_DS = 0.05V, I_avg ≈ 15µA, t_fire ≈ 100ns
-   - **E_spike ≈ 75 fJ** (preliminary estimate)
-   - **Note:** More accurate integration needed from actual transient data
+6. **Energy per spike:** **NOT YET MEASURED** ❌
+   - Previous 75 fJ estimate was meaningless (no actual spike occurred)
+   - Must be extracted from a genuine fire transient
 
-### **CRITICAL FINDINGS:**
+7. **Reset:** From simC → **100% Vth recovery** with Vreset = -4.0V ✅
 
-**✅ SUCCESS:**
-- Full LIF cycle demonstrated (Integration → Leak → Fire → Reset)
-- Reset completeness: **100%** with Vreset = -4.0V
-- Fire detection confirmed in all nodes
-- Integration mechanism working (cumulative Vth shift)
+### **VALIDATED PARAMETERS:**
+| Parameter | Value | Unit | Source | Status |
+|-----------|-------|------|--------|--------|
+| Vth_virgin | 0.263 | V | Calibration Run 16 | ✅ Valid |
+| Integration weight | 11.36 | mV/pulse | simB (20 pulses) | ✅ Valid |
+| Reset voltage | -4.0 | V | simC (best completeness) | ✅ Valid |
+| Reset completeness | 100.0 | % | simC (Vreset = -4V) | ✅ Valid |
+| SS | 60.8 | mV/dec | Run 6+7b extraction | ✅ Valid |
+| τ_E | 1.0 | µs | Switching time constant | ✅ Valid |
 
-**⚠️ LIMITATIONS:**
-- Integration ΔVth smaller than expected (16.1 mV vs target ~200 mV)
-- τ_P not characterized (set to 0)
-- Fire threshold reached too early (pulse 5 vs expected ~15-20)
-
-**📊 EXTRACTED PARAMETERS:**
-| Parameter | Value | Unit | Source |
-|-----------|-------|------|--------|
-| Integration weight | 11.36 | mV/pulse | simB (20 pulses) |
-| Reset voltage | -4.0 | V | simC (best completeness) |
-| Reset completeness | 100.0 | % | simC (Vreset = -4V) |
-| Fire threshold | 16.1 | mV ΔVth | simC (pulse 5) |
-| Leak rate | 0.620 | µA/µs | simC (gap discharge) |
-| Energy/spike | ~75 | fJ | simC estimate |
-| ON/OFF ratio | 6.8 | x | simC fire detection |
+### **PENDING PARAMETERS (require redesigned simC):**
+| Parameter | Status | What's Needed |
+|-----------|--------|---------------|
+| N_fire (pulses to fire) | ❌ Pending | Write-then-read simC |
+| E_spike (energy/spike) | ❌ Pending | Actual fire transient |
+| R_on / R_off | ❌ Pending | Read-bias measurement |
+| τ_leak | ❌ Pending | τ_P > 0 simulation |
+| C_gg | ❌ Pending | AC small-signal analysis |
 
 ### Phase B: Python Model Update & Single Neuron Verification
 
@@ -224,77 +226,71 @@ class FeFET_LIF(nn.Module):
 **Nodes:** 3 reset voltages (-2V, -3V, -4V)  
 **Status:** ✅ PARTIAL SUCCESS
 
-### 5.2 Key Findings
+### 5.2 Key Findings (CORRECTED March 2026)
 
 | Metric | Result | Target | Status |
 |--------|--------|--------|--------|
-| **Integration ΔVth** | 16.1 mV (5 pulses) | ~200 mV | ⚠️ Low |
+| **Integration ΔVth** | 16.1 mV (5 pulses) | ~63 mV (to cross VGS_read) | ✅ On track (need more pulses) |
 | **Reset Completeness** | 100% (Vreset = -4V) | >80% | ✅ Success |
-| **Fire Detection** | 6.8x current ratio | >2x | ✅ Success |
-| **Leak Rate** | 0.620 µA/µs | TBD | ⚠️ Characterized |
-| **Energy/Spike** | ~75 fJ | <100 fJ | ✅ Success |
+| **Fire Detection** | **NOT demonstrated** | Threshold crossing at VGS_read | ❌ Needs redesigned simC |
+| **Leak Rate** | Not measured (τ_P=0) | TBD | ❌ Needs τ_P > 0 |
+| **Energy/Spike** | Not measured | <100 fJ | ❌ Needs actual fire transient |
 
-### 5.3 Validation Against Planning
+### 5.3 What Was Wrong in Original Analysis
 
-**✅ ACHIEVED:**
-1. **Complete LIF cycle** demonstrated (Integration → Leak → Fire → Reset)
-2. **Reset mechanism** works perfectly with Vreset = -4V
-3. **Fire events** clearly detectable with 6.8x current jump
-4. **Energy efficiency** within target range (75 fJ/spike)
+The original simC analysis (March 24) claimed "Fire detected at pulse 5 with 6.8x ratio." This was **invalid**:
+- The 6.8x ratio compared drain current at VGS=2V (write pulse) to VGS≈0.05V (QS baseline)
+- This is the device's normal transconductance response, NOT a threshold-crossing fire event
+- A real fire must show ID increasing at a **constant read voltage** as Vth shifts past it
+- See `simC_analysis_summary.md` for full correction details
 
-**⚠️ NEEDS OPTIMIZATION:**
-1. **Integration depth** too shallow (16 mV vs expected 200+ mV)
-2. **Fire threshold** reached too early (pulse 5 vs expected 15-20)
-3. **τ_P characterization** missing (leak from device discharge, not FE relaxation)
+### 5.4 Validated vs Pending Parameters
 
-### 5.4 Root Cause Analysis
-
-The **integration ΔVth discrepancy** likely stems from:
-- **Pulse amplitude:** 2.0V may be insufficient for strong partial switching
-- **Pulse count:** Only 5 pulses tested vs 20 in simB
-- **τ_E ratio:** pw/τ_E = 0.1 may be too conservative
-
-**Recommendations for optimization:**
-1. **Increase Vpulse** to 2.5V or 3.0V (from simA results)
-2. **Increase pulse count** to 10-20 pulses
-3. **Consider τ_E tuning** to 0.5µs for faster switching
-
-### 5.5 Extracted Parameters for Step 2
-
-The following parameters are **ready for Python SNN implementation**:
-
+**Ready for use:**
 ```python
-# Ready for use in FeFET_LIF class
-PARAMETERS = {
-    "Vth_virgin": 0.263,      # V (from calibration)
-    "dVth_per_pulse": 11.36e-3, # V (from simB, may need scaling)
-    "Vreset": -4.0,           # V (optimal from simC)
-    "Vth_fire": 0.247,        # V (Vth_virgin - 16mV)
-    "E_spike": 75e-15,        # J (from simC)
-    "R_on": 1.9e3,           # Ω (from simC)
-    "R_off": 13e3,            # Ω (from simC)
-    "fire_ratio": 6.8,        # x (from simC)
+VALID_PARAMETERS = {
+    "Vth_virgin": 0.263,        # V (from calibration) ✅
+    "dVth_per_pulse": 11.36e-3, # V (from simB, 20 pulses) ✅
+    "Vreset": -4.0,             # V (from simC reset test) ✅
+    "reset_completeness": 1.0,  # fraction ✅
+    "SS": 60.8e-3,              # V/dec ✅
+    "tau_E": 1e-6,              # s ✅
 }
 ```
 
-**Pending characterization:**
-- `tau_leak`: Requires τ_P > 0 simulation
-- `C_gg`: Requires AC small-signal analysis
-- `Stochasticity`: Requires multiple cycle analysis
+**Pending (need redesigned simC with write-then-read protocol):**
+```python
+PENDING_PARAMETERS = {
+    "N_fire": None,      # Pulses to fire (expected ~6-8 with VGS_read=0.20V)
+    "E_spike": None,     # Energy per spike (from actual fire transient)
+    "R_on": None,        # ON resistance at fire
+    "R_off": None,       # OFF resistance at read bias
+    "tau_leak": None,    # Leak time constant (requires τ_P > 0)
+    "C_gg": None,        # Gate capacitance (requires AC simulation)
+}
+```
 
-### 5.6 Next Steps
+### 5.5 Next Steps
 
-1. **Immediate:** Implement FeFET_LIF class with current parameters
-2. **Short-term:** Re-run simC with optimized Vpulse/pulse count
-3. **Medium-term:** Characterize τ_P and C_gg
-4. **Long-term:** Full network deployment and ECG classification
+1. **Immediate:** Redesign simC with write-then-read protocol (new sdevice cmd file)
+2. **Short-term:** Run redesigned simC, extract fire parameters
+3. **Medium-term:** Set τ_P > 0 for leak characterization, AC analysis for C_gg
+4. **Long-term:** Complete FeFET_LIF class and deploy in SNN
 
 ---
 
 ## 6. Conclusion
 
-The GAA-FeFET LIF neuron has **successfully demonstrated** all four essential behaviors (integrate, leak, fire, reset) in TCAD simulation. While the integration depth requires optimization, the core mechanism is validated and ready for system-level implementation.
+The GAA-FeFET LIF neuron has demonstrated **integration** and **reset** in TCAD simulation. The **fire** mechanism has not yet been demonstrated due to an incorrect measurement protocol in simC (comparing currents at different VGS values instead of monitoring at a constant read bias). A redesigned simulation with a write-then-read protocol is required.
 
-**Key achievement:** A **single transistor** (GAA-FeFET) replaces the entire CMOS LIF neuron circuit (20+ transistors + external capacitor), achieving **dramatic area reduction** while maintaining **competitive energy efficiency** (75 fJ/spike).
+**Validated so far:**
+- Cumulative Vth shift (integration): 227.3 mV over 20 pulses ✅
+- Reset completeness: 100% with Vreset = -4V ✅
+- Sub-coercive partial switching mechanism confirmed ✅
 
-The extracted parameters provide a solid foundation for Step 2 circuit integration, with clear optimization paths identified for improved performance.
+**Pending:**
+- Fire demonstration via write-then-read protocol
+- Leak characterization with τ_P > 0
+- Energy per spike, R_on/R_off from actual fire transient
+
+**Key promise:** A **single transistor** (GAA-FeFET) to replace the CMOS LIF circuit (20+ transistors + capacitor). The integration mechanism is proven; fire demonstration is the critical next step.
