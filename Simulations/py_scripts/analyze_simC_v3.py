@@ -1,5 +1,7 @@
-"""Analyze SimC v3 results: Vpulse sweep 3/4/5V, pw=1us, Vreset=-6V.
-Generates publication-relevant plots from write-then-read LIF data."""
+"""Analyze SimC v4 results: Vpulse sweep 1.5/2.0/2.5V, pw=1us, Vreset=-6V.
+Generates publication-relevant plots from write-then-read LIF data.
+Note: Directory names (n3(3V), n4(4V), n5(5V)) are from SWB — actual
+Vpulse values are 1.5, 2.0, 2.5V respectively (verified from rise files)."""
 import os
 import re
 import numpy as np
@@ -9,9 +11,9 @@ from matplotlib.ticker import AutoMinorLocator
 # ── Config ──
 BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "simC")
 NODES = {
-    "n3(3V)": {"tag": "n3", "Vpulse": 3.0},
-    "n4(4V)": {"tag": "n4", "Vpulse": 4.0},
-    "n5(5V)": {"tag": "n5", "Vpulse": 5.0},
+    "n3(3V)": {"tag": "n3", "Vpulse": 1.5},
+    "n4(4V)": {"tag": "n4", "Vpulse": 2.0},
+    "n5(5V)": {"tag": "n5", "Vpulse": 2.5},
 }
 N_PULSES = 10
 VGS_READ = 0.20
@@ -109,7 +111,7 @@ for dirname, info in NODES.items():
 
 # ── Print summary table ──
 print("=" * 80)
-print("SimC v3 Results Summary")
+print("SimC v4 Results Summary")
 print("=" * 80)
 print(f"{'Node':<10} {'Vpulse':>7} {'ID_base':>12} {'ID_P1':>12} {'P1_ratio':>10}"
       f" {'ID_P10':>12} {'P10_ratio':>10} {'ID_reset':>12} {'Reset%':>8}")
@@ -137,7 +139,7 @@ plt.rcParams.update({
     "savefig.dpi": 300,
 })
 COLORS = {"n3(3V)": "#1f77b4", "n4(4V)": "#ff7f0e", "n5(5V)": "#2ca02c"}
-LABELS = {"n3(3V)": r"$V_{pulse}$=3V", "n4(4V)": r"$V_{pulse}$=4V", "n5(5V)": r"$V_{pulse}$=5V"}
+LABELS = {"n3(3V)": r"$V_{pulse}$=1.5V", "n4(4V)": r"$V_{pulse}$=2.0V", "n5(5V)": r"$V_{pulse}$=2.5V"}
 
 pulses = np.arange(1, N_PULSES + 1)
 
@@ -161,8 +163,8 @@ ax1.legend(loc="best")
 ax1.grid(True, alpha=0.3)
 ax1.xaxis.set_minor_locator(AutoMinorLocator())
 ax1.yaxis.set_minor_locator(AutoMinorLocator())
-fig1.savefig(os.path.join(OUTDIR, "simC_v3_fig1_integration_fire.png"))
-print("Saved: simC_v3_fig1_integration_fire.png")
+fig1.savefig(os.path.join(OUTDIR, "simC_v4_fig1_integration_fire.png"))
+print("Saved: simC_v4_fig1_integration_fire.png")
 
 # =====================================================================
 # PLOT 2: Polarization Evolution vs Pulse Number
@@ -183,8 +185,8 @@ ax2.set_xlim(0.5, N_PULSES + 0.5)
 ax2.set_xticks(pulses)
 ax2.legend(loc="best")
 ax2.grid(True, alpha=0.3)
-fig2.savefig(os.path.join(OUTDIR, "simC_v3_fig2_polarization.png"))
-print("Saved: simC_v3_fig2_polarization.png")
+fig2.savefig(os.path.join(OUTDIR, "simC_v4_fig2_polarization.png"))
+print("Saved: simC_v4_fig2_polarization.png")
 
 # =====================================================================
 # PLOT 3: ΔVth Estimation (from current ratio using SS)
@@ -204,8 +206,8 @@ ax3.set_xlim(0.5, N_PULSES + 0.5)
 ax3.set_xticks(pulses)
 ax3.legend(loc="best")
 ax3.grid(True, alpha=0.3)
-fig3.savefig(os.path.join(OUTDIR, "simC_v3_fig3_dvth.png"))
-print("Saved: simC_v3_fig3_dvth.png")
+fig3.savefig(os.path.join(OUTDIR, "simC_v4_fig3_dvth.png"))
+print("Saved: simC_v4_fig3_dvth.png")
 
 # =====================================================================
 # PLOT 4: Reset Completeness (bar chart)
@@ -218,7 +220,7 @@ width = 0.25
 labels_short = []
 id_bl_vals, id_p10_vals, id_pr_vals = [], [], []
 for dirname, r in results.items():
-    labels_short.append(f"{r['Vpulse']:.0f}V")
+    labels_short.append(f"{r['Vpulse']:.1f}V")
     id_bl_vals.append(r["id_baseline"] * 1e6)  # µA
     id_p10_vals.append(r["ids_read"][9] * 1e6)
     id_pr_vals.append(r["id_postreset"] * 1e6)
@@ -257,8 +259,8 @@ for bar, pct in zip(bars, reset_pcts):
 ax4b.grid(axis="y", alpha=0.3)
 
 fig4.tight_layout()
-fig4.savefig(os.path.join(OUTDIR, "simC_v3_fig4_reset.png"))
-print("Saved: simC_v3_fig4_reset.png")
+fig4.savefig(os.path.join(OUTDIR, "simC_v4_fig4_reset.png"))
+print("Saved: simC_v4_fig4_reset.png")
 
 # =====================================================================
 # PLOT 5: Leak Gap Analysis (current decay during 5µs gap after P5)
@@ -288,8 +290,8 @@ ax5b.legend()
 ax5b.grid(True, alpha=0.3)
 
 fig5.tight_layout()
-fig5.savefig(os.path.join(OUTDIR, "simC_v3_fig5_leak.png"))
-print("Saved: simC_v3_fig5_leak.png")
+fig5.savefig(os.path.join(OUTDIR, "simC_v4_fig5_leak.png"))
+print("Saved: simC_v4_fig5_leak.png")
 
 # =====================================================================
 # PLOT 6: Combined Summary — Integration + Polarization + Reset
@@ -350,15 +352,15 @@ ax.set_xlabel(r"$V_{pulse}$")
 ax.set_ylabel("Reset %")
 ax.set_title("(d) Reset Completeness")
 ax.set_xticks(range(len(NODES)))
-ax.set_xticklabels([f"{r['Vpulse']:.0f}V" for r in results.values()])
+ax.set_xticklabels([f"{r['Vpulse']:.1f}V" for r in results.values()])
 ax.set_ylim(0, 115)
 ax.grid(axis="y", alpha=0.3)
 
-fig6.suptitle("SimC v3: Write-Then-Read LIF — Vpulse Sweep (pw=1µs, τ_E=1µs)",
+fig6.suptitle("SimC v4: Write-Then-Read LIF — Vpulse Sweep (pw=1µs, τ_E=1µs)",
               fontsize=14, fontweight="bold", y=1.01)
 fig6.tight_layout()
-fig6.savefig(os.path.join(OUTDIR, "simC_v3_fig6_summary.png"))
-print("Saved: simC_v3_fig6_summary.png")
+fig6.savefig(os.path.join(OUTDIR, "simC_v4_fig6_summary.png"))
+print("Saved: simC_v4_fig6_summary.png")
 
 plt.close("all")
 print("\nAll plots generated successfully.")

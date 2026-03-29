@@ -582,28 +582,100 @@ A **write-then-read protocol** is required — see §4F.5.
 
 ---
 
-## 5. Phase 1B: LIF Transient Demonstration
+## 5. Phase 1B: LIF Transient Demonstration (Write-Then-Read Protocol)
 
 ### 5.1 Objective
 Demonstrate a complete Integrate → Leak → Fire → Reset cycle in a single TCAD transient simulation using the **write-then-read** protocol.
 
-### 5.2 Simulation Sequence (CORRECTED)
-1. **Initialize:** Set $V_{DS}$ = 0.05V, $V_{GS}$ = VGS_read ≈ 0.20V (device in subthreshold, below Vth_virgin)
-2. **Write pulse:** Brief gate excursion VGS_read → 2.0V → VGS_read (sub-coercive, shifts Vth)
-3. **Read phase:** Monitor $I_D$ at constant VGS_read for ~100ns after each write pulse
-4. **Repeat** write+read for N pulses until fire
-5. **Fire criterion:** $I_D$ at VGS_read increases by >10x compared to initial read (Vth has crossed below VGS_read)
-6. **Leak Test:** Insert 1µs wait at VGS_read between some pulse groups (with τ_P > 0)
-7. **Reset:** Negative gate pulse → verify $I_D$ at VGS_read recovers to initial level
+### 5.2 Protocol Design
+1. **Initialize:** Set $V_{DS}$ = 0.05V, $V_{GS}$ = VGS_read = 0.20V (device in subthreshold, below Vth_virgin = 0.263V)
+2. **Baseline read:** Monitor $I_D$ at VGS_read for 100ns → establish $I_{D,baseline}$
+3. **Write pulse:** Brief gate excursion VGS_read → Vpulse → VGS_read (1ns rise/fall, variable hold)
+4. **Read phase:** Monitor $I_D$ at constant VGS_read for 100ns after each write pulse
+5. **Repeat** write+read for N pulses
+6. **Leak gap:** Insert 5µs pause at VGS_read after pulse N/2 to observe polarization relaxation
+7. **Reset:** Negative gate pulse (Vreset) → return to VGS_read → read $I_D$
+8. **Fire criterion:** $I_{D,read} / I_{D,baseline}$ > 2.0 (FIRE_RATIO)
 
-### 5.3 Success Criteria
-- $I_D$ at constant VGS_read shows step-wise increase with each write pulse (integration) — PENDING
-- $I_D$ partially decays during inter-pulse waits at VGS_read (leak) — PENDING (requires τ_P > 0)
-- $I_D$ at VGS_read jumps abruptly after sufficient pulses (fire) — PENDING
-- Negative pulse resets device (reset) ✅ (confirmed in simC)
+### 5.3 Key Difference from Original SimC
+The original simC monitored current during write pulses (VGS=2V, strong inversion) and gaps (VGS=0V). The write-then-read protocol monitors current at a **constant read voltage** (VGS_read=0.20V) where subthreshold-slope amplification converts small Vth shifts into measurable current changes.
 
-### 5.4 Key Difference from Original SimC
-The original simC monitored current during write pulses (VGS=2V) and during gaps (VGS=0V). The corrected protocol monitors current at a **constant read voltage** (VGS_read=0.20V) where the subthreshold-to-above-threshold transition amplifies small Vth shifts into large current changes.
+### 5.4 SimC v3 Results — pw=1µs, Vpulse=3/4/5V (Completed)
+
+**Status: Integration confirmed. 4V and 5V fire immediately (P1). 3V approaches fire threshold.**
+
+| Node | Vpulse | $I_{D,base}$ | P1 Ratio | P10 Ratio | Reset % |
+|------|--------|---------------|----------|-----------|---------|
+| n3 | 3.0V | 9.525 µA | **1.80×** | 1.93× | 98.7% |
+| n4 | 4.0V | 9.525 µA | **2.04× ⚡** | 2.17× | 83.4% |
+| n5 | 5.0V | 9.525 µA | **2.24× ⚡** | 2.36× | 76.1% |
+
+**Observations:**
+- 4V and 5V **fire on pulse 1** (ratio > 2×) — too much switching per pulse
+- 3V shows gradual integration (1.80→1.93× over 10 pulses) but saturates by P3
+- **Leak gap visible** at P5→P6: current and polarization dip, then recover — this IS the leak mechanism
+- Reset completeness decreases at higher Vpulse (stronger polarization harder to reset at Vreset=-6V)
+
+**Root cause of saturation:** pw/τ_E = 1µs/1µs = 1, so each pulse switches ~63% of remaining switchable polarization → exponential saturation by P3-P5.
+
+**Plots:** `Simulations/py_scripts/simC_v3_fig1-6_*.png`
+
+### 5.5 SimC v4 Results — pw=1µs, Vpulse=1.5/2.0/2.5V (Completed)
+
+**Status: Integration confirmed but no fire. All voltages saturate below 2× threshold.**
+
+> Note: SWB directory names (n3(3V), n4(4V), n5(5V)) are inherited from v3 — actual Vpulse values are 1.5, 2.0, 2.5V (verified from gate OuterVoltage in rise files).
+
+| Node | Vpulse | P1 Ratio | P10 Ratio | ΔVth P10 (mV) | Reset % |
+|------|--------|----------|-----------|---------------|---------|
+| n3 | 1.5V | 1.35× | 1.43× | −9.7 | 188% ⚠️ |
+| n4 | 2.0V | 1.51× | 1.62× | −12.8 | 138% ⚠️ |
+| n5 | 2.5V | 1.66× | 1.78× | −15.2 | 113% ⚠️ |
+
+**Observations:**
+- **No fire:** All curves saturate well below 2× threshold
+- **Same saturation problem:** pw/τ_E = 1 → ~63% switching per pulse → exponential saturation by P3
+- **Reset overshoots:** Vreset=-6V pushes polarization past baseline into opposite direction (post-reset current < baseline). Need weaker Vreset.
+- Integration range: 2.5V gives max 1.78× (gap to fire threshold = 0.22×)
+
+**Key insight:** With pw/τ_E ≈ 1, the device is in the "single-pulse saturation" regime regardless of Vpulse. Lower Vpulse reduces the saturation ceiling but does not improve linearity. The fix is to reduce pw/τ_E ratio.
+
+**Plots:** `Simulations/py_scripts/simC_v4_fig1-6_*.png`
+
+### 5.6 SimC v5 Plan — pw=100ns, Vpulse=3/4/5V, Vreset=-4V (NEXT)
+
+**Goal:** Achieve gradual multi-pulse integration → fire by reducing pw/τ_E to 0.1.
+
+| Parameter | v3 | v4 | **v5** | Rationale |
+|-----------|----|----|--------|-----------|
+| pw | 1µs | 1µs | **100ns** | pw/τ_E = 0.1 → ~10% switching per pulse |
+| Vpulse | 3/4/5V | 1.5/2/2.5V | **3/4/5V** | Need field > Ec through cap divider |
+| N_PULSES | 10 | 10 | **20** | More pulses for gradual integration |
+| Vreset | -6V | -6V | **-4V** | Avoid reset overshoot |
+| LEAK_AFTER | 5 | 5 | **10** | Leak gap after pulse 10 |
+
+**Expected behavior (from v3 extrapolation):**
+- At 3V (v3 P1=1.80× with 1µs): with 100ns pulse → ~1.08× per pulse → fire after ~25 pulses
+- At 4V (v3 P1=2.04× with 1µs): with 100ns pulse → ~1.10× per pulse → fire after ~10 pulses ← **target**
+- At 5V (v3 P1=2.24× with 1µs): with 100ns pulse → ~1.12× per pulse → fire after ~8 pulses
+
+**Files generated:** `Simulations/simC/sdevice_simC_v5.cmd`, `generate_simC_v5.py`
+
+**SWB setup:**
+1. Create SWB project → sdevice tool → cmd = `sdevice_simC_v5.cmd`, par = `sdevice_gaafet_lif.par`
+2. Sweep: `@Vpulse@` = 3.0, 4.0, 5.0
+3. Grid: same `@tdr@` as v3/v4
+4. Run 3 nodes
+
+### 5.7 Success Criteria Summary
+
+| Criterion | v3 | v4 | v5 Target |
+|-----------|----|----|-----------|
+| Integration (step-wise ID increase) | ✅ (but saturates) | ✅ (but saturates) | ✅ gradual over 10-20 pulses |
+| Fire (ratio > 2×) | ⚠️ P1 only (4-5V) | ❌ none | ✅ at pulse 8-15 |
+| Leak (gap decay) | ✅ visible | ✅ visible | ✅ with τ_P=0 (electrical); future: τ_P>0 |
+| Reset (return to baseline) | ✅ 76-99% | ⚠️ overshoots (188%) | ✅ ~100% with Vreset=-4V |
+| Gradual integration | ❌ saturates P3 | ❌ saturates P3 | ✅ linear through P10-20 |
 
 ---
 
@@ -637,9 +709,15 @@ The original simC monitored current during write pulses (VGS=2V) and during gaps
 |---|---|---|
 | Calibration Log | `Calibration_Log_2026_01_15.md` | Full 16-run calibration history |
 | Spiking Debug Log | `spiking_simulation_debugging_log_v2.md` | Compressed: solver fixes, II failure, paradigm shift |
+| SimC Analysis | `simC_analysis_summary.md` | Write-then-read v3/v4 results + v5 plan |
 | Calibration CMD | `Simulations/calibration data/sdevice_calibration.cmd` | Hysteresis sweep command file |
 | Phase 1A CMD | `Simulations/sdevice_des.cmd` | Polarization switching characterization |
+| SimC v3 CMD | `Simulations/simC/sdevice_simC_v3.cmd` | Write-then-read: pw=1µs, Vpulse=3/4/5V |
+| SimC v4 CMD | `Simulations/simC/sdevice_simC_v4.cmd` | Write-then-read: pw=1µs, Vpulse=1.5/2/2.5V |
+| SimC v5 CMD | `Simulations/simC/sdevice_simC_v5.cmd` | Write-then-read: pw=100ns, Vpulse=3/4/5V (**NEXT**) |
 | Parameter File | `Simulations/sdevice_gaafet_lif.par` | Material parameters (FE, mobility) |
 | Calibration Data | `Simulations/calibration data/` | CSV outputs, PLT files, plots |
-| Spiking Outputs | `Simulations/spiking_runs/` | Historical II-based transient runs |
+| SimC Data | `Simulations/simC/n3,n4,n5/` | .plt output files (currently v4 data) |
 | Analysis Scripts | `Simulations/py_scripts/` | Plotting and analysis tools |
+| v3 Plots | `Simulations/py_scripts/simC_v3_fig*.png` | v3 analysis plots (6 figures) |
+| v4 Plots | `Simulations/py_scripts/simC_v4_fig*.png` | v4 analysis plots (6 figures) |

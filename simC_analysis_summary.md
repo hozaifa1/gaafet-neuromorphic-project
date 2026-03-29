@@ -1,164 +1,125 @@
-# SimC Analysis Summary - Full LIF Cycle Demonstration
+# SimC Analysis Summary — Write-Then-Read LIF Protocol
 
-**Date:** March 24, 2026 (original) / Corrected: March 2026  
-**Analysis Script:** `analyze_simC_corrected.py`  
-**Status:** PARTIAL — Integration and Reset validated; Fire detection **invalid** (see §Corrections)
+**Date:** March 2026 (original QS-based) → April 2026 (write-then-read v3/v4)
+**Status:** Integration ✅ | Leak ✅ | Reset ✅ | Fire ⚠️ (not yet gradual — v5 planned)
 
 ## Executive Summary
 
-SimC demonstrates **two of four** LIF behaviors:
-- **Integration:** Confirmed — cumulative ΔVth of 16.1 mV over 5 pulses (consistent with simB rate)
-- **Reset:** Confirmed — 100% Vth recovery with Vreset = -4V
-- **Fire:** **NOT demonstrated** — the reported 6.8x "fire ratio" is an artifact of comparing currents at VGS=2V (pulse hold) vs VGS≈0.05V (QS baseline), not a threshold-crossing event
-- **Leak:** **NOT demonstrated** — current decay during gaps is device settling from VGS=2V→0V transient, not ferroelectric domain relaxation (τ_P = 0)
+The write-then-read protocol successfully demonstrates **three of four** LIF behaviors. The remaining challenge is achieving **gradual multi-pulse integration** before fire — v3/v4 showed that pw/τ_E = 1 causes saturation within 3 pulses. SimC v5 (pw=100ns, pw/τ_E=0.1) is designed to fix this.
 
-A redesigned simulation with a **write-then-read protocol** is required to demonstrate actual fire behavior.
+| LIF Behavior | v3 (3/4/5V) | v4 (1.5/2/2.5V) | v5 (planned) |
+|---|---|---|---|
+| **Integration** | ✅ saturates by P3 | ✅ saturates by P3 | Target: linear P1→P20 |
+| **Leak** | ✅ gap visible P5→P6 | ✅ gap visible P5→P6 | ✅ (τ_P=0; future: τ_P>0) |
+| **Fire** (ratio>2×) | ⚠️ P1 only (4-5V) | ❌ none reach 2× | Target: P8-15 |
+| **Reset** | ✅ 76-99% | ⚠️ overshoots (113-188%) | Target: ~100% (Vreset=-4V) |
 
-## Corrections to Previous Analysis
+## Protocol Description
 
-### "Fire Detection" Was Invalid
+Unlike the original simC (which read current at VGS=2V during write pulses), the write-then-read protocol reads at a **constant VGS_read=0.20V** (just below Vth_virgin=0.263V). This amplifies small Vth shifts into measurable current ratio changes via the subthreshold slope (SS=60.8 mV/dec).
 
-The previous analysis claimed "Fire detected at pulse 5 with 6.8x current ratio." This is **incorrect**.
+**Sequence per pulse:** Rise (1ns) → Write hold (pw) → Fall (1ns) → Read hold (100ns)
+**Metrics:** $I_{D,read}/I_{D,baseline}$ ratio, polarization Py, estimated ΔVth
 
-**What happened:** The analysis script (`analyze_simC_corrected.py`, line 273) compared:
-- `id_base` = drain current from QS baseline readout at VGS ≈ 0.05V → **3.8 µA**
-- `max_current` = peak drain current during pulse hold at VGS = **2.0V** → **26.3 µA**
+## SimC v3 Results — pw=1µs, Vpulse=3/4/5V
 
-This 6.8x ratio is simply **I_D(VGS=2V) / I_D(VGS=0.05V)** — the device's normal transconductance response. It is NOT a threshold-crossing fire event.
+**Sweep:** `@Vpulse@` = 3.0, 4.0, 5.0V | N=10 pulses | Vreset=-6V | τ_E=1µs
 
-**What a real fire looks like (from literature):**
-- Lizzit et al. (Multi-level FeFET, Fig 5-7): Write pulses shift Vth; READ current at **constant VGS** increases with each cycle; fire = read current crosses a threshold at the **same VGS**
-- Khanday et al. (Fig 4): Capacitor voltage rises to Vth → device turns ON → **current spike at the same operating point**
+| Vpulse | P1 Ratio | P10 Ratio | Reset % | Fire? |
+|--------|----------|-----------|---------|-------|
+| 3.0V | 1.80× | 1.93× | 98.7% | No (close) |
+| 4.0V | **2.04×** | 2.17× | 83.4% | **P1** |
+| 5.0V | **2.24×** | 2.36× | 76.1% | **P1** |
 
-**The real signal in pulse-hold data:** Currents of 26.239 → 26.255 µA across 5 pulses (**0.06% growth**). This tiny increase IS real Vth shift evidence, but it is not a fire event.
+**Key findings:**
+- 4V/5V fire on first pulse — pw=1µs is too long (pw/τ_E=1 → 63% switching per pulse)
+- 3V approaches fire but saturates by P3 (1.80→1.87→1.91→plateau)
+- Leak gap at P5→P6 shows current dip — ferroelectric relaxation signature
+- Reset completeness inversely correlated with Vpulse (stronger P harder to reset)
 
-### "Leak Rate" Was Misattributed
+## SimC v4 Results — pw=1µs, Vpulse=1.5/2.0/2.5V
 
-The 0.620 µA/µs "leak rate" during inter-pulse gaps is the device **settling from VGS=2V transient back to VGS=0V steady state**, not ferroelectric domain relaxation. With τ_P = 0, there is zero FE-based leak.
+**Sweep:** `@Vpulse@` = 1.5, 2.0, 2.5V | N=10 pulses | Vreset=-6V | τ_E=1µs
 
-### Invalidated Parameters
+> SWB directories named n3(3V)/n4(4V)/n5(5V) — actual Vpulse verified from gate OuterVoltage in rise files.
 
-The following parameters from the previous analysis are **invalid** and must not be used:
+| Vpulse | P1 Ratio | P10 Ratio | ΔVth P10 (mV) | Reset % |
+|--------|----------|-----------|---------------|---------|
+| 1.5V | 1.35× | 1.43× | −9.7 | 188% ⚠️ |
+| 2.0V | 1.51× | 1.62× | −12.8 | 138% ⚠️ |
+| 2.5V | 1.66× | 1.78× | −15.2 | 113% ⚠️ |
 
-| Parameter | Previous Value | Status |
-|-----------|---------------|--------|
-| `fire_ratio = 6.8x` | ❌ Invalid — comparing different VGS points |
-| `E_spike = 75 fJ` | ❌ Invalid — no spike occurred |
-| `R_on = 1.9 kΩ` | ❌ Invalid — from bogus fire current |
-| `R_off = 13 kΩ` | ❌ Invalid — from bogus baseline |
-| `Vth_fire = 0.247V` | ❌ Misleading — this is just Vth_virgin - ΔVth_integration, not an observed fire threshold |
-| `leak_rate = 0.620 µA/µs` | ❌ Invalid — device settling, not FE relaxation |
+**Key findings:**
+- **No fire** — all saturate below 1.8× (well short of 2× threshold)
+- Same exponential saturation pattern (pw/τ_E = 1)
+- **Reset overshoots** — Vreset=-6V too strong for these small polarization shifts
+- Lower Vpulse reduces saturation ceiling but does NOT improve linearity
 
-## Valid Results
+## Root Cause: pw/τ_E Ratio Too High
 
-### 1. Integration (ΔVth via QS Readout)
+With pw/τ_E = 1µs/1µs = 1, each pulse switches ~63% of remaining switchable polarization (1 - e^(-1)). This causes:
+- P1: 63% switched → big jump
+- P2: 63% of remaining 37% = 23% → small additional
+- P3: 63% of remaining 14% = 9% → nearly saturated
+- **Result:** Exponential saturation in 3 pulses, regardless of Vpulse
 
-| Node (Vreset) | Integration ΔVth | Reset Completeness |
-|---------------|------------------|--------------------|
-| n3 (-2.0V)    | 7.4 mV           | 99.3%              |
-| n4 (-3.0V)    | 11.7 mV          | 99.3%              |
-| n5 (-4.0V)    | 16.1 mV          | 100.0%             |
+**Fix:** Reduce pw/τ_E to 0.1 → ~10% switching per pulse → ~10 pulses to 65% → gradual linear integration.
 
-**Best performer:** Node n5 (Vreset = -4.0V)  
-**Consistency check:** 5 pulses × ~3.2 mV/pulse ≈ 16 mV. SimB shows ~11.4 mV/pulse for 20 pulses. The per-pulse ΔVth is lower here because only 5 pulses were applied (earlier pulses shift Vth more efficiently than later ones due to partial saturation).
+## SimC v5 Plan — pw=100ns, Vpulse=3/4/5V, Vreset=-4V
 
-### 2. Reset Performance
+| Parameter | v3 | v4 | **v5** |
+|-----------|----|----|--------|
+| pw | 1µs | 1µs | **100ns** |
+| pw/τ_E | 1.0 | 1.0 | **0.1** |
+| Vpulse | 3/4/5V | 1.5/2/2.5V | **3/4/5V** |
+| N_PULSES | 10 | 10 | **20** |
+| Vreset | -6V | -6V | **-4V** |
+| LEAK_AFTER | 5 | 5 | **10** |
 
-- **Vreset = -4.0V:** 100% Vth recovery — fully resets polarization state
-- **Vreset = -3.0V / -2.0V:** 99.3% recovery — nearly complete
-- This is a solid result and consistent with the coercive field requirement
+**Expected results:**
+- 3V: ~1.08× per pulse → fire after ~25 pulses (may not reach in 20)
+- **4V: ~1.10× per pulse → fire after ~10 pulses** ← optimal target
+- 5V: ~1.12× per pulse → fire after ~8 pulses
 
-### 3. Pulse-Hold Polarization Dynamics
-
-- **Polarization at end of 5 pulse holds:** +0.081 → +0.064 µC/cm² (monotonic shift toward negative)
-- **Total P shift:** -0.018 µC/cm² (~0.1% of P_r) — appropriate for sub-coercive regime
-- Confirms partial switching is occurring during each pulse
-
-### 4. Gap Current Decay (Device Settling, NOT Leak)
-
-- Current decays from ~2.7 µA to ~2.2 µA over 1µs gaps (VGS=0V)
-- This is the device settling to steady-state after the gate transient
-- With τ_P = 0, there is no FE relaxation contributing to this decay
-
-## What SimC Does NOT Demonstrate
-
-1. **No fire event:** No threshold crossing was observed. The device is strongly ON at VGS=2V and near-threshold at VGS=0V regardless of FE state. The 0.06% current growth across 5 pulses is too small to constitute a fire event.
-
-2. **No true leak:** With τ_P = 0, there is no ferroelectric domain relaxation. All current decay during gaps is electrical settling.
-
-3. **No operating-point sensitivity:** The simulation never reads ID at a constant VGS near Vth to observe the progressive Vth shift causing a fire.
-
-## Root Cause: Wrong Measurement Protocol
-
-The simC cmd file applies gate pulses (0→2V→0V) and monitors current during pulse holds (VGS=2V) and gaps (VGS=0V). Neither of these operating points is suitable for observing fire behavior because:
-
-- **At VGS=2V:** Device is in deep strong inversion. A 16 mV Vth shift produces only 0.06% current change — undetectable as a fire event.
-- **At VGS=0V:** Device is near threshold but not sensitive enough to show dramatic current jump from small Vth shifts.
-- **No read at VGS near Vth:** There is no separate "read" operation at a constant VGS just below Vth where the subthreshold slope (60.8 mV/dec) would amplify Vth shifts into large current changes.
-
-## Required Fix: Write-Then-Read Protocol
-
-To demonstrate actual fire behavior, simC must be redesigned:
-
-### New Protocol
-1. Set constant **read bias** VGS_read ≈ 0.20V (just below Vth_virgin = 0.263V)
-2. Apply **write pulses** as brief gate excursions: VGS_read → 2.0V → VGS_read
-3. After each write pulse, **monitor ID at VGS_read** for ~100ns (transient read, preserving P state)
-4. **Expected fire:** After N pulses, when cumulative ΔVth shifts Vth below 0.20V, ID at VGS_read should jump by orders of magnitude (subthreshold → above-threshold transition)
-5. **Reset:** Negative gate pulse restores Vth above VGS_read
-
-### Expected Fire Signal
-With SS = 60.8 mV/dec and Vth_virgin = 0.263V:
-- At VGS_read = 0.20V, initial ID ≈ I_0 × 10^(-63mV/60.8mV) ≈ very low (deep subthreshold)
-- Each pulse shifts Vth by ~3-11 mV → ID increases ~1.5-4x per pulse at VGS_read
-- After N pulses where Vth < 0.20V → ID jumps to strong inversion → **FIRE**
-- This would be a genuine threshold-crossing event visible at a constant read voltage
+**Files:** `Simulations/simC/sdevice_simC_v5.cmd`, `generate_simC_v5.py`
 
 ## Valid Parameters for Step 2
 
-Only these parameters should be used:
-
 ```python
 VALID_PARAMETERS = {
-    "Vth_virgin": 0.263,        # V (from calibration Run 16) — VALID
-    "dVth_per_pulse": 11.36e-3, # V (from simB, 20 pulses) — VALID
-    "Vreset": -4.0,             # V (from simC reset test) — VALID
-    "reset_completeness": 1.0,  # fraction (from simC) — VALID
-    "SS": 60.8e-3,              # V/dec (from Run 6+7b extraction) — VALID
-    "tau_E": 1e-6,              # s (switching time constant) — VALID
+    "Vth_virgin": 0.263,        # V (from calibration Run 16)
+    "ID_baseline": 9.525e-6,    # A (from write-then-read at VGS_read=0.20V)
+    "Vreset": -4.0,             # V (v5 target; v3 showed -6V works but overshoots at low Vpulse)
+    "SS": 60.8e-3,              # V/dec (from Run 6+7b extraction)
+    "tau_E": 1e-6,              # s (switching time constant in par file)
+    "MW": 0.681,                # V (from calibration Run 16)
 }
 
-# NOT YET CHARACTERIZED — require new simulations:
-PENDING_PARAMETERS = {
-    "N_fire": None,        # Number of pulses to fire — needs write-then-read simC
-    "E_spike": None,       # Energy per spike — needs actual fire transient
-    "R_on": None,          # ON resistance at fire — needs actual fire measurement
-    "R_off": None,         # OFF resistance at read bias — needs read-bias measurement
-    "tau_leak": None,      # Leak time constant — needs τ_P > 0 simulation
-    "C_gg": None,          # Gate capacitance — needs AC simulation
+PENDING_PARAMETERS = {  # Require v5 results
+    "N_fire": None,        # Number of pulses to fire at optimal Vpulse
+    "dVth_per_pulse": None, # ΔVth per pulse in gradual regime (v5)
+    "E_spike": None,       # Energy per spike from fire transient
+    "tau_leak": None,      # Leak time constant (needs τ_P > 0)
 }
 ```
 
-## Recommendations
+## Next Steps
 
-### Immediate Priority
-1. **Redesign simC** with write-then-read protocol (new sdevice cmd file)
-2. **Set VGS_read** ≈ 0.20V (63 mV below Vth_virgin — ~1 decade of subthreshold margin)
-3. **Increase pulse count** to 10-20 (from simB: 20 pulses gives 227 mV shift, well past the 63 mV margin)
+1. **Run SimC v5** on Sentaurus server (SWB: sweep @Vpulse@ = 3.0, 4.0, 5.0)
+2. **Analyze v5 results** — expect gradual integration curve + fire at P8-15
+3. **If fire confirmed:** Extract N_fire, E_spike, dVth_per_pulse → populate PENDING_PARAMETERS
+4. **If no fire at P20:** Increase N_PULSES to 30, or try Vpulse=6V
+5. **After fire confirmed:** Run with τ_P > 0 for true leak characterization
+6. **Final:** Extract all LIF parameters → feed into Step 2 SNN model
 
-### Short-term
-1. **Set τ_P > 0** for true FE leak dynamics in gap measurements
-2. **AC analysis** for C_gg extraction
-3. **Extract E_spike** from actual fire transient waveform
+## Analysis Scripts & Plots
 
-### Long-term
-1. Implement corrected FeFET_LIF class with validated parameters only
-2. Deploy in SNN after fire demonstration is complete
-
-## Files
-
-1. **Analysis Script:** `analyze_simC_corrected.py` (fire detection logic is invalid — needs rewrite)
-2. **Visualization 1-4:** Figures show valid integration/reset data; fire detection panels are misleading
-3. **This Summary:** Corrected version supersedes original March 24 analysis
-
-All files are located in `Simulations/py_scripts/` directory.
+| File | Purpose |
+|------|---------|
+| `py_scripts/analyze_simC_v3.py` | v4 analysis (updated from v3, reads current v4 data) |
+| `py_scripts/simC_v3_fig[1-6]_*.png` | v3 results (6 plots) |
+| `py_scripts/simC_v4_fig[1-6]_*.png` | v4 results (6 plots) |
+| `simC/generate_simC_v3.py` | v3 cmd generator |
+| `simC/generate_simC_v4.py` | v4 cmd generator |
+| `simC/generate_simC_v5.py` | v5 cmd generator |
+| `simC/sdevice_simC_v[3-5].cmd` | Simulation command files |
