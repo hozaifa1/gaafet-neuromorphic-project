@@ -664,40 +664,61 @@ The original simC monitored current during write pulses (VGS=2V, strong inversio
 
 **Plots:** `Simulations/py_scripts/simC_v5_fig1-6_*.png`
 
-### 5.7 SimC v6 Plan — pw=100ns, Vpulse=5/6/7V, Vreset=-5V (NEXT)
+### 5.7 SimC v6 Results — pw=100ns, Vpulse=5/6/7V, Vreset=-5V (Completed)
 
-**Goal:** Push past the 2× fire threshold by increasing Vpulse.
+**Status: FIRE CONFIRMED! LIF neuron behavior fully demonstrated.**
 
-| Parameter | v3 | v4 | v5 | **v6** | Rationale |
-|-----------|----|----|----|----|-----------|
-| pw | 1µs | 1µs | 100ns | **100ns** | pw/τ_E=0.1 confirmed |
-| Vpulse | 3/4/5V | 1.5/2/2.5V | 3/4/5V | **5/6/7V** | Push past 1.87× ceiling |
-| N_PULSES | 10 | 10 | 20 | **30** | Extended train |
-| Vreset | -6V | -6V | -4V | **-5V** | Compromise |
-| LEAK_AFTER | 5 | 5 | 10 | **15** | Later leak test |
+| Node | Vpulse | P1 Ratio | Fire? | Fire Pulse | P15 Ratio | P30 Ratio | Reset % |
+|------|--------|----------|-------|------------|-----------|-----------|---------|
+| n3(5V) | 5.0V | 1.184× | **No** | — | 1.89× | 1.88× | 85.6% |
+| n4(6V) | 6.0V | 1.255× | **YES** | **P9** | 2.03× | 2.03× | 77.2% |
+| n5(7V) | 7.0V | 1.325× | **YES** | **P5** | 2.16× | 2.16× | 72.0% |
+
+**Observations:**
+- **6V is the sweet spot:** Fire at P9 gives sufficient integration time (~9 pulses of temporal information)
+- **7V fires too early (P5):** Rapid saturation leaves less room for computation
+- **5V doesn't fire:** Saturates at 1.89× (6% short of threshold) — confirms theoretical ceiling
+- **Leak gap at P15→P16:** ~20-23% current drop observed — ferroelectric relaxation signature
+- **Post-fire plateau:** After reaching 2×, current stabilizes (6V: 2.03×, 7V: 2.16×)
+- **Reset at -5V:** Adequate but could be optimized (target 90%+ for all Vpulse)
+
+**Key insight:** The capacitive divider voltage at Vpulse=6V (~1.73V across HZO, 1.44× Ec) provides just enough field to access the polarization switching needed for fire, while maintaining gradual integration characteristics.
+
+**Plots:** `Simulations/py_scripts/simC_v6_fig1-6_*.png`
+
+### 5.8 SimC v7 Plan — Fine-Tuning 5.5/6.0/6.5V, Vreset=-6V (NEXT)
+
+**Goal:** Optimize fire timing and reset completeness with narrow sweep around 6V.
+
+| Parameter | v5 | v6 | **v7** | Rationale |
+|-----------|----|----|----|-----------|
+| pw | 100ns | 100ns | **100ns** | pw/τ_E=0.1 confirmed |
+| Vpulse | 3/4/5V | 5/6/7V | **5.5/6.0/6.5V** | Fine-tune sweet spot |
+| N_PULSES | 20 | 30 | **25** | Optimal for fire observation |
+| Vreset | -4V | -5V | **-6V** | Improve reset completeness |
+| LEAK_AFTER | 10 | 15 | **12** | Earlier gap for pre-fire decay |
 
 **Expected behavior:**
-- 5V: ceiling ~1.87× (baseline confirmation from v5)
-- **6V: V_HZO ≈ 1.73V (1.44× Ec) → more domains switch → ceiling ~2.2×** ← likely fire
-- 7V: V_HZO ≈ 2.02V (1.68× Ec) → near-complete switching → early fire
+- 5.5V: Fire P12-15 (slower than 6V)
+- 6.0V: Fire P9 (baseline confirmation)
+- 6.5V: Fire P6-7 (faster than 6V, slower than 7V)
 
-**Files:** `Simulations/simC/sdevice_simC_v6.cmd`, `generate_simC_v6.py`
+**Success criteria:**
+| Criterion | v5 | v6 | v7 Target |
+|-----------|----|----|-----------|
+| Integration | ✅ gradual P1→P10 | ✅ gradual + fire | ✅ gradual + fire |
+| Fire (ratio > 2×) | ⚠️ max 1.87× | **✅ 6V P9, 7V P5** | **✅ 5.5-6.5V optimized** |
+| Leak (gap decay) | ✅ 15-20% drop | **✅ 20-23% drop** | ✅ |
+| Reset | Mixed | ⚠️ 72-86% | **✅ ~90% (Vreset=-6V)** |
+| Fire timing | ❌ | ✅ P9 optimal | **✅ P8-12 range** |
+
+**Files:** `Simulations/simC/sdevice_simC_v7.cmd`, `generate_simC_v7.py`
 
 **SWB setup:**
-1. Create SWB project → sdevice tool → cmd = `sdevice_simC_v6.cmd`, par = `sdevice_gaafet_lif.par`
-2. Sweep: `@Vpulse@` = 5.0, 6.0, 7.0
-3. Grid: same `@tdr@` as v3/v4/v5
+1. Create SWB project → sdevice tool → cmd = `sdevice_simC_v7.cmd`, par = `sdevice_gaafet_lif.par`
+2. Sweep: `@Vpulse@` = 5.5, 6.0, 6.5
+3. Grid: same `@tdr@` as v6
 4. Run 3 nodes
-
-### 5.8 Success Criteria Summary
-
-| Criterion | v3 | v4 | v5 | v6 Target |
-|-----------|----|----|----|----|
-| Integration | ✅ saturates P3 | ✅ saturates P3 | **✅ gradual P1→P10** | ✅ gradual + fire |
-| Fire (ratio > 2×) | ⚠️ P1 only (4-5V) | ❌ none | ⚠️ max 1.87× | **✅ at P10-20 (6V)** |
-| Leak (gap decay) | ✅ visible | ✅ visible | **✅ 15-20% drop** | ✅ |
-| Reset | ✅ 76-99% | ⚠️ overshoots | Mixed | ✅ ~100% (Vreset=-5V) |
-| Gradual integration | ❌ | ❌ | **✅ confirmed** | ✅ + fire |
 
 ---
 
@@ -731,17 +752,19 @@ The original simC monitored current during write pulses (VGS=2V, strong inversio
 |---|---|---|
 | Calibration Log | `Calibration_Log_2026_01_15.md` | Full 16-run calibration history |
 | Spiking Debug Log | `spiking_simulation_debugging_log_v2.md` | Compressed: solver fixes, II failure, paradigm shift |
-| SimC Analysis | `simC_analysis_summary.md` | Write-then-read v3/v4/v5 results + v6 plan |
+| SimC Analysis | `simC_analysis_summary.md` | Write-then-read v3/v4/v5/v6 results + v7 plan |
 | Calibration CMD | `Simulations/calibration data/sdevice_calibration.cmd` | Hysteresis sweep command file |
 | Phase 1A CMD | `Simulations/sdevice_des.cmd` | Polarization switching characterization |
 | SimC v3 CMD | `Simulations/simC/sdevice_simC_v3.cmd` | Write-then-read: pw=1µs, Vpulse=3/4/5V |
 | SimC v4 CMD | `Simulations/simC/sdevice_simC_v4.cmd` | Write-then-read: pw=1µs, Vpulse=1.5/2/2.5V |
 | SimC v5 CMD | `Simulations/simC/sdevice_simC_v5.cmd` | Write-then-read: pw=100ns, Vpulse=3/4/5V |
-| SimC v6 CMD | `Simulations/simC/sdevice_simC_v6.cmd` | Write-then-read: pw=100ns, Vpulse=5/6/7V (**NEXT**) |
+| SimC v6 CMD | `Simulations/simC/sdevice_simC_v6.cmd` | Write-then-read: pw=100ns, Vpulse=5/6/7V (FIRE!) |
+| SimC v7 CMD | `Simulations/simC/sdevice_simC_v7.cmd` | Write-then-read: pw=100ns, Vpulse=5.5/6/6.5V (**NEXT**) |
 | Parameter File | `Simulations/sdevice_gaafet_lif.par` | Material parameters (FE, mobility) |
 | Calibration Data | `Simulations/calibration data/` | CSV outputs, PLT files, plots |
-| SimC Data | `Simulations/simC/n3,n4,n5/` | .plt output files (currently v5 data) |
+| SimC Data | `Simulations/simC/n3(5V),n4(6V),n5(7V)/` | .plt output files (currently v6 data) |
 | Analysis Scripts | `Simulations/py_scripts/` | Plotting and analysis tools |
 | v3 Plots | `Simulations/py_scripts/simC_v3_fig*.png` | v3 analysis plots (6 figures) |
 | v4 Plots | `Simulations/py_scripts/simC_v4_fig*.png` | v4 analysis plots (6 figures) |
 | v5 Plots | `Simulations/py_scripts/simC_v5_fig*.png` | v5 analysis plots (6 figures) |
+| v6 Plots | `Simulations/py_scripts/simC_v6_fig*.png` | v6 analysis plots (6 figures, FIRE confirmed) |

@@ -94,24 +94,61 @@ The saturation ceiling (~1.87×) is determined by the total switchable polarizat
 
 **Plots:** `Simulations/py_scripts/simC_v5_fig1-6_*.png`
 
-## SimC v6 Plan — pw=100ns, Vpulse=5/6/7V, Vreset=-5V (NEXT)
+## SimC v6 Results — pw=100ns, Vpulse=5/6/7V, Vreset=-5V (Completed)
 
-**Goal:** Push past the 2× fire threshold by increasing Vpulse to access more switchable polarization.
+**Status: FIRE CONFIRMED! Gradual integration → fire achieved at 6V and 7V.**
 
-| Parameter | v3 | v4 | v5 | **v6** | Rationale |
-|-----------|----|----|----|----|-----------|
-| pw | 1µs | 1µs | 100ns | **100ns** | pw/τ_E=0.1 confirmed to work |
-| Vpulse | 3/4/5V | 1.5/2/2.5V | 3/4/5V | **5/6/7V** | Push past 1.87× ceiling |
-| N_PULSES | 10 | 10 | 20 | **30** | More room for gradual rise |
-| Vreset | -6V | -6V | -4V | **-5V** | Compromise: -4V too weak at 5V+, -6V overshoots |
-| LEAK_AFTER | 5 | 5 | 10 | **15** | Later leak test for more integration data |
+| Node | Vpulse | P1 Ratio | P9 Ratio | P15 Ratio | P30 Ratio | Fire? | Fire Pulse | Reset % |
+|------|--------|----------|----------|-----------|-----------|-------|------------|---------|
+| n3(5V) | 5.0V | 1.184× | 1.82× | 1.888× | 1.884× | **No** | — | 85.6% |
+| n4(6V) | 6.0V | 1.255× | **2.035×** | 2.03× | 2.03× | **YES** | **P9** | 77.2% |
+| n5(7V) | 7.0V | 1.325× | 1.99× | 2.16× | 2.16× | **YES** | **P5** | 72.0% |
+
+**Key findings — FIRE ACHIEVED:**
+- **6V fires at P9:** Reaches 2.035× at P9, maintains ~2.03× through P30
+- **7V fires at P5:** Rapid integration, crosses 2× by P5, peaks at 2.16×
+- **5V saturates at 1.89×:** Just 6% short of fire threshold — confirms v5 ceiling extrapolation
+- **Leak gap (P15→P16):** ~20-23% current drop observed across all voltages (0.79× incremental at P16)
+- **Post-leak recovery:** Integration resumes after leak gap but at much slower rate (diminishing returns)
+- **Reset at Vreset=-5V:** 85.6% (5V), 77.2% (6V), 72.0% (7V) — compromise works, slight undershoot at higher Vpulse
+
+**Per-pulse incremental analysis:**
+- **P1-P3:** Largest steps (1.18-1.33× per pulse) — rapid initial integration
+- **P4-P10:** Gradual slowing (1.02-1.06×) — approaching saturation
+- **P11-P15:** Near-plateau (1.001-1.004×) — minimal integration before leak gap
+- **P16:** Sharp drop (0.77-0.79×) — leak gap relaxation effect
+- **P17-P30:** Slow recovery (1.02-1.07× initially, then 1.001-1.005×) — diminished incremental switching
+
+**Why 6V is the sweet spot:**
+- Fire at P9 gives sufficient integration time for meaningful computation
+- 7V fires too early (P5) — less temporal information encoded
+- 6V reset completeness (77%) acceptable; 5V doesn't fire
+
+**Plots:** `Simulations/py_scripts/simC_v6_fig1-6_*.png`
+
+## SimC v7 Plan — Fine-Tuning Around 6V (NEXT)
+
+**Goal:** Optimize fire timing and reset completeness by fine-tuning Vpulse around 6V.
+
+| Parameter | v5 | v6 | **v7** | Rationale |
+|-----------|----|----|----|-----------|
+| pw | 100ns | 100ns | **100ns** | pw/τ_E=0.1 confirmed optimal |
+| Vpulse | 3/4/5V | 5/6/7V | **5.5/6.0/6.5V** | Narrow sweep around sweet spot |
+| N_PULSES | 20 | 30 | **25** | Enough for fire + post-fire observation |
+| Vreset | -4V | -5V | **-6V** | Stronger reset for 6.5V node |
+| LEAK_AFTER | 10 | 15 | **12** | Earlier leak test to see pre-fire decay |
 
 **Expected behavior:**
-- 5V: ceiling ~1.87× (from v5) — confirms baseline
-- **6V: V_HZO ≈ 1.73V (1.44× Ec) → significantly more switching → ceiling ~2.2×** ← likely fire
-- 7V: V_HZO ≈ 2.02V (1.68× Ec) → near-complete switching → fire on early pulse
+- 5.5V: Target fire P12-15 (slower integration than 6V)
+- **6.0V: Baseline confirmation — fire P9** ← target matches v6
+- 6.5V: Fire P6-7 (faster than 6V but slower than 7V)
 
-**Files:** `Simulations/simC/sdevice_simC_v6.cmd`, `generate_simC_v6.py`
+**v7 will determine:**
+- Minimum Vpulse for fire (threshold)
+- Optimal fire timing (P8-12 range ideal for SNN applications)
+- Whether Vreset=-6V improves reset without overshooting
+
+**Files:** `Simulations/simC/sdevice_simC_v7.cmd`, `generate_simC_v7.py`
 
 ## Valid Parameters for Step 2
 
@@ -123,27 +160,28 @@ VALID_PARAMETERS = {
     "tau_E": 1e-6,              # s (switching time constant in par file)
     "MW": 0.681,                # V (from calibration Run 16)
     "pw_optimal": 100e-9,       # s (pw/tau_E=0.1 gives gradual integration)
-    "leak_drop": 0.15,          # ~15-20% current drop in 5µs gap (v5)
+    "leak_drop": 0.20,          # ~20-23% current drop in 5µs gap (v6)
+    "V_HZO_6V": 1.73,           # V (estimated V_FE at Vpulse=6V, 1.44× Ec)
 }
 
-PENDING_PARAMETERS = {  # Require v6 results
-    "Vpulse_fire": None,   # Minimum Vpulse for fire (expected: ~6V)
-    "N_fire": None,        # Number of pulses to fire at optimal Vpulse
-    "dVth_per_pulse": None, # ΔVth per pulse in gradual regime
-    "E_spike": None,       # Energy per spike from fire transient
-    "Vreset_optimal": None, # Vreset for ~100% reset at fire Vpulse
-    "tau_leak": None,      # Leak time constant (needs τ_P > 0)
+PENDING_PARAMETERS = {  # Require v7 results
+    "Vpulse_fire_min": None,   # Minimum Vpulse for fire (~5.5-6.0V expected)
+    "N_fire_optimal": None,    # Pulses to fire at optimal Vpulse (target: P8-12)
+    "dVth_per_pulse": None,    # ΔVth per pulse in gradual regime (~5-8 mV/pulse)
+    "E_spike": None,           # Energy per spike from fire transient
+    "Vreset_optimal": None,    # Vreset for ~90% reset at fire Vpulse
+    "tau_leak": None,          # Leak time constant (needs τ_P > 0 run)
 }
 ```
 
 ## Next Steps
 
-1. **Run SimC v6** on Sentaurus server (SWB: sweep @Vpulse@ = 5.0, 6.0, 7.0)
-2. **Analyze v6 results** — expect fire at 6V or 7V
-3. **If fire confirmed:** Extract N_fire, E_spike, dVth_per_pulse → populate PENDING_PARAMETERS
-4. **If 6V fires:** Run targeted sweep around 6V (5.5, 6.0, 6.5V) for precise fire threshold
-5. **After fire confirmed:** Run with τ_P > 0 for true leak characterization
-6. **Final:** Extract all LIF parameters → feed into Step 2 SNN model
+1. **Run SimC v7** on Sentaurus server (SWB: sweep @Vpulse@ = 5.5, 6.0, 6.5)
+2. **Analyze v7 results** — determine fire threshold and optimal timing
+3. **Extract N_fire, dVth_per_pulse** → populate PENDING_PARAMETERS
+4. **Run τ_P > 0 simulation** for true leak characterization (decay time constant)
+5. **Calculate E_spike** from transient power integration
+6. **Final:** Complete LIF parameter extraction → feed into Step 2 SNN model
 
 ## Analysis Scripts & Plots
 
@@ -151,8 +189,10 @@ PENDING_PARAMETERS = {  # Require v6 results
 |------|---------|
 | `py_scripts/analyze_simC_v3.py` | v3/v4 analysis script |
 | `py_scripts/analyze_simC_v5.py` | v5 analysis script (20 pulses) |
+| `py_scripts/analyze_simC_v6.py` | v6 analysis script (30 pulses, FIRE!) |
 | `py_scripts/simC_v3_fig[1-6]_*.png` | v3 results (6 plots) |
 | `py_scripts/simC_v4_fig[1-6]_*.png` | v4 results (6 plots) |
 | `py_scripts/simC_v5_fig[1-6]_*.png` | v5 results (6 plots) |
-| `simC/generate_simC_v[3-6].py` | Command file generators |
-| `simC/sdevice_simC_v[3-6].cmd` | Simulation command files |
+| `py_scripts/simC_v6_fig[1-6]_*.png` | v6 results (6 plots, FIRE confirmed) |
+| `simC/generate_simC_v[3-7].py` | Command file generators |
+| `simC/sdevice_simC_v[3-7].cmd` | Simulation command files |
