@@ -774,3 +774,24 @@ The original simC monitored current during write pulses (VGS=2V, strong inversio
 4. Map weights to Vpulse amplitudes
 
 **See:** `Step_2_Circuit_Integration.md` for Step 2 architecture and Python implementation plan.
+
+### 8.4 Critical Assessment of Phase 1 Completeness (March 30, 2026)
+
+**Phase 1 is SUFFICIENT to proceed to Step 2, with the following acknowledged gaps:**
+
+| Assessment Area | Status | Detail |
+|----------------|--------|--------|
+| Integration | VALIDATED | Gradual multi-pulse switching confirmed (v6 Fig1) |
+| Fire | VALIDATED | 6V fires at P9 (2.035x ratio) — criterion is arbitrary but functional |
+| Leak | PARTIALLY VALIDATED | Current decay observed (20-23%), BUT tau_P=0 in all runs — decay is device settling, not controlled FE relaxation. tau_leak is PLACEHOLDER. |
+| Reset | VALIDATED | 77.2% at Vreset=-5V. Multi-cycle drift untested. |
+| dVth_per_pulse | CONTEXT-DEPENDENT | 6.7 mV (v6, Vpulse=6V) vs 11.36 mV (SimB, Vpulse=2V). Different conditions produce different values — Step 2 uses v6 value. |
+| Energy/spike | NOT MEASURED | Requires transient power integration during fire event |
+| Vpulse level | NOTED | 6V exceeds standard CMOS I/O (<=3.3V) — acceptable for TCAD proof-of-concept |
+
+**Remaining TCAD work (can run in parallel with Step 2 Python development):**
+1. tau_P > 0 characterization (re-run v6 with tau_P = 1e-6, 1e-5, 1e-4 s)
+2. Energy extraction from fire transient
+3. Multi-cycle endurance test (10-100 integrate-fire-reset cycles)
+
+**See:** `Phase1_Plot_Compilation.md` for complete visual documentation with per-plot justifications.

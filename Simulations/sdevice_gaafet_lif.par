@@ -71,7 +71,14 @@ Polarization {
     *   tau_P = (0, 1e-6, 0)    * 1us   — fast leak
     *   tau_P = (0, 1e-5, 0)    * 10us  — moderate leak
     *   tau_P = (0, 1e-4, 0)    * 100us — slow leak
-    tau_P = (0, 0, 0)       * Polarization relaxation time [s]
+    * STEP 2: tau_P controls ferroelectric depolarization (leak).
+    * Phase 1 used tau_P=0 (no leak). Step 2 requires tau_P > 0 for tau_leak extraction.
+    * Run simC v6 with each value below (one at a time) to characterize leak dynamics.
+    *   tau_P = (0, 0, 0)       * 0     — no relaxation (Phase 1 default)
+    *   tau_P = (0, 1e-6, 0)    * 1us   — fast leak (tau_P = tau_E)
+    *   tau_P = (0, 1e-5, 0)    * 10us  — moderate leak (RECOMMENDED START)
+    *   tau_P = (0, 1e-4, 0)    * 100us — slow leak
+    tau_P = (0, 1e-5, 0)    * Polarization relaxation time [s] — STEP 2 default
     kn = (0, 0, 0)          * Nonlinear coupling constant [cm*s/V]
 }
 

@@ -6,7 +6,7 @@ Extracted from SimC v6 TCAD simulations (pw=100ns, Vpulse=5/6/7V).
 Optimal operating point: 6V → Fire at P9 (gradual integration → spike)
 
 Author: TCAD Analysis Pipeline
-Date: March 2026
+Date: March 2026 (Updated March 30, 2026 — critical evaluation applied)
 """
 
 # =============================================================================
@@ -40,11 +40,18 @@ OPERATING = {
 # =============================================================================
 LIF = {
     "N_fire": 9,                  # pulses (fire at P9 for 6V)
-    "fire_threshold": 2.0,        # ID/ID_baseline ratio
+    "fire_threshold": 2.0,        # ID/ID_baseline ratio (arbitrary detection criterion)
     "fire_ratio": 2.035,          # actual ratio at fire (6V P9)
-    "dVth_per_pulse": -6.7e-3,    # V/pulse (avg ΔVth in gradual regime P1-P9)
+    "dVth_per_pulse": -6.7e-3,    # V/pulse (avg ΔVth in gradual regime P1-P9 at 6V)
+    # NOTE: SimB gave 11.36 mV/pulse at Vpulse=2V — different operating point.
+    # Use this v6 value (6.7mV) since it matches actual operating conditions.
     "leak_drop_ratio": 0.20,      # ~20% current drop in 5µs gap
+    # CAVEAT: τ_P=0 in all v6 runs — this decay is device settling, NOT controlled
+    # FE relaxation. True leak requires τ_P > 0 characterization.
     "reset_completeness": 77.2,   # % (post-reset returns to 77% of baseline)
+    # NOTE: multi-cycle drift from incomplete reset not characterized
+    "R_on_estimate": 2.58e3,      # Ω (VDS/ID_fire = 0.05V/19.38µA)
+    "R_off_estimate": 5.25e3,     # Ω (VDS/ID_baseline = 0.05V/9.525µA)
 }
 
 # =============================================================================
@@ -62,8 +69,10 @@ POLARIZATION = {
 # PENDING PARAMETERS (require additional simulations)
 # =============================================================================
 PENDING = {
-    "tau_leak": None,             # s (leak time constant — needs τ_P > 0 run)
-    "E_spike": None,              # J (energy per spike — needs transient power)
+    "tau_leak": None,             # s (CRITICAL: needs τ_P > 0 run — current "leak" is device settling)
+    "E_spike": 97e-15,            # J (ROUGH ESTIMATE: VDS × ID_fire × pw = 0.05V × 19.4µA × 100ns)
+    # NOTE: E_spike is a rough order-of-magnitude estimate. Proper extraction requires
+    # integrating V×I over the full fire transient waveform.
     "E_per_pulse": None,          # J (energy per pulse — needs power integration)
 }
 

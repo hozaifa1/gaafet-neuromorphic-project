@@ -126,6 +126,40 @@ The saturation ceiling (~1.87×) is determined by the total switchable polarizat
 
 **Plots:** `Simulations/py_scripts/simC_v6_fig1-6_*.png`
 
+## Critical Evaluation of SimC v6 Results (March 30, 2026)
+
+### What IS Validated
+
+| Claim | Evidence | Confidence |
+|-------|----------|------------|
+| Gradual multi-pulse integration | Fig1: monotonic P1→P9 at 6V | HIGH |
+| Fire threshold crossing | Fig1: 2.035× at P9 (6V) | HIGH |
+| Polarization switching mechanism | Fig2: monotonic Py evolution | HIGH |
+| Reset capability | Fig4: 77.2% at Vreset=-5V | HIGH |
+| pw/τ_E = 0.1 enables gradual integration | v3→v5→v6 progression | HIGH |
+
+### What IS NOT Validated — Critical Caveats
+
+**1. τ_P = 0 in ALL v6 runs (CRITICAL)**
+The "leak" shown in Fig5 (20-23% current drop in 5µs gap) is NOT from controlled ferroelectric depolarization. With τ_P = 0, there is no FE relaxation mechanism. The observed decay is from device charge redistribution and trap dynamics after pulse removal. True leak characterization requires τ_P > 0 runs, which remain pending. The `tau_leak` parameter in the Step 2 model is currently a PLACEHOLDER.
+
+**2. dVth_per_pulse Inconsistency (MEDIUM)**
+- SimB (Vpulse=2.0V, transient readout, 20 pulses): 11.36 mV/pulse average
+- SimC v6 (Vpulse=6.0V, write-then-read, 9 pulses to fire): 6.7 mV/pulse average
+
+These come from different protocols and conditions. The discrepancy arises because: (a) different Vpulse amplitudes produce different per-pulse P shifts, (b) the write-then-read protocol at a fixed VGS_read measures differently from the transient readout sweep. The Step 2 model should use the **v6 value (6.7 mV)** since it matches the actual operating conditions (Vpulse=6V, write-then-read).
+
+**3. Fire Definition is Arbitrary (LOW)**
+The 2.0× current ratio threshold has no physical basis — it is a detection criterion chosen for convenience. The actual "fire" in a FeFET LIF neuron occurs when Vth shifts below VGS_read, causing the device to transition from subthreshold to above-threshold. This is a continuous process amplified by the subthreshold slope (SS=60.8 mV/dec), not a discrete event. The 2.0× line simply marks where the gradual curve is declared "fired."
+
+**4. Vpulse = 6V Exceeds Standard CMOS Levels (LOW for TCAD, HIGH for fabrication)**
+Standard CMOS I/O operates at ≤3.3V. The 6V write pulse is acceptable for TCAD proof-of-concept but would require charge pump circuits or higher-voltage I/O in hardware. This is a known trade-off in FeFET literature (coercive field of HZO limits minimum switching voltage).
+
+**5. Reset Drift Over Multiple Cycles (UNKNOWN)**
+77.2% reset means ~22.8% residual polarization per cycle. Over hundreds of integrate-fire-reset cycles (typical SNN workload), this could accumulate and shift the operating point. Multi-cycle endurance testing was not performed.
+
+---
+
 ## Step 2: Extracted LIF Parameters — Ready for Python SNN Model
 
 **Based on SimC v6 (6V node = optimal operating point):**
@@ -160,9 +194,15 @@ LIF_PARAMETERS = {
     "P_fire": 1.22e-6,           # C/cm² (polarization at fire)
     "Delta_P_fire": 1.85e-6,     # C/cm² (total switched polarization)
     
-    # === Pending (requires τ_P > 0 simulation) ===
-    "tau_leak": None,            # s (leak time constant — needs τ_P run)
-    "E_spike": None,             # J (energy per spike — needs transient power)
+    # === Pending (requires additional simulations) ===
+    "tau_leak": None,            # s (CRITICAL: needs τ_P > 0 run — current "leak" is device settling, NOT FE relaxation)
+    "E_spike": None,             # J (energy per spike — needs transient power integration)
+    
+    # === Caveats ===
+    # dVth_per_pulse here (6.7mV) differs from SimB value (11.36mV) due to different Vpulse and protocol
+    # fire_ratio threshold (2.0×) is arbitrary detection criterion, not physical threshold
+    # leak_drop_ratio (20%) observed with τ_P=0 — NOT from FE relaxation, from device settling
+    # reset_completeness (77%) — multi-cycle drift not characterized
 }
 ```
 

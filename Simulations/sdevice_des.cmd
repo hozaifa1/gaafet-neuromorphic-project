@@ -102,16 +102,27 @@ CurrentPlot {
 }
 
 *===================================================================
-*== Block 6: SOLVE — PHASE 1A: POLARIZATION SWITCHING CHARACTERIZATION
+*== Block 6: SOLVE — PHASE 1A PROTOTYPE (SUPERSEDED)
 *==
-*== NEW PARADIGM: Polarization-based LIF (not Impact Ionization).
-*== The FE polarization switching IS the spiking mechanism.
-*==   - Gate receives sub-coercive pulse train (integration)
-*==   - Each pulse partially switches FE domains -> Vth decreases
-*==   - When Vth < operating VGS -> ID spikes (fire)
-*==   - Negative gate pulse resets polarization (reset)
+*== STATUS (March 30, 2026): This file is the ORIGINAL Phase 1A
+*== prototype with single-pulse characterization. It has been
+*== SUPERSEDED by the dedicated simulation files:
 *==
-*== SWEEP PARAMETERS (commented values to iterate):
+*==   SimA: simA/sdevice_phase1a_simA_transient.cmd  (single pulse)
+*==   SimB: simB/sdevice_phase1a_simB_transient.cmd  (multi-pulse)
+*==   SimC: simC/sdevice_simC_v6.cmd                 (FINAL: LIF cycle, FIRE!)
+*==
+*== PHASE 1 RESULT: Fire demonstrated at Vpulse=6V, pulse 9.
+*== Optimal: pw=100ns, tau_E=1us, pw/tau_E=0.1, Vreset=-5V.
+*==
+*== STEP 2 NEXT ACTIONS (tau_P characterization):
+*==   1. Use simC/sdevice_simC_v6.cmd as the base
+*==   2. Change tau_P in .par file: 1e-6, 1e-5, 1e-4 s (one at a time)
+*==   3. Re-run v6 for each tau_P value (6V node only)
+*==   4. Compare leak gap decay rates to extract tau_leak for SNN model
+*==   5. Feed tau_leak into Step_2/lif_parameters.py
+*==
+*== ORIGINAL SWEEP PARAMETERS (retained for reference):
 *==   Gate pulse amplitude:  0.5V, 1.0V, 1.5V, 2.0V, 2.5V, 3.0V
 *==   Gate pulse width:      10ns, 100ns, 1us, 10us, 100us
 *==   Number of pulses:      1, 5, 10, 20, 50
