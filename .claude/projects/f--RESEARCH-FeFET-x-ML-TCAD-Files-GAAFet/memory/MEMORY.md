@@ -1,0 +1,3 @@
+- [Project rule](rule_project_guide.md) — Always follow .windsurf/rules/project-guide.md; never trust training data for Sentaurus syntax.
+- [Project status](project_status.md) — Phase 1B done (FIRE at v6); Step 2 SNN v1 hit 90.18% on MIT-BIH 4-class; Phase 1C (leak/energy/endurance/Cgg) is next.
+- [User role](user_role.md) — Thesis student doing GAA-FeFET LIF neuron TCAD + SNN, Sentaurus 2023.12 + PyTorch.

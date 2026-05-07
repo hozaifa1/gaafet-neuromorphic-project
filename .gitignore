@@ -2,6 +2,8 @@
 *.tdr
 *.out
 *.dat
+*.plt
+*.log
 
 # Mesh files (large, regenerated)
 *_msh.tdr

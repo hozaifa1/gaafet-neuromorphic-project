@@ -295,7 +295,84 @@ The GAA-FeFET LIF neuron has demonstrated **integration**, **fire**, and **reset
 - Leak characterization with τ_P > 0 (CRITICAL for SNN tau_leak)
 - Energy per spike from actual power integration
 - Multi-cycle endurance testing
+- C_gg (gate capacitance) from AC small-signal analysis — NEW (added 2026-05-03)
 
 **Key result:** A **single GAA-FeFET transistor** demonstrates all four LIF behaviors through ferroelectric polarization switching. The device replaces the CMOS LIF circuit (20+ transistors + capacitor). Parameters are extracted and ready for Step 2 Python SNN implementation.
 
-**See:** `Phase1_Plot_Compilation.md` for complete visual documentation. `simC_analysis_summary.md` for detailed v3-v6 progression and critical caveats.
+**See:** `Phase1_Plot_Compilation.md` for complete visual documentation. `simC_analysis_summary.md` for detailed v3-v6 progression and critical caveats. **`Phase1C_Plan.md`** for the four remaining TCAD deliverables and the Python v2 roadmap.
+
+---
+
+## 9. Step 2 v1 — Trained Model Results (Updated 2026-05-03)
+
+### 9.1 Headline result
+
+A recurrent spiking neural network (LSNN) using the GAA-FeFET as the active integration element of every neuron achieves **90.18% test accuracy** on the MIT-BIH 4-class ECG arrhythmia subset, exceeding the published VO2-memristor baseline (89.58%) on the same task. Source: `ecg_gaafefet_2.pdf` and `ecg_gaafefet_simplified.pdf` in repo root.
+
+### 9.2 Architecture as actually implemented
+
+| Layer | Spec |
+|---|---|
+| Input | 3 spike channels (delta-modulated ECG, +/-/cue) |
+| fc1: DelayedLinear | 3 → 100, max_delay=10 SNN time-steps |
+| Hidden recurrent | 60 LIF (eLIFVO2) + 40 ALIF (ALIFVO2) |
+| Recurrent self-conn | DelayedLinear 100→100, max_delay=10 |
+| lp: LPFilter | low-pass on spike output |
+| fc2 | 100 → 4 logits, no bias |
+| Decoder | argmax of last-time-step logits |
+
+Time-step `dt = 0.5556 ms`, T=1116 (1000 ECG + 116 cue). Training: Adam, peak LR 1e-2, cosine annealing to 1e-4 over 150 epochs (stage 1: `main_ecg_6_polished.py`), then constant LR 5e-4 with spike-rate regulariser disabled for 2 epochs (stage 2: `main_ecg_7_resume.py`). BPTT + ScaledPiecewiseQuadratic surrogate gradient. Class-balanced cross-entropy.
+
+### 9.3 How the GAA FeFET enters the model
+
+The LIF membrane equation is RC integrate-and-fire:
+```
+v_{t+1} = e^{-dt/τ} v_t + (1 - e^{-dt/τ}) (R_h + R_s) s x_t
+```
+with:
+- **R_h ≡ R_off = 5250 Ω** ← `LIF.R_off_estimate` (V_DS / I_D,baseline)
+- **R_s ≡ R_on = 2580 Ω** ← `LIF.R_on_estimate` (V_DS / I_D,fire)
+- **τ = 11.11 ms** chosen for ECG timescale; back-calculates **C_mem = 1.419 µF** (external)
+- **gain = (R_h + R_s) · s = 77.5** with s = 9.9e-3 V/A
+- **v_th = 3.6 V**, **v_h = 1.5 V** ← from VO2 paper comparator design (NOT from the FeFET)
+
+ALIF adds a CMOS spike-feedback adaptation circuit (κ_n, κ_p, V_tn, V_tp, W/L_n, W/L_p, R_a, C_a) using the operating-conditions block of `gaafefet_params.py`.
+
+### 9.4 What the v1 model abstracts away (honest disclosure)
+
+- **FeFET = 2-state resistor.** The model only consumes R_on/R_off; the partial-switching staircase, the leak, and the polarization kinetics are not in the forward pass.
+- **C_mem is external.** 1.419 µF is *not* the FeFET's intrinsic gate capacitance. It is a fudge factor chosen to give τ=11.11 ms. The "single-FeFET capacitorless LIF" narrative is therefore **not yet defensible from v1**; it requires C_gg from simG (Phase 1C).
+- **dt >> pw.** The SNN time-step (555 µs) is 5500× larger than the write pulse (100 ns), so pulse-level dynamics never enter the model.
+- **`model_2.py` (FE-native, polarization-as-state) tops out at ~70%.** BPTT struggles with the bounded sigmoidal Preisach saturation. v1 abstraction was a deliberate trainability trade-off, not a physics simplification of convenience.
+
+### 9.5 Confusion matrix highlights
+
+Per-class accuracy from stage-2 confusion: N ~95%, F ~78%, SVEB ~80%, VEB ~93%. Dominant remaining errors are the F↔SVEB pair (morphological overlap, also the failure mode of every classifier on this dataset).
+
+### 9.6 What v1 validates vs what it doesn't
+
+| Claim | v1 evidence | Verdict |
+|---|---|---|
+| GAA-FeFET R_on/R_off can drive ECG-scale RC integration | 90.18% with R-mapped τ | **Validated** |
+| Memory-window memory is sufficient for 4-class arrhythmia | Yes (303/336) | **Validated** |
+| Single-FeFET LIF with no external cap | C_mem=1.419 µF is external | **NOT validated** — needs simG |
+| FeFET kinetics native model trains | model_2.py at 70% | **Open** — v2c reparametrization is the next attempt |
+| Hardware drift survives | endurance untested | **Open** — needs simF |
+| Energy advantage vs CMOS | rough 97 fJ estimate from Phase 1B | **Open** — needs simE |
+
+### 9.7 What's next (Step 2 v2 roadmap)
+
+**Important framing.** v1 is a *port* of the VO2-paper LSNN code (Yin et al., NCOMMS 2023) with R_h/R_s swapped to FeFET values. The CMOS adaptation parameters, comparator setpoints (v_th, v_h), τ choice, and external C_mem all come from VO2-paper inheritance, not from our device. The 90.18% number therefore depends on a chain of assumptions that have not been verified for the GAA-FeFET. Phase 1C measures those assumptions; v2 is a rebuild, not a patch.
+
+See `Phase1C_Plan.md` §0 (honest framing) and §5 (build order) for the full plan. Summary:
+
+1. **TCAD first.** Run simG/simD/simE/simF to replace the v1 placeholders with measurements. simG is decisive — it tells us whether the FeFET-only τ is ms-scale (v1 framework survives) or ns-scale (re-timing required).
+2. **v2.0:** rewrite `lif_parameters.py` with a `MEASURED` block. Move VO2-inherited numbers to `LEGACY_VO2_INHERITED` clearly marked.
+3. **v2.1:** re-derive τ, v_th, v_h *analytically* from the new measurements. Do not carry VO2 setpoints forward.
+4. **v2.2:** refit the same MIT-BIH 4-class task with the corrected forward model. If accuracy stays ≥ 85% the architecture port survives the rebuild. If it drops below 80%, the architecture itself was over-fit to VO2-paper choices and must be redesigned. Either outcome is a real result.
+5. **v2.3:** drift-aware training using simF.
+6. **v2.4:** fix `model_2.py` (FE-native polarisation model) by reparametrising P → arctanh(P/P_s) so BPTT gradients survive the boundary saturation.
+7. **Iterate** v2.0 ↔ v2.4 as needed.
+
+**Publication recommendation:** do not ship v1 as a standalone GAA-FeFET claim. Either publish a Phase-1B-only device paper (calibration + fire demonstration) without an SNN deployment, or wait for v2 and publish a single SNN paper with measured numbers. v1's 90.18% appears in v2 as a benchmark reference, not as the headline.
+
