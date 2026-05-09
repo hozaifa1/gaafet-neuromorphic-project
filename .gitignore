@@ -25,6 +25,7 @@ marker_tool/
 Tutorials/
 Sentaurus/
 Sentaurus_Tutorials/
+PYTHON_Modelling_Fefet_Codes/
 
 .vscode/
 *.swp

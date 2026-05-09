@@ -3,6 +3,11 @@
 *== 9 pulses at Vpulse=6.0V, dense sampling for power integration.
 *== Intervals: rise=20 write=100 fall=20 read=50
 *== Post-process with extract_energy.py for E_pulse and E_fire_total.
+*== FIX (2026-05-08): rise/fall used absolute-second steps with a Goal,
+*== which Sentaurus interprets as fractions (0-1) of the goal change.
+*== That collapsed effective step to ~1e-21 s (infinite loop, see
+*== spiking_simulation_debugging_log_v2.md §2). Rise/fall now use
+*== normalized fractions (1e-3 / 5e-2 / 1e-7), matching simC v6.
 *===================================================================
 
 File {
@@ -110,7 +115,7 @@ Solve {
   NewCurrentPrefix="p01_rise_"
   Transient (
     InitialTime=1.0000e-07 FinalTime=1.0100e-07
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 6.0 }
   ) {
@@ -129,7 +134,7 @@ Solve {
   NewCurrentPrefix="p01_fall_"
   Transient (
     InitialTime=2.0100e-07 FinalTime=2.0200e-07
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 0.2 }
   ) {
@@ -150,7 +155,7 @@ Solve {
   NewCurrentPrefix="p02_rise_"
   Transient (
     InitialTime=3.0200e-07 FinalTime=3.0300e-07
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 6.0 }
   ) {
@@ -169,7 +174,7 @@ Solve {
   NewCurrentPrefix="p02_fall_"
   Transient (
     InitialTime=4.0300e-07 FinalTime=4.0400e-07
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 0.2 }
   ) {
@@ -190,7 +195,7 @@ Solve {
   NewCurrentPrefix="p03_rise_"
   Transient (
     InitialTime=5.0400e-07 FinalTime=5.0500e-07
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 6.0 }
   ) {
@@ -209,7 +214,7 @@ Solve {
   NewCurrentPrefix="p03_fall_"
   Transient (
     InitialTime=6.0500e-07 FinalTime=6.0600e-07
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 0.2 }
   ) {
@@ -230,7 +235,7 @@ Solve {
   NewCurrentPrefix="p04_rise_"
   Transient (
     InitialTime=7.0600e-07 FinalTime=7.0700e-07
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 6.0 }
   ) {
@@ -249,7 +254,7 @@ Solve {
   NewCurrentPrefix="p04_fall_"
   Transient (
     InitialTime=8.0700e-07 FinalTime=8.0800e-07
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 0.2 }
   ) {
@@ -270,7 +275,7 @@ Solve {
   NewCurrentPrefix="p05_rise_"
   Transient (
     InitialTime=9.0800e-07 FinalTime=9.0900e-07
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 6.0 }
   ) {
@@ -289,7 +294,7 @@ Solve {
   NewCurrentPrefix="p05_fall_"
   Transient (
     InitialTime=1.0090e-06 FinalTime=1.0100e-06
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 0.2 }
   ) {
@@ -310,7 +315,7 @@ Solve {
   NewCurrentPrefix="p06_rise_"
   Transient (
     InitialTime=1.1100e-06 FinalTime=1.1110e-06
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 6.0 }
   ) {
@@ -329,7 +334,7 @@ Solve {
   NewCurrentPrefix="p06_fall_"
   Transient (
     InitialTime=1.2110e-06 FinalTime=1.2120e-06
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 0.2 }
   ) {
@@ -350,7 +355,7 @@ Solve {
   NewCurrentPrefix="p07_rise_"
   Transient (
     InitialTime=1.3120e-06 FinalTime=1.3130e-06
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 6.0 }
   ) {
@@ -369,7 +374,7 @@ Solve {
   NewCurrentPrefix="p07_fall_"
   Transient (
     InitialTime=1.4130e-06 FinalTime=1.4140e-06
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 0.2 }
   ) {
@@ -390,7 +395,7 @@ Solve {
   NewCurrentPrefix="p08_rise_"
   Transient (
     InitialTime=1.5140e-06 FinalTime=1.5150e-06
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 6.0 }
   ) {
@@ -409,7 +414,7 @@ Solve {
   NewCurrentPrefix="p08_fall_"
   Transient (
     InitialTime=1.6150e-06 FinalTime=1.6160e-06
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 0.2 }
   ) {
@@ -430,7 +435,7 @@ Solve {
   NewCurrentPrefix="p09_rise_"
   Transient (
     InitialTime=1.7160e-06 FinalTime=1.7170e-06
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 6.0 }
   ) {
@@ -449,7 +454,7 @@ Solve {
   NewCurrentPrefix="p09_fall_"
   Transient (
     InitialTime=1.8170e-06 FinalTime=1.8180e-06
-    InitialStep=1e-12 MaxStep=5e-11 MinStep=1e-15
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= 0.2 }
   ) {

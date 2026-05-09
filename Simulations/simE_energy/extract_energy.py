@@ -33,50 +33,32 @@ except ImportError:
     sys.exit(1)
 
 
-PLT_HEADER_RE = re.compile(r"^\s*\"(.+?)\"\s*$")
 SEG_RE = re.compile(r"p(\d{2})_(rise|write|fall|read)_")
 
 
 def read_plt(path: str) -> tuple[list[str], np.ndarray]:
-    """Read a Sentaurus .plt file. Returns (header_names, data_array)."""
+    """Parse a Sentaurus DF-ISE xyplot .plt with datasets=[...] header."""
     with open(path, "r") as f:
-        lines = f.readlines()
-
-    # Sentaurus .plt format: data section starts after "DATA" or after the
-    # header lines that look like quoted column names. We support the common
-    # form where the first whitespace-only line of numbers begins the data.
-    headers: list[str] = []
-    data_start = 0
-    in_header = False
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("\"") and stripped.endswith("\""):
-            in_header = True
-            headers.append(stripped.strip("\""))
-            continue
-        if in_header:
-            # First non-quoted line after headers is data
-            try:
-                _ = float(stripped.split()[0])
-                data_start = i
-                break
-            except ValueError:
-                continue
-
-    rows = []
-    for line in lines[data_start:]:
-        parts = line.split()
-        if not parts:
-            continue
-        try:
-            rows.append([float(x) for x in parts])
-        except ValueError:
-            break
-    if not rows:
-        return headers, np.empty((0, len(headers)))
-    return headers, np.array(rows)
+        txt = f.read()
+    m = re.search(r"datasets\s*=\s*\[(.*?)\]", txt, re.S)
+    if not m:
+        return [], np.empty((0, 0))
+    headers = re.findall(r'"([^"]+)"', m.group(1))
+    n_cols = len(headers)
+    m2 = re.search(r"Data\s*\{(.*)", txt, re.S)
+    if not m2:
+        return headers, np.empty((0, n_cols))
+    body = m2.group(1)
+    end = body.rfind("}")
+    if end >= 0:
+        body = body[:end]
+    nums = re.findall(r"-?\d+\.\d+E[+-]\d+|-?\d+\.\d+|-?\d+", body)
+    if n_cols == 0 or not nums:
+        return headers, np.empty((0, n_cols))
+    if len(nums) % n_cols != 0:
+        nums = nums[: (len(nums) // n_cols) * n_cols]
+    arr = np.array([float(x) for x in nums]).reshape(-1, n_cols)
+    return headers, arr
 
 
 def find_col(headers: list[str], *patterns: str) -> int | None:
@@ -93,7 +75,7 @@ def integrate_segment(t: np.ndarray, v: np.ndarray, i: np.ndarray) -> float:
     if len(t) < 2:
         return 0.0
     p = v * i
-    return float(np.trapz(p, t))
+    return float(np.trapezoid(p, t))
 
 
 def process_file(path: str) -> dict | None:
