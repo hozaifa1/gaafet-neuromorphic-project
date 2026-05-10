@@ -4,6 +4,8 @@
 *.dat
 *.plt
 *.log
+*.py
+*.sav
 
 # Mesh files (large, regenerated)
 *_msh.tdr
