@@ -1,0 +1,39 @@
+Phase 1D — H0g: AreaFactor first-principles derivation
+============================================================
+
+Device geometry (sde_dvs.cmd + CALIBRATION_PUBLICATION.md §2):
+  Nanosheet width      W_ns       = 30.0 nm
+  Channel thickness    t_ch (T_si)= 15.0 nm
+  Gate length          L_g        = 100.0 nm
+  Nanosheets / device              = 1
+
+Simulation topology: 2D vertical cross-section with TOP and BOTTOM
+gate stacks (double-gate approximation of GAA wrap-around).
+Sentaurus 2D default z-depth = 10000 nm (1 µm).
+
+Effective 3D gate perimeter (real device, one sheet):
+  W_eff_3D = 2 (W_ns + t_ch) = 2 (30 + 15) = 90.0 nm
+
+Effective 2D gate "perimeter" actually simulated:
+  W_2D = 2 × Z_depth = 20000 nm    (top + bottom faces, default 1 µm depth)
+
+Geometric AreaFactor (DG → GAA mapping):
+  AF_geom = W_eff_3D / W_2D = 90.0 / 20000 = 0.00450
+
+Naïve AreaFactor (perimeter / 1 µm, ignores DG topology):
+  AF_naive = W_eff_3D / Z_depth = 0.00900
+
+Retained AreaFactor (par + all .cmd files): 0.071
+
+Ratio (retained / DG-geom prediction)   = 15.78
+Ratio (retained / naïve prediction)     = 7.89
+
+VERDICT: FAIL — > 5× deviation. Rebuild geometry as full 3D nanosheet (SDE).
+ACTION : Rebuild SDE with W=30 nm slice in 3D; re-run H0a v5.
+
+PUBLICATION-CRITICAL NOTE:
+  Every current reported in this manuscript is normalized as I_D / W in
+  µA/µm. This per-perimeter quantity is INVARIANT under any choice of
+  AreaFactor — the factor cancels in the normalization. Direct comparison
+  to Tasneem 2022 (also reported as µA/µm) is therefore valid regardless
+  of the AreaFactor calibration tuning.
