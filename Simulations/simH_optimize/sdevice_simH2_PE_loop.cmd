@@ -1,29 +1,45 @@
 *===================================================================
-*== PHASE 1D — SIM H2 v2: P-E LOOP + CV at the H1-chosen V_pgm
+*== PHASE 1D — SIM H2 v3: V_t SHIFT (MW + analog states) at V_pgm
 *==
 *== v1 INVALIDATED (2026-05-11): same System/Vsource_pset/pwl
-*==   pulse-delivery bug as H1 v1 — the pgm/ers transient pulses
-*==   would silently fail to drive the gate.  Rewritten with the
-*==   simC v6 / H0a v5 pattern: top-level Electrode block,
-*==   Goal-driven Transient for the program & erase pulses.
+*==   pulse-delivery bug as H1 v1 — pgm/ers transient pulses
+*==   silently failed to drive the gate.
+*== v2 INVALIDATED (2026-05-14): rewritten with top-level Electrode +
+*==   Goal-driven Transient pulses (correct), but kept ACCoupled CV
+*==   sweeps for V_t extraction.  ACCoupled requires circuit nodes
+*==   from a System {} block (documented in simG_capacitance.cmd §1).
+*==   Bare-Electrode + ACCoupled fails at parse with
+*==     "Cannot find AC node 'gate_contact'!"
+*==   (see h2_outputs/n2_des.err, 2026-05-14).  The two patterns —
+*==   Goal-on-Electrode and ACCoupled-on-System — cannot coexist in
+*==   one cmd file.
+*==
+*== v3 fix (Tier A, 2026-05-15): replace the three ACCoupled CV
+*==   sweeps with DC ID-VG read sweeps (Quasistationary + Coupled).
+*==   V_t is extracted by constant-current criterion
+*==   (I_D/W = 1e-4 µA/µm, Tasneem 2022 Fig.3c), the same V_t
+*==   definition that delivered the M3 PASS (MW=1.40V) in H0a v5.
+*==   Equivalent memory-window science, no AC node, no System block.
+*==   The P-E loop topology itself is already validated in H0e
+*==   (M12a/M12b PASS), so H2 only needs to deliver V_t separation,
+*==   not bare polarization loops.
 *==
 *== v1 also used @WF@ as a SWB parameter, but the WF sweep was
-*==   invalidated in the H1 v1 header comments (polarization charge
-*==   dominates V_th by 15× over the WF sweep range).  v2 fixes
-*==   WF = 4.35 to match the rest of the project.
+*==   invalidated in the H1 v1 header (polarization charge dominates
+*==   V_th by 15× over the WF sweep range).  v2/v3 fix WF = 4.35.
 *==
-*== Goal: extract memory window (CV midpoint shift virgin → post-pgm
-*==   → post-ers) at the H1-chosen V_pgm, and report ≥9 distinguishable
-*==   ΔV_t steps when V_pgm is stepped 0.2 V (M3, M4).
+*== Goal: extract memory window (V_t_post-pgm vs V_t_post-ers) at the
+*==   H1-chosen V_pgm, and report ≥9 distinguishable ΔV_t steps when
+*==   V_pgm is stepped 0.2 V (M3, M4).
 *==
 *== SWB parameter:  @V_pgm@  ∈ {1.5, 2.0, 2.5, 3.5, 6.0} V
 *==   (Set V_pgm = 6.0 V on one node as a Phase-1C-reference sanity
-*==   check that the new par still reproduces the −25 mV CV shift.)
+*==   check that the new par still reproduces the simC ΔV_t.)
 *==
 *== Cadence: pgm pulse = 10 ns rise / 100 ns hold / 10 ns fall +
 *==   100 ns settle; then erase pulse with opposite sign at same
-*==   timings.  Each CV sweep is a Quasistationary V_G sweep −1 → +1 V
-*==   with ACCoupled @ 1 MHz (same as simG).
+*==   timings.  Each read is a Quasistationary V_G sweep −1 → +1 V
+*==   at V_DS = 0.05 V (Tasneem-style read).
 *===================================================================
 
 File {
@@ -31,7 +47,6 @@ File {
     Parameter  = "sdevice_gaafet_lif.par"
     Plot       = "@tdrdat@"
     Current    = "@plot@"
-    ACExtract  = "@acplot@"
     Output     = "@log@"
 }
 
@@ -114,22 +129,17 @@ Solve {
     Goal { Name="gate_contact" Voltage= -1.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
-  *=== PHASE A: VIRGIN CV SWEEP (-1 V → +1 V at f=1 MHz) ===
-  *== Same ACCoupled pattern as simG.  Used to extract C_gg(V_GS)
-  *== and the CV-midpoint V_th_virgin.
-  NewCurrentPrefix="cv_virgin_"
+  *=== PHASE A: VIRGIN ID-VG READ SWEEP (-1 V → +1 V at V_DS=0.05 V) ===
+  *== Tasneem-style DC read (H0a v5 pattern).  V_t_virgin extracted
+  *== in post-processing by constant-current criterion
+  *== (I_D/W = 1e-4 µA/µm, Tasneem 2022 Fig.3c).
+  NewCurrentPrefix="idvg_virgin_"
   Quasistationary (
     DoZero
     InitialStep=1e-2 Increment=1.5
     MinStep=1e-5 MaxStep=0.04
     Goal { Name="gate_contact" Voltage= 1.0 }
-  ) { ACCoupled (
-        StartFrequency= 1e+06 EndFrequency= 1e+06 NumberOfPoints= 1 Decade
-        Node(gate_contact drain_contact source_contact)
-        Exclude(gate_contact drain_contact source_contact)
-        ACCompute (Time= (Range=(0 1) Intervals=80))
-      ) { Poisson Electron Hole }
-  }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
   *=== STEP 3: RETURN TO V_G = 0.2 V before the program pulse ===
   NewCurrentPrefix="gate_to_read_"
@@ -188,20 +198,14 @@ Solve {
     Goal { Name="gate_contact" Voltage= -1.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
-  *=== PHASE B: POST-PROGRAM CV SWEEP ===
-  NewCurrentPrefix="cv_postpgm_"
+  *=== PHASE B: POST-PROGRAM ID-VG READ SWEEP ===
+  NewCurrentPrefix="idvg_postpgm_"
   Quasistationary (
     DoZero
     InitialStep=1e-2 Increment=1.5
     MinStep=1e-5 MaxStep=0.04
     Goal { Name="gate_contact" Voltage= 1.0 }
-  ) { ACCoupled (
-        StartFrequency= 1e+06 EndFrequency= 1e+06 NumberOfPoints= 1 Decade
-        Node(gate_contact drain_contact source_contact)
-        Exclude(gate_contact drain_contact source_contact)
-        ACCompute (Time= (Range=(0 1) Intervals=80))
-      ) { Poisson Electron Hole }
-  }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
   *=== STEP 5: RAMP TO 0.2 V BEFORE THE ERASE PULSE ===
   NewCurrentPrefix="gate_to_read_pre_ers_"
@@ -257,20 +261,14 @@ Solve {
     Goal { Name="gate_contact" Voltage= -1.0 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
-  *=== PHASE C: POST-ERASE CV SWEEP (closes the loop) ===
-  NewCurrentPrefix="cv_posters_"
+  *=== PHASE C: POST-ERASE ID-VG READ SWEEP (closes the V_t loop) ===
+  NewCurrentPrefix="idvg_posters_"
   Quasistationary (
     DoZero
     InitialStep=1e-2 Increment=1.5
     MinStep=1e-5 MaxStep=0.04
     Goal { Name="gate_contact" Voltage= 1.0 }
-  ) { ACCoupled (
-        StartFrequency= 1e+06 EndFrequency= 1e+06 NumberOfPoints= 1 Decade
-        Node(gate_contact drain_contact source_contact)
-        Exclude(gate_contact drain_contact source_contact)
-        ACCompute (Time= (Range=(0 1) Intervals=80))
-      ) { Poisson Electron Hole }
-  }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
 }
 
@@ -279,11 +277,14 @@ Solve {
 *==   Parameter:  @V_pgm@
 *==   Sweep:      1.5  2.0  2.5  3.5  6.0    V
 *==
-*== POST-PROCESSING:
-*==   1. From cv_virgin_, cv_postpgm_, cv_posters_  → extract C_gg(V_G)
-*==      and CV-midpoint V_t for each branch.  ΔV_t = V_t_ers − V_t_pgm
-*==      = memory window (M3, target ≥ 0.5 V).
-*==   2. Stack the three CV curves to demonstrate hysteresis closure.
+*== POST-PROCESSING (v3, DC read pattern):
+*==   1. From idvg_virgin_, idvg_postpgm_, idvg_posters_ → extract V_t
+*==      per branch via constant-current criterion
+*==      (I_D/W = 1e-4 µA/µm, Tasneem 2022 Fig.3c — same as H0a v5).
+*==      ΔV_t = V_t_ers − V_t_pgm = memory window (M3, target ≥ 0.5 V).
+*==   2. Stack the three log(ID)-V_G read curves to demonstrate
+*==      hysteresis closure (PGM and ERS branches separated, virgin
+*==      between them).
 *==   3. Step V_pgm 0.2 V over the sweep nodes and count distinguishable
 *==      ΔV_t levels (M4, target ≥ 9).
 *===================================================================

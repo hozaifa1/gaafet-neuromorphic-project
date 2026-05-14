@@ -116,15 +116,22 @@ File: `simH_optimize/sdevice_simH1_Vpgm_sweep.cmd` (v3 — top-level Electrode, 
 
 E_gate accounting still deferred to H5.
 
-## H2 — PE Loop at V_pgm_opt (CV midpoints, MW + analog states)
-- File: `simH_optimize/sdevice_simH2_PE_loop.cmd` — **v2 (2026-05-11)**. v1 had the same broken Vsource_pset/pwl pgm/ers driver as H1 v1 and would have failed identically. Rewritten with top-level Electrode + Goal-driven pgm/ers Transients. `@WF@` SWB parameter dropped (WF=4.35 fixed per H1 v1 invalidation note: polarization charge dominates V_t by 15× over any plausible WF sweep range).
+## H2 — V_t shift at V_pgm_opt (MW + analog states)
+- File: `simH_optimize/sdevice_simH2_PE_loop.cmd` — **v3 (2026-05-15)**.
+  - v1 had the broken Vsource_pset/pwl pgm/ers driver (same bug as H1 v1).
+  - v2 (2026-05-11) rewrote pulses with top-level Electrode + Goal-driven Transient, but kept `ACCoupled` CV sweeps for V_t. SWB run on 2026-05-14 failed at parse with `Cannot find AC node 'gate_contact' !` (`h2_outputs/n2_des.err`). Root cause: `ACCoupled` requires circuit nodes from a `System {}` block (documented in simG_capacitance §1) — incompatible with the top-level Electrode + Goal pattern that the pulse train requires. The two paradigms cannot coexist in one cmd.
+  - v3 (2026-05-15) replaces the three `ACCoupled` CV sweeps with DC ID-VG read sweeps (Quasistationary + Coupled, V_DS = 0.05 V, V_G: −1 → +1 V, `idvg_virgin_` / `idvg_postpgm_` / `idvg_posters_`). V_t extracted in post-processing by Tasneem constant-current criterion (I_D/W = 1e-4 µA/µm, same definition that delivered M3 PASS in H0a v5). P-E loop topology itself is already validated in H0e (M12a/M12b PASS), so H2 only needs to deliver V_t separation.
+- `@WF@` SWB parameter dropped (WF=4.35 fixed per H1 v1 invalidation note: polarization charge dominates V_t by 15× over any plausible WF sweep range).
 - SWB sweep: `@V_pgm@` ∈ {1.5, 2.0, 2.5, 3.5, 6.0} V.
 - Pass: MW ≥ 0.5 V (M3); ≥ 9 distinguishable ΔV_t steps (M4) when V_pgm stepped 0.2 V across nodes.
 
 ## H3 — Reset Protocol Optimization
-- Run: `simH_optimize/sdevice_simH3_reset.cmd`. L9 Taguchi over V_reset ∈ {−3,−5,−7} V, t_reset ∈ {1,10,100} µs, t_settle ∈ {0,10,100} µs.
-- Pass: drift ≤ 1.0 %/cycle (M1).
-- **PENDING REWRITE (2026-05-11):** uses the same `Device { Electrode }` + `System/Vsource_pset/pwl` pattern as H1 v1 / H2 v1 — same silent-gate-drive bug. Do NOT submit to SWB before rewriting it with the simC v6 Goal-based pattern. Defer the rewrite until V_pgm_opt is known from H1 v2.
+- File: `simH_optimize/sdevice_simH3_reset.cmd` — **v2 (2026-05-11)**.
+  - v1 INVALIDATED: same `Device{Electrode}+System/Vsource_pset/pwl` silent-gate-drive bug as H1 v1 / H2 v1.
+  - v2 rewrite: top-level Electrode + Goal-driven Transient for every fire pulse AND every reset pulse (simC v6 / H1 v3 / H2 v3 pattern). Read level V_GS = −0.5 V (matches H1 v3 sub-V_t convention so fire_ratio and drift are measured on the SS-exponential region of ID). V_pgm = 2.0 V hardcoded (= V_pgm_opt from H1 v3: safe choice, monotonic 9-pulse staircase, |E|/F_c=0.41 sub-coercive).
+- SWB sweep: `@V_reset@` ∈ {−3.0, −5.0, −7.0} V (L3, reduced from the original L9 Taguchi). Centerpoint t_reset = 10 µs, t_settle = 10 µs hardcoded. To expand to L9 (V_reset × t_reset × t_settle), clone the cmd with re-derived time anchors per the header note — recomputation is mechanical (cycle length = 606 ns fires + 10 ns reset rise + t_reset + 10 ns reset fall + t_settle).
+- Method: 3 cycles of (3 fire pulses → reset → 10 µs settle). drift_per_cycle = (ID_pre_c3 − ID_pre_c1) / ID_pre_c1 / 2.
+- Pass: |drift| ≤ 1.0 %/cycle (M1). Pick the V_reset that minimizes |drift| while preserving fire_ratio → V_reset_opt for H4.
 
 ## H4 — Endurance + Variability (5-cycle full train)
 - Run: adapt simC v6 cmd with V_pgm = V_pgm_opt and reset from H3, 5 cycles × 9 pulses.
@@ -166,8 +173,8 @@ E_gate accounting still deferred to H5.
 | H0g ✓ | (analytical only) | `Simulations/analyze_phase1d_h0g.py` → `Simulations/phase1d_calibration/h0g/` | – |
 | H0f (deferred) | reviewer-response: re-run H0a v5 with NumberOfDomains=40 | – | NumberOfDomains, DomainLength, σ(α₂) |
 | H1 v3 ✓ | `simH_optimize/sdevice_simH1_Vpgm_sweep.cmd` (Goal-driven, sub-V_t read at V_GS=−0.5 V, 2026-05-11) | `Simulations/analyze_phase1d_h1.py` → `Simulations/phase1d_h1/` (V_pgm_opt = 2.0 V) | none |
-| H2 v2 | `simH_optimize/sdevice_simH2_PE_loop.cmd` (Goal-driven, 2026-05-11) | – | possibly P_r |
-| H3 | `simH_optimize/sdevice_simH3_reset.cmd` (**rewrite pending — same bug as H1 v1**) | – | – |
+| H2 v3 | `simH_optimize/sdevice_simH2_PE_loop.cmd` (Goal-driven pulses + DC ID-VG reads, 2026-05-15) | – | possibly P_r |
+| H3 v2 | `simH_optimize/sdevice_simH3_reset.cmd` (Goal-driven fires + resets, V_pgm=2.0 V, @V_reset@ ∈ {−3,−5,−7} V, 2026-05-11) | – | – |
 | H4 | adapt simC v6 cmd | – | – |
 | H5 | (no new sim) | – | – |
 
