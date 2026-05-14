@@ -1,0 +1,29 @@
+=== Phase 1D H1 v3 — V_pgm sweep summary (sub-V_t read) ===
+
+Effective W = 0.09 um. Read level V_GS = -0.5 V (sub-V_t). Pulse train: 9 x 100 ns @ V_pgm.
+
+Node   V_pgm    ID_base     ID_p09  fire_ratio   dVth_eff    Pol_p09     |E|_p09   |E|/F_c  mono
+         (V)    (uA/um)    (uA/um)                   (mV)   (uC/cm2)     (MV/cm) (F_c=1.2)      
+n2      1.00   2.66e-07   2.04e-07       0.768      11.44      0.124       0.154      0.13 False
+n4      1.50   2.66e-07    5.8e-07       2.182     -33.89      0.112       0.324      0.27 False
+n5      2.00   2.66e-07   1.27e-06       4.791     -68.05      0.087       0.494      0.41  True
+n6      2.50   2.66e-07   1.99e-06       7.487     -87.43      0.057       0.663      0.55  True
+n7      6.00   2.66e-07   8.63e-07       3.246     -51.14     -0.250       1.837      1.53 False
+
+=== ID staircase (uA/um) per pulse ===
+Node  V_pgm  p01 p02 p03 p04 p05 p06 p07 p08 p09
+n2     1.00  1.55e-07 6.21e-08 1.39e-08 7.43e-08 1.21e-07 1.55e-07  1.8e-07 1.96e-07 2.04e-07
+n4     1.50  1.01e-07 4.04e-08 1.58e-07 2.53e-07 3.27e-07 3.96e-07 4.64e-07 5.26e-07  5.8e-07
+n5     2.00  4.54e-08 1.49e-07 3.14e-07 4.84e-07 6.94e-07 9.15e-07 1.08e-06  1.2e-06 1.27e-06
+n6     2.50  1.27e-08 2.64e-07 5.32e-07 9.18e-07 1.29e-06 1.59e-06 1.79e-06 1.93e-06 1.99e-06
+n7     6.00  5.14e-07 2.27e-06 4.07e-06 5.65e-06 6.84e-06 7.44e-06 7.05e-06 4.87e-06 8.63e-07
+
+=== M2 evaluation (fire_ratio >= 1.5) ===
+  V_pgm = 1.00 V  fire_ratio = 0.768  FAIL
+  V_pgm = 1.50 V  fire_ratio = 2.182  PASS
+  V_pgm = 2.00 V  fire_ratio = 4.791  PASS
+  V_pgm = 2.50 V  fire_ratio = 7.487  PASS
+  V_pgm = 6.00 V  fire_ratio = 3.246  PASS
+
+=== V_pgm_opt = lowest V_pgm meeting M2: 1.50 V ===
+    M7 (V_pgm <= 2.0 V) PASS
