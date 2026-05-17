@@ -1,0 +1,33 @@
+Phase 1D - H3 reset-protocol sweep summary
+========================================================================
+Fixed: V_pgm=+2.0 V (100 ns), V_GS_read=-0.5 V, V_DS=0.05 V
+t_reset=10 us, t_settle=10 us, 3 cycles x 3 fire pulses
+
+V_reset | ID_base  | ID_c1_p1 | ID_c2_p1 | ID_c3_p1 | drift/cyc | fr_c1_p1 | fr_c3_p1 | fr_c1_p3 | fr_c3_p3 | M1
+----------------------------------------------------------------------------------------------------------------
+ -3.0 V | 2.66e-07 | 4.54e-08 | 7.42e-07 | 9.93e-07 |  +1042.62% |    0.17x |    3.74x |    1.18x |    6.79x | FAIL
+ -5.0 V | 2.66e-07 | 4.54e-08 | 2.11e-06 | 2.34e-06 |  +2528.80% |    0.17x |    8.82x |    1.18x |   13.88x | FAIL
+ -7.0 V | 2.66e-07 | 4.54e-08 | 5.23e-06 | 5.60e-06 |  +6110.49% |    0.17x |   21.06x |    1.18x |   21.42x | FAIL
+
+FE-state at end of each reset hold (Pol_y, |E_y|/F_c):
+V_reset | c1 Pol_y (uC/cm2) | c1 |E|/F_c | c2 Pol_y | c2 |E|/F_c | c3 Pol_y | c3 |E|/F_c
+ -3.0 V |  +0.000        |    0.55    |  +0.000  |    0.57    |  +0.000  |    0.57
+ -5.0 V |  +0.000        |    1.05    |  +0.000  |    1.06    |  +0.000  |    1.06
+ -7.0 V |  +0.000        |    1.24    |  +0.000  |    1.17    |  +0.000  |    1.18
+
+Residual Pol_y at end of each settle window (after relaxation):
+V_reset | c1 Pol_y_settle | c2 Pol_y_settle | c3 Pol_y_settle | c1 ID_settle | c2 ID_settle | c3 ID_settle (uA/um)
+ -3.0 V |      +0.000     |      +0.000     |      +0.000     |  8.14e-07 |  2.44e-06 |  2.52e-06
+ -5.0 V |      +0.000     |      +0.000     |      +0.000     |  8.40e-06 |  1.16e-05 |  1.17e-05
+ -7.0 V |      +0.000     |      +0.000     |      +0.000     |  2.02e-05 |  2.61e-05 |  2.55e-05
+
+Per-pulse staircase ID (uA/um), pre-fire->p1->p2->p3 for each cycle:
+V_reset=-3.0V  c1: base 2.66e-07 -> p1 4.54e-08 -> p2 1.49e-07 -> p3 3.14e-07
+           c2: base 2.66e-07 -> p1 7.42e-07 -> p2 1.22e-06 -> p3 1.66e-06
+           c3: base 2.66e-07 -> p1 9.93e-07 -> p2 1.43e-06 -> p3 1.80e-06
+V_reset=-5.0V  c1: base 2.66e-07 -> p1 4.54e-08 -> p2 1.49e-07 -> p3 3.14e-07
+           c2: base 2.66e-07 -> p1 2.11e-06 -> p2 3.01e-06 -> p3 3.80e-06
+           c3: base 2.66e-07 -> p1 2.34e-06 -> p2 2.99e-06 -> p3 3.69e-06
+V_reset=-7.0V  c1: base 2.66e-07 -> p1 4.54e-08 -> p2 1.49e-07 -> p3 3.14e-07
+           c2: base 2.66e-07 -> p1 5.23e-06 -> p2 5.30e-06 -> p3 5.34e-06
+           c3: base 2.66e-07 -> p1 5.60e-06 -> p2 5.66e-06 -> p3 5.69e-06

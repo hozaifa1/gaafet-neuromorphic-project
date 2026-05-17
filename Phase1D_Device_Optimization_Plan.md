@@ -230,6 +230,45 @@ E_gate accounting still deferred to H5.
 - Method: 3 cycles of (3 fire pulses → reset → 10 µs settle). drift_per_cycle = (ID_pre_c3 − ID_pre_c1) / ID_pre_c1 / 2.
 - Pass: |drift| ≤ 1.0 %/cycle (M1). Pick the V_reset that minimizes |drift| while preserving fire_ratio → V_reset_opt for H4.
 
+### H3 v2 — RAN, **FAIL on M1 as defined; root-caused (2026-05-17).** Reset over-drives the FE past virgin into the opposite saturation, and the fire pulses then partial-switch the wrong way against that post-reset baseline.
+Outputs in `simH_optimize/h3_outputs/`. Analysis: `Simulations/analyze_phase1d_h3.py` → `Simulations/phase1d_h3/h3_metrics.txt`. All 3 SWB nodes ran clean (no solver errors).
+
+**Headline (V_GS_read = −0.5 V, V_DS = 0.05 V; ID values in µA/µm; ID_baseline_virgin = 2.66 × 10⁻⁷ on every node):**
+
+| V_reset | ID_settle_c1 | ID_settle_c2 | ID_settle_c3 | ID_c2_p1 | ID_c3_p1 | drift_c1→c3 / 2 | drift_c2→c3 |
+|---|---|---|---|---|---|---|---|
+| −3.0 V | 8.14e-7 (3.1× base) | 2.44e-6 | 2.52e-6 | 7.42e-7 | 9.93e-7 | +1043 %/cyc | **+3.3 %/cyc — FAIL** |
+| −5.0 V | 8.40e-6 (32× base) | 1.16e-5 | 1.17e-5 | 2.11e-6 | 2.34e-6 | +2529 %/cyc | **+0.86 %/cyc — PASS (steady-state)** |
+| −7.0 V | 2.02e-5 (76× base) | 2.61e-5 | 2.55e-5 | 5.23e-6 | 5.60e-6 | +6110 %/cyc | **−2.3 %/cyc — FAIL** |
+
+`ID_settle_cN` = ID at the end of cycle N's settle window (the steady-state baseline the next fire train sees). `ID_cN_p1` = ID at the end of cycle N's first fire pulse read.
+
+**Two distinct failures are visible:**
+
+1. **Wake-up: cycle 1 is from virgin FE; cycles 2–3 are from the post-reset steady-state. The c1→c3 drift metric defined in the cmd header (`(ID_c3_p1 − ID_c1_p1)/ID_c1_p1/2`) is dominated by this one-shot transition (+1000 %–+6000 %/cyc) and is NOT a useful M1 measurement.** Same first-cycle wake-up signature already documented in H0e (cycle 1 P–E loop ≠ cycle 2). Steady-state cycle-to-cycle drift (c2→c3) is the right metric.
+2. **The reset is OVER-DRIVING the FE.** At V_reset = −5 V the post-settle baseline sits at 32× the virgin equilibrium ID, at −7 V it sits at 76×. The reset is driving past virgin into the opposite (high-ID, low-V_t) polarization state and the device settles there permanently after cycle 1.
+
+**Physics: the reset is not behaving like a reset, it's behaving like a stronger PGM (in the wrong direction).** From H2 v6 we know +V_pgm at sub-coercive (≤ 2.5 V, 10 µs) shifts V_t NEGATIVE (lowers V_t, raises ID). The 10 µs reset hold at −3 to −7 V drives |E|/F_c = 0.55–1.24 at the FE probe (sub-/near-/super-coercive). After the reset+settle (V_G ramped back to −0.5 V), ID is far above virgin — i.e. V_t has been shifted MORE negative by the negative reset than by the positive fire pulses. The two pulse polarities are partial-switching the FE in the SAME direction at our pulse widths, not opposite directions. This is the depolarization-screened MFIS asymmetry from [feedback_sentaurus_fe_reads.md / project_mfis_depolarization_screening.md] taken to its limit: at 10 µs hold the −V_reset doesn't flip the FE back, it walks it further into the same partial-saturation rail.
+
+**Consequence for the LIF fire test:**
+- Fire-from-virgin (cycle 1): ID_baseline=2.66e-7 → ID_c1_p3=3.14e-7, fire_ratio_c1_p3 = 1.18× — consistent with H1 v3 (3-pulse subset of the 9-pulse train at V_pgm=2.0 V gives a sub-PASS ratio).
+- Fire-from-post-reset (cycle 3, V_reset=−5 V): ID_settle_c2=1.16e-5 → ID_c3_p3=3.80e-6, **fire-ratio = 0.33× — the device fires in the WRONG DIRECTION** (positive 2 V pulses now partially un-do the reset and DROP ID). The "fire_ratio_c3 = 13.88×" in the L3 table is computed against the artificially-low virgin baseline and is misleading.
+
+**Tier-A verdict: V_reset = −5 V meets M1 (drift = +0.86 %/cyc, steady-state) but NOT the LIF intent. None of the three nodes deliver a "fire-from-baseline" operating point. H3 v2 cannot be used as-is.**
+
+**Root cause = reset is 3–10× too strong in the wrong physical regime.** Two coupled knobs to dial back: V_reset (currently too negative) and t_reset (currently too long).
+
+### H3 v3 — REQUIRED. Weaker, symmetric-magnitude resets that gently un-do the fire-pulse partial switching instead of over-flipping past virgin.
+**Plan (cmd edit — keep the v2 structure, only change `@V_reset@` and `t_reset` anchors):**
+- **V_reset L4 sweep: {−1.0, −1.5, −2.0, −2.5} V** — straddles symmetric/asymmetric to V_pgm = +2.0 V; all sub-coercive (|E|/F_c ≤ ~0.55 on the −V side). −3 V already failed by being too strong, so do not re-run it.
+- **t_reset shortened from 10 µs → 1 µs** (10× reduction). H2 v4 showed 100 ns ERS is depolarization-screened to near zero; 1 µs sits in the sweet spot between "screened out entirely" and "saturating past virgin in 10 µs."
+- **Run 5 cycles, not 3** (cycle 1 = wake-up discard; cycle 2 = transition; cycles 3–5 = steady-state for the M1 fit). Re-derive cycle time anchors mechanically (per-cycle = 606 ns fires + 10 ns reset rise + 1 µs hold + 10 ns reset fall + 10 µs settle = 11.626 µs/cycle → c1 ends at 11.626e-6, c5 ends at 58.13e-6).
+- **Acceptance:** the analyzer must report (a) ID_settle_c5 within ±3× of virgin ID_baseline (proves reset is RESTORING, not over-flipping), (b) |drift_c3→c5| ≤ 1 %/cyc (M1), (c) within-cycle fire_ratio_p1→p3 ≥ 1.5× measured against ID_settle of the same cycle (not against virgin) so the fire is in the correct direction.
+
+If even V_reset = −1.0 V at 1 µs still over-flips, drop to L3 sub-microsecond resets: {(−1.5 V, 300 ns), (−2.0 V, 100 ns), (−2.5 V, 100 ns)} — leverage the 100 ns depolarization screening as a feature.
+
+Wake-up effect from H0e and now H3 v2 is real on this device; bake "cycle 1 is wake-up, exclude from steady-state fit" into every multi-cycle protocol going forward (apply to H4 too).
+
 ## H4 — Endurance + Variability (5-cycle full train)
 - Run: adapt simC v6 cmd with V_pgm = V_pgm_opt and reset from H3, 5 cycles × 9 pulses.
 - Pass: drift ≤ 1.0 %/cycle (M1); fire_ratio at cycle 5 ≥ 1.5 (M2); C2C σ/μ ≤ 5 % (M8).
@@ -275,7 +314,8 @@ E_gate accounting still deferred to H5.
 | H2 v5 (ran, root-caused) | (prior cmd) v4 + 10 µs pulses + 100 µs reads | confirmed FE bipolar switching via Pol_y traces, but V_t-extraction blurred by slow read sweep | – |
 | **H2 v6 ✓ PASS** | `simH_optimize/sdevice_simH2_PE_loop.cmd` — 10 µs pulses + 100 ns Transient reads, 2026-05-16 | `Simulations/analyze_phase1d_h2.py` → `Simulations/phase1d_h2/`; M3 PASS at V_pgm ≥ 3.5 V, MW(V_pgm) monotonic | none |
 | H2 v6 / M4 expansion (next) | same cmd, SWB sweep `@V_pgm@ ∈ {1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.5, 4.0}` V (9 nodes at 0.25 V step) | reuse analyzer | – |
-| H3 v2 | `simH_optimize/sdevice_simH3_reset.cmd` (Goal-driven fires + resets, V_pgm=2.0 V, @V_reset@ ∈ {−3,−5,−7} V, 2026-05-11) | – | – |
+| H3 v2 (ran, FAIL on intent) | `simH_optimize/sdevice_simH3_reset.cmd` (Goal-driven fires + resets, V_pgm=2.0 V, @V_reset@ ∈ {−3,−5,−7} V, 2026-05-11) | `Simulations/analyze_phase1d_h3.py` → `Simulations/phase1d_h3/h3_metrics.txt` — reset over-drives past virgin; fire reverses direction at the new baseline | – |
+| H3 v3 (next) | edit `sdevice_simH3_reset.cmd`: @V_reset@ ∈ {−1.0,−1.5,−2.0,−2.5} V, t_reset 10 µs → 1 µs, 3 → 5 cycles (re-derive time anchors) | extend `analyze_phase1d_h3.py` — drift_c3→c5, fire_ratio against in-cycle ID_settle | – |
 | H4 | adapt simC v6 cmd | – | – |
 | H5 | (no new sim) | – | – |
 
