@@ -40,3 +40,5 @@ Thumbs.db
 # Python cache (if using Python scripts)
 __pycache__/
 *.pyc
+
+Simulations/simH_optimize/leak_eq_outputs/

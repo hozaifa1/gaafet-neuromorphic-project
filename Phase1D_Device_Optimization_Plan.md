@@ -350,7 +350,17 @@ This was confused at first by the stale comment on `Step_2/lif_parameters.py` li
 
 **Step 1 — par audit.** Done 2026-05-17. The par at `Simulations/sdevice_gaafet_lif.par` lines 52–83 has `tau_E = (0, 1e-6, 0)` (auxiliary-field 1 µs) and `tau_P = (0, 1e-5, 0)` (polarization-relaxation 10 µs) — the leak is already on. Fit on the H3 v4 c5 settle decay confirms an effective τ_leak ≈ 2.75 µs in this operating regime. **No par change is required to add leak — the leak is present.**
 
-**Step 2 — characterize the leak equilibrium across the settle-voltage axis.** New experiment, single SWB sweep, dedicated cmd: `simH_optimize/sdevice_simH_leak_eq.cmd`. Protocol per node:
+**Step 2a — leak-equilibrium scan, V_settle ∈ {−0.5..+1.0} V (RAN 2026-05-18).** Outputs `simH_optimize/leak_eq_outputs/leakeq_outputs/`. Analyzer `Simulations/analyze_phase1d_leakeq.py`. Findings:
+
+- **τ_leak fit ≈ 7 µs at the FE** (consistent across the 7 nodes; matches par's τ_P = 10 µs after the depolarization-screened coupling with τ_E = 1 µs). 100 µs hold = ≥ 14·τ_leak — fully equilibrated.
+- **ID at end of hold RISES across the 100 µs at every V_settle in {−0.5, −0.25, …, +1.0} V.** Direction confirms the FE is relaxing toward a MORE +Pol-partial-saturation state, not toward virgin. **None of the 7 V_settle values is V_GS_neutral.**
+- The depolarization-screened MFIS asymmetry: at every sub-coercive gate bias from −0.5 to +1.0 V, the internal field after depolarization screening still points in the program direction, so the leak equilibrium is +Pol-partial. To find V_GS_neutral the gate must be biased super-coercive in the erase direction at the FE.
+
+Step 2a ran clean but landed entirely on the wrong side of the coercive boundary. V_GS_neutral, if it exists as a static DC bias, is in the negative-V range that brackets the boundary between sub-coercive (no erase) and super-coercive overshoot (−Pol saturation). H3 v2 data hints the bracket is around V_reset = −3 V at ~10 µs hold (3.1× virgin endpoint) — close but not exact.
+
+**Step 2b — leak-equilibrium scan, V_settle ∈ negative super-coercive range (NEXT).** New cmd `simH_optimize/sdevice_simH_leak_eq.cmd` (regenerated): same protocol structure as 2a, sweep extended into the super-coercive erase region. Sweep: `V_settle ∈ {−3.5, −3.0, −2.5, −2.0, −1.5} V`. Hold duration kept at 100 µs (≥ 10·τ_P) for the FE to fully equilibrate. Direct virgin-comparison added by appending a 100 ns post-hold read at V_GS = −0.5 V, so the metric is unambiguous: post-hold-read ID = virgin baseline at −0.5 V iff the FE returned to virgin polarization.
+
+**Step 2 — original protocol description (kept for reference).** Per node:
 1. Initialize at virgin.
 2. Apply the H1 v3 9-pulse fire burst at `V_pgm = +2.0 V` (1 ns / 100 ns / 1 ns / 100 ns × 9 = 1.818 µs).
 3. Goal-ramp the gate to `@V_settle@` over 10 ns.

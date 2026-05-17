@@ -1,46 +1,60 @@
 *===================================================================
-*== PHASE 1D — LEAK-EQUILIBRIUM CHARACTERIZATION
+*== PHASE 1D — LEAK-EQUILIBRIUM CHARACTERIZATION v2
 *==
 *== Purpose: identify the gate voltage V_GS_neutral at which the
 *==   post-fire leak equilibrium equals the virgin baseline current.
-*==   That voltage will be used as the inter-burst rest phase in the
-*==   cyclic LIF protocol.
+*==
+*== v1 ran 2026-05-18, V_settle in {-0.5..+1.0} V.  Result: at every
+*==   tested V_settle the FE relaxes FURTHER into +Pol partial state,
+*==   not back to virgin.  Confirms the depolarization-screened MFIS
+*==   asymmetry: sub-coercive gate bias never drives polarization
+*==   toward zero at our HZO stack.  V_GS_neutral (if it exists as a
+*==   static DC bias) lies in the super-coercive negative range.
+*==
+*== v2 changes (2026-05-18):
+*==   - SWB sweep extended into super-coercive erase region:
+*==        V_settle in {-3.5, -3.0, -2.5, -2.0, -1.5} V  (L5)
+*==     Brackets the H3 v2 hint that V_reset = -3 V at 10 us is the
+*==     boundary where the leak endpoint falls near 3x virgin.
+*==   - Post-hold read appended: after the 100 us hold at V_settle,
+*==     the gate is ramped back to V_GS = -0.5 V for a 100 ns read
+*==     (post_hold_read_).  ID at this read directly compares to the
+*==     virgin baseline measured at the start of the experiment.
 *==
 *== Par-file context (audited 2026-05-17):
 *==   tau_E = (0, 1e-6, 0)   auxiliary-field relaxation 1 us
 *==   tau_P = (0, 1e-5, 0)   polarization relaxation 10 us (leak)
-*==   Effective channel-current relaxation tau_leak ~ 2.75 us
-*==   (from H3 multi-cycle settle decay fits)
-*==   No par change required for this experiment.
+*==   Effective tau_leak fit from v1 hold trajectories: ~7 us
+*==   No par change required.
 *==
 *== Protocol per node:
-*==   STEP 0  initialize at virgin (Poisson-only init)
+*==   STEP 0  initialize at virgin
 *==   STEP 1  Quasistationary ramp V_DS to 0.05 V
 *==   STEP 2  Quasistationary ramp V_G  to -0.5 V (sub-V_t baseline)
-*==   STEP 3  100 ns baseline read at V_G = -0.5 V    (virgin ID)
-*==   STEP 4  9-pulse fire burst at V_pgm = +2.0 V
-*==              (1 ns rise / 100 ns hold / 1 ns fall / 100 ns read)
-*==              per pulse, 202 ns x 9 = 1.818 us total
+*==   STEP 3  100 ns baseline read at V_G = -0.5 V
+*==   STEP 4  9-pulse fire burst at V_pgm = +2.0 V (1.818 us total)
 *==   STEP 5  Goal-ramp gate from -0.5 V to V_settle over 10 ns
-*==   STEP 6  Hold gate at V_settle for 100 us with continuous
-*==              CurrentPlot (~50 intervals)
+*==   STEP 6  Hold gate at V_settle for 100 us
+*==   STEP 7  Goal-ramp gate from V_settle back to -0.5 V over 10 ns
+*==   STEP 8  100 ns post-hold read at V_G = -0.5 V (virgin check)
 *==
 *== Time anchors (seconds):
-*==   baseline_pre_       [-1.0e-7, 0.0]      virgin read
-*==   p1..p9 (4 phases)   [0.0,    1.818e-6]  fire burst
-*==   to_settle_          [1.818e-6, 1.828e-6] goal ramp
-*==   hold_               [1.828e-6, 1.01828e-4] 100 us hold
+*==   baseline_pre_      [-1.0e-7,    0.0]
+*==   p1..p9             [0.0,        1.818e-6]
+*==   to_settle_         [1.818e-6,   1.828e-6]
+*==   hold_              [1.828e-6,   1.01828e-4]
+*==   to_read_back_      [1.01828e-4, 1.01838e-4]
+*==   post_hold_read_    [1.01838e-4, 1.01938e-4]
 *==
 *== SWB sweep (set in SWB project):
 *==   Parameter:  V_settle
-*==   Sweep (L7): -0.5  -0.25  0.0  +0.25  +0.5  +0.75  +1.0    V
+*==   Sweep (L5): -3.5  -3.0  -2.5  -2.0  -1.5    V
 *==
-*== Acceptance: at least one V_settle gives end-of-hold ID within
-*==   +-20% of virgin baseline (2.13e-7 to 3.19e-7 uA/um).  That
-*==   voltage is V_GS_neutral for the cyclic LIF protocol.
+*== Acceptance: at least one V_settle gives post_hold_read_ end-ID
+*==   within +-20% of virgin baseline (2.13e-7 to 3.19e-7 uA/um at
+*==   V_G = -0.5 V).  That voltage is V_GS_neutral.
 *==
-*== Total wall time per node: ~102 us simulated (well below v4's
-*==   64 us cycle-burst time x 5).
+*== Total wall time per node: ~102 us simulated.
 *===================================================================
 
 File {
@@ -420,23 +434,43 @@ Solve {
   ) { Coupled (Iterations = 100) {Poisson Electron Hole}
       CurrentPlot( Time = (Range=(1.8280e-06 1.0183e-04) Intervals=80) ) }
 
+  *====================================================================
+  *== STEP 7: GOAL-RAMP GATE BACK TO V_G = -0.5 V  (10 ns)
+  *====================================================================
+  NewCurrentPrefix="to_read_back_"
+  Transient (
+    InitialTime=1.0183e-04 FinalTime=1.0184e-04
+    InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
+    Increment=1.4
+    Goal { Name="gate_contact" Voltage= -0.5 }
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
+
+  *====================================================================
+  *== STEP 8: POST-HOLD READ AT V_G = -0.5 V  (100 ns)
+  *====================================================================
+  NewCurrentPrefix="post_hold_read_"
+  Transient (
+    InitialTime=1.0184e-04 FinalTime=1.0194e-04
+    InitialStep=1e-11 MaxStep=5e-9 MinStep=1e-15
+    Increment=1.4
+  ) { Coupled (Iterations = 100) {Poisson Electron Hole}
+      CurrentPlot( Time = (Range=(1.0184e-04 1.0194e-04) Intervals=20) ) }
+
 }
 
 *===================================================================
 *== SWB SETUP (set in SWB project, not in this file):
 *==   Parameter:  V_settle
-*==   Sweep (L7): -0.5  -0.25  0.0  +0.25  +0.5  +0.75  +1.0    V
+*==   Sweep (L5): -3.5  -3.0  -2.5  -2.0  -1.5    V
 *==
-*== POST-PROCESSING (Simulations/analyze_phase1d_leakeq.py, to be written):
+*== POST-PROCESSING (Simulations/analyze_phase1d_leakeq.py):
 *==   1. Per node, extract:
-*==      - ID_baseline_virgin = end of baseline_pre_
-*==      - ID_p9              = end of p9_read_   (fire response)
-*==      - ID_hold_decay      = ID(t) across hold_, sampled ~80 times
-*==      - ID_end_of_hold     = end of hold_     (leak equilibrium)
-*==   2. Fit ID_hold_decay to exponential -> tau_leak per V_settle
-*==   3. Plot ID_end_of_hold vs V_settle, identify V_GS_neutral as the
-*==      voltage where ID_end_of_hold returns to within +-20% of
-*==      virgin baseline.
-*==   4. If no V_settle achieves +-20%, extend the sweep range upward
-*==      or add an active erase phase.
+*==      - ID_baseline_virgin = end of baseline_pre_  (V_G = -0.5 V)
+*==      - ID_p9              = end of p9_read_       (post-burst, V_G = -0.5 V)
+*==      - ID_hold(t)         = ID across the 100 us hold (V_G = V_settle)
+*==      - ID_post_hold_read  = end of post_hold_read_ (V_G = -0.5 V) <- DIRECT virgin comparison
+*==   2. virgin_restoration_ratio = ID_post_hold_read / ID_baseline_virgin
+*==   3. PASS: virgin_restoration_ratio in [0.8, 1.2] on at least one V_settle.
+*==      That voltage is V_GS_neutral.
+*==   4. If multiple V_settle pass, pick the one with smallest |log10(ratio)|.
 *===================================================================
