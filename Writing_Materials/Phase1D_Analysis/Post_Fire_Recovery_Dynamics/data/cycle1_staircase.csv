@@ -1,0 +1,11 @@
+pulse_index,I_D_uA_per_um,description
+0,2.657836987769911e-07,virgin baseline (read before any pulse)
+1,4.543859273186412e-08,read after fire pulse 1
+2,1.4929767266116003e-07,read after fire pulse 2
+3,3.1370870733305334e-07,read after fire pulse 3
+4,4.844459384941e-07,read after fire pulse 4
+5,6.944068445943277e-07,read after fire pulse 5
+6,9.146616565585334e-07,read after fire pulse 6
+7,1.0843712760694244e-06,read after fire pulse 7
+8,1.2021407684874556e-06,read after fire pulse 8
+9,1.2734496930840222e-06,read after fire pulse 9

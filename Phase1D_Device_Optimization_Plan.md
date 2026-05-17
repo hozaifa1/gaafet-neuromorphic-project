@@ -258,16 +258,141 @@ Outputs in `simH_optimize/h3_outputs/`. Analysis: `Simulations/analyze_phase1d_h
 
 **Root cause = reset is 3–10× too strong in the wrong physical regime.** Two coupled knobs to dial back: V_reset (currently too negative) and t_reset (currently too long).
 
-### H3 v3 — REQUIRED. Weaker, symmetric-magnitude resets that gently un-do the fire-pulse partial switching instead of over-flipping past virgin.
-**Plan (cmd edit — keep the v2 structure, only change `@V_reset@` and `t_reset` anchors):**
-- **V_reset L4 sweep: {−1.0, −1.5, −2.0, −2.5} V** — straddles symmetric/asymmetric to V_pgm = +2.0 V; all sub-coercive (|E|/F_c ≤ ~0.55 on the −V side). −3 V already failed by being too strong, so do not re-run it.
-- **t_reset shortened from 10 µs → 1 µs** (10× reduction). H2 v4 showed 100 ns ERS is depolarization-screened to near zero; 1 µs sits in the sweet spot between "screened out entirely" and "saturating past virgin in 10 µs."
-- **Run 5 cycles, not 3** (cycle 1 = wake-up discard; cycle 2 = transition; cycles 3–5 = steady-state for the M1 fit). Re-derive cycle time anchors mechanically (per-cycle = 606 ns fires + 10 ns reset rise + 1 µs hold + 10 ns reset fall + 10 µs settle = 11.626 µs/cycle → c1 ends at 11.626e-6, c5 ends at 58.13e-6).
-- **Acceptance:** the analyzer must report (a) ID_settle_c5 within ±3× of virgin ID_baseline (proves reset is RESTORING, not over-flipping), (b) |drift_c3→c5| ≤ 1 %/cyc (M1), (c) within-cycle fire_ratio_p1→p3 ≥ 1.5× measured against ID_settle of the same cycle (not against virgin) so the fire is in the correct direction.
+### H3 v3 — RAN. **M1 PASS at all nodes; restore PASS at V_reset = −1.0/−1.5 V; M2 FAIL at every node — fire burst is too short (3 × 100 ns) to clear the wake-up dip.** (2026-05-17)
+File: `simH_optimize/sdevice_simH3_reset.cmd` (v3 — 5 cycles × 3 fires, V_pgm=+2.0 V/100 ns, t_reset=1 µs, t_settle=10 µs, top-level Electrode + Goal-driven gate everywhere). SWB sweep `@V_reset@` ∈ {−1.0, −1.5, −2.0, −2.5} V (L4). Outputs in `simH_optimize/h3_outputs/` (nodes n11=−1.0, n10=−1.5, n9=−2.0, n3=−2.5 V — discovered from c1_reset_hold gate voltage; SWB node order is not the parameter order). Analysis: `Simulations/analyze_phase1d_h3.py` → `Simulations/phase1d_h3/h3_metrics.txt`. All 4 nodes ran clean.
 
-If even V_reset = −1.0 V at 1 µs still over-flips, drop to L3 sub-microsecond resets: {(−1.5 V, 300 ns), (−2.0 V, 100 ns), (−2.5 V, 100 ns)} — leverage the 100 ns depolarization screening as a feature.
+**Headline (ID at end of each cycle's settle window, µA/µm; virgin baseline = 2.658 × 10⁻⁷ on every node):**
 
-Wake-up effect from H0e and now H3 v2 is real on this device; bake "cycle 1 is wake-up, exclude from steady-state fit" into every multi-cycle protocol going forward (apply to H4 too).
+| V_reset | c1 settle | c2 settle | c3 settle | c4 settle | c5 settle | restore_c5 | drift c3→c5 | M1 | restore | M2 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| −1.0 V | 3.21e-7 | 3.31e-7 | 3.33e-7 | 3.34e-7 | 3.34e-7 | **1.26×** | +0.06 %/cyc | **PASS** | **PASS** | FAIL |
+| −1.5 V | 3.57e-7 | 3.25e-7 | 3.17e-7 | 3.15e-7 | 3.15e-7 | **1.18×** | −0.33 %/cyc | **PASS** | **PASS** | FAIL |
+| −2.0 V | 1.24e-6 | 1.26e-6 | 1.26e-6 | 1.26e-6 | 1.26e-6 | 4.73× | −0.03 %/cyc | PASS | FAIL | FAIL |
+| −2.5 V | 4.67e-6 | 4.71e-6 | 4.72e-6 | 4.72e-6 | 4.72e-6 | 17.77× | +0.02 %/cyc | PASS | FAIL | FAIL |
+
+**In-cycle fire ratios (ID_cN_p3 / pre-cycle baseline; M2 PASS requires ≥ 1.5):**
+
+| V_reset | fire_c1 | fire_c2 | fire_c3 | fire_c4 | fire_c5 | direction |
+|---|---|---|---|---|---|---|
+| −1.0 V | 1.18× | 0.78× | 0.72× | 0.71× | 0.71× | **ANTI-fire from c2** |
+| −1.5 V | 1.18× | 0.67× | 0.83× | 0.87× | 0.88× | **ANTI-fire** |
+| −2.0 V | 1.18× | 0.20× | 0.28× | 0.30× | 0.30× | **ANTI-fire** |
+| −2.5 V | 1.18× | 0.06× | 0.10× | 0.10× | 0.10× | **ANTI-fire** |
+
+**What works:**
+- Drift killed — 1 µs reset gives near-zero cycle-to-cycle drift on every node (the v2 wake-up artifact is now isolated to c1→c2, and c3→c5 is genuinely steady-state).
+- Weak-reset over-flip eliminated at V_reset = −1.0/−1.5 V: post-settle ID within ±3× of virgin (restore PASS).
+- All four resets are sub-coercive at the FE probe (|E|/F_c = 0.14, 0.15, 0.16, 0.21) — no V_reset-direction saturation in v3.
+
+**What fails (and why):** within each cycle the staircase is `pre → p1 (deep dip) → p2 (deeper dip) → p3 (partial recovery)`, ending **below** the pre-cycle settle baseline. The same wake-up dip H1 v3 saw in p1–p2 from virgin — H1 v3 escaped it because it had 9 pulses to push past p2 and into the monotonic build-up regime (fire_ratio = 4.79× at p9). With only 3 pulses per cycle, we never escape the dip, so the fire burst always nets ANTI-fire against its own pre-cycle baseline.
+
+Mechanism check from the c1 data (identical across all 4 nodes, since c1 starts from virgin): `pre 2.66e-7 → p1 4.54e-8 → p2 1.49e-7 → p3 3.14e-7` (= H1 v3's c1 first three pulses, replicated exactly). Confirms the v3 protocol is sound — 3 pulses is just not enough integration depth.
+
+### H3 v4 — RAN. **Cycle 1 reproduces H1 v3 fire exactly (4.79× monotonic 9-pulse staircase); cycles 2–5 reveal the device LATCHES post-fire. M1 PASS, M2 FAIL.** (2026-05-17)
+File: `simH_optimize/sdevice_simH3_reset.cmd` (v4, 5 cycles × 9 fires, t_reset=1 µs, t_settle=10 µs, generated by `Simulations/_gen_h3_v4_cmd.py`). SWB sweep `@V_reset@` ∈ {−1.0, −1.5, −2.0, −2.5} V (L4). Outputs in `simH_optimize/h3_outputs/v4/`. Analysis: `Simulations/analyze_phase1d_h3.py` → `Simulations/phase1d_h3/h3_metrics.txt`. All 4 nodes ran clean.
+
+**Headline (ID at end of each cycle's settle window, µA/µm; virgin baseline = 2.658 × 10⁻⁷):**
+
+| V_reset | c1 settle | c2 settle | c3 settle | c4 settle | c5 settle | restore_c5 | drift c3→c5 | M1 | restore | M2 | mono c3-5 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| −1.0 V | 1.61e-6 | 2.45e-6 | 2.58e-6 | 2.60e-6 | 2.60e-6 | **9.79×** | +0.39 %/cyc | PASS | FAIL | 0.93× FAIL | FAIL |
+| −1.5 V | 1.62e-6 | 2.46e-6 | 2.59e-6 | 2.61e-6 | 2.61e-6 | 9.83× | +0.39 %/cyc | PASS | FAIL | 0.90× FAIL | FAIL |
+| −2.0 V | 5.00e-6 | 6.04e-6 | 6.23e-6 | 6.25e-6 | 6.26e-6 | 23.55× | +0.23 %/cyc | PASS | FAIL | 0.30× FAIL | FAIL |
+| −2.5 V | 1.08e-5 | 1.09e-5 | 1.09e-5 | 1.08e-5 | 1.08e-5 | 40.81× | −0.03 %/cyc | PASS | FAIL | 0.13× FAIL | FAIL |
+
+**The win we DID get — cycle 1 reproduces H1 v3 perfectly on every node:**
+
+`c1 staircase (identical across all 4 nodes, since c1 starts from virgin):`
+`pre 2.66e-7 → p1 4.54e-8 (dip) → p2 1.49e-7 → p3 3.14e-7 → p4 4.84e-7 → p5 6.94e-7 → p6 9.15e-7 → p7 1.08e-6 → p8 1.20e-6 → **p9 1.27e-6** [monotonic from p2 onward]`
+
+This is **the H1 v3 single-shot LIF fire byte-for-byte: 9 pulses at V_pgm=+2.0 V from virgin gives 4.79× fire_ratio with monotonic staircase past the p1–p2 wake-up dip.** Independent confirmation that the LIF fire mechanism is correct and reproducible. M2 PASSES against virgin baseline at p9 of cycle 1.
+
+**The structural problem revealed by cycles 2–5:** post-c1 the device settles at ID ≈ 6–40× virgin baseline (depending on V_reset), and stays there. Every subsequent cycle:
+1. Starts from this elevated post-reset baseline (~1.6–10.8 µA/µm).
+2. Burst of 9 +V_pgm pulses produces a U-shaped DIP in ID: `pre → drop through p5 minimum (≈ 60–70 % of pre) → recover through p9 (still ≤ pre) → settle bounces back ABOVE p9`.
+3. Settle ends at slightly higher ID than start of cycle — the FE keeps creeping further into +Pol partial saturation.
+
+By c3 the system reaches a stable limit cycle: every cycle traces the same dip-recover-bounce shape, drift c3→c5 is < 0.4 %/cyc (M1 PASS) — but fire_ratio against in-cycle pre-baseline is **always < 1** (anti-fire) and **always non-monotonic** in the steady-state cycles. M2 and monotonicity FAIL on every node.
+
+**Why the reset doesn't reset:** the reset is sub-coercive at the FE probe (|E|/F_c = 0.16–0.23 across the sweep at the c2+ reset holds — actually slightly HIGHER than v3's because the +Pol partial state from 9 fires generates a *positive* internal depolarization field that algebraically adds to the negative gate bias). But even at 0.23 |E|/F_c, the reset can't pull the FE off the +Pol partial-saturation rail at 1 µs — sub-coercive holds walk along the stable rail, not across it.
+
+Confirmed by the c2 staircase: at V_reset = −1.0 V, c2 starts at 1.61e-6 (post-reset state); during the +V_pgm burst ID DROPS to 1.09e-6 (p5 minimum) then recovers but settles back HIGHER at 2.45e-6. The fires AND the reset are both pushing further into +Pol — they just produce transient excursions in opposite directions during their respective pulse phases.
+
+**Mechanistic root cause (CORRECTED 2026-05-17 after par audit):** the calibrated par file already has `tau_P = (0, 1e-5, 0)` → polarization relaxation time **τ_P = 10 µs is active**, not zero. Step 1 of the Option-B path (par audit) revealed this. The latching is **not** caused by absent relaxation — it is caused by **the relaxation equilibrium at V_GS = −0.5 V being well above virgin**.
+
+Direct evidence from the c5 settle trace at V_rec = −1.0 V:
+- ID decays exponentially during the 10 µs settle with an effective leak time constant **τ_leak ≈ 2.75 µs** (fit on the second-half decay).
+- The decay asymptote is **9.78× the virgin baseline**, not virgin. After 3.6 τ_leak the trace is ≥ 97 % equilibrated.
+- Cycle 1 (less prior polarization) approaches the SAME equilibrium from BELOW — its settle ID *rises* over the 10 µs hold; cycles 4–5 approach the same equilibrium from above — their settle ID *falls*. Both converge to ~10× virgin at V_GS = −0.5 V.
+
+The hysteretic Preisach model has multiple stable equilibria at fixed applied field, indexed by the polarization branch the device is on. Different recovery-pulse amplitudes (−1.0, −2.0, −2.5 V) put the device on different branches and produce different equilibria at the same V_GS = −0.5 V read bias (9.8×, 23.5×, 40.8× virgin in v4). The leak is doing its job — but it's leaking toward a non-virgin attractor.
+
+**The fix is therefore a protocol question, not a par question:** identify a settle voltage V_GS_settle (or an explicit "neutral" gate phase) at which the polarization equilibrium for our depolarization-screened MFIS stack equals virgin polarization. Once found, embed it in the cycle as a "rest" phase between bursts.
+
+This was confused at first by the stale comment on `Step_2/lif_parameters.py` line 49 (*"τ_P=0 in all v6 runs — this decay is device settling, NOT controlled FE relaxation"*) — that comment dates to March 2026 and reflects an older par state, not the current one. The current par has had τ_P = 10 µs since the "Step 2 default" was committed.
+
+### H3 verdict and Tier-A reframing
+
+**What v4 actually delivered (and what it tells us about Tier-A):**
+
+1. **Single-shot 9-pulse LIF fire is now triple-confirmed** (H1 v3 + H3 v3 c1 + H3 v4 c1, three independent runs, byte-identical staircase from virgin). This is **the publishable LIF demonstration**. fire_ratio = 4.79× at V_pgm=2.0 V (sub-coercive, |E|/F_c=0.41, monotonic), reading at sub-V_t V_GS=−0.5 V. **M2 PASS — final and confirmed.**
+
+2. **Multi-cycle LIF in the current par is fundamentally limited by τ_P = 0.** No reset built from sub-coercive gate pulses can clear the +Pol partial state set by a 9-pulse fire — the FE has no relaxation pathway in the model. This is a **model limitation, not a device limitation** in the physical sense, but it's baked into our calibrated par.
+
+3. **M1 PASS in two senses** but neither is the original Tasneem-style "drift between identical bursts":
+   - In v3 and v4: cycle-to-cycle drift of the *post-reset latched state* is < 0.4 %/cyc — i.e. the device's *latched memory* is stable.
+   - In v4 c1: a single-shot fire from virgin is reproducible across nodes to 1 µV.
+   - The original M1 metric (drift of the *fire response* across repeated bursts) is **undefined in this model** because there's no way to re-arm the device.
+
+**Decision: stop tuning H3.** Three options for closing Tier-A; recommendation is Option A.
+
+**Decision (2026-05-17, reversed after par audit): Option B — pursue genuine cyclic LIF.** The single-shot LIF + post-fire state stability framing of an earlier Option A is the easy path but not a top-journal LIF claim — the defining feature of a LIF neuron is the leak between bursts. Option B is now in three substeps:
+
+**Step 1 — par audit.** Done 2026-05-17. The par at `Simulations/sdevice_gaafet_lif.par` lines 52–83 has `tau_E = (0, 1e-6, 0)` (auxiliary-field 1 µs) and `tau_P = (0, 1e-5, 0)` (polarization-relaxation 10 µs) — the leak is already on. Fit on the H3 v4 c5 settle decay confirms an effective τ_leak ≈ 2.75 µs in this operating regime. **No par change is required to add leak — the leak is present.**
+
+**Step 2 — characterize the leak equilibrium across the settle-voltage axis.** New experiment, single SWB sweep, dedicated cmd: `simH_optimize/sdevice_simH_leak_eq.cmd`. Protocol per node:
+1. Initialize at virgin.
+2. Apply the H1 v3 9-pulse fire burst at `V_pgm = +2.0 V` (1 ns / 100 ns / 1 ns / 100 ns × 9 = 1.818 µs).
+3. Goal-ramp the gate to `@V_settle@` over 10 ns.
+4. Hold at `@V_settle@` for **100 µs** (≥ 10·τ_P, guarantees > 99.99 % equilibration).
+5. Continuous CurrentPlot across the hold to resolve the relaxation trajectory.
+
+SWB sweep: `@V_settle@ ∈ {−0.5, −0.25, 0.0, +0.25, +0.5, +0.75, +1.0} V` (L7). The settle voltage at which ID at end-of-hold returns to the virgin baseline (within, say, ±20 %) is the "neutral" voltage `V_GS_neutral` of the device. If no value in the sweep returns to virgin from above, the device requires an explicit positive-bias "active rest" phase — extend the sweep upward.
+
+**Acceptance for step 2:** at least one V_settle value brings end-of-100-µs ID to within ±20 % of virgin baseline (= 2.13 × 10⁻⁷ to 3.19 × 10⁻⁷ µA/µm at the H3 read level).
+
+**Step 3 — install the leak-to-virgin phase in the multi-cycle protocol.** Clone the H3 v4 cmd structure but replace the negative-bias recovery + V_GS=−0.5 V settle with a single phase at the V_GS_neutral identified in step 2, held for ≥ 5 τ_leak ≈ 14 µs. Re-run 5 cycles × 9 fires. Expected outcome: every cycle starts from near-virgin, fires the same 4.79× monotonic staircase, returns to near-virgin. M1 measured as cycle-to-cycle drift of the fire-burst response — the **original** M1 definition, top-journal grade.
+
+Step 3 acceptance is the original Tier-A M1: |drift_c3→c5| ≤ 1 %/cyc on the fire-burst response (specifically on ID_p9 across cycles), AND fire_ratio ≥ 1.5 against in-cycle pre-burst baseline on every cycle. If step 3 passes, M1 and M2 are both closed in the genuine LIF sense and Phase 1D writeup gets a real leaky neuron.
+
+**Step 4 — H4 endurance and variability** (deferred until step 3 lands). Once cyclic LIF works, the same protocol is run over 20+ cycles with small V_pgm perturbation to close M1 long-tail drift, M8 C2C variability.
+
+**Step 5 — H5 energy** (no sim). Analytical from step 3 data: `E_gate`, `E_read`, `E_total`.
+
+**Step 6 — `Step_2/lif_parameters.py` rewrite** with all measured numbers from steps 2–5.
+
+Calibration risk under this path: none. τ_P and τ_E are unchanged from their values during H0a v5, H0e, H2 v6 — those calibrations are intact. The change is in the PROTOCOL (settle voltage), not the par.
+
+### Leak-equilibrium characterization (new H3-leak step, replaces H4-as-single-shot)
+- File: `simH_optimize/sdevice_simH_leak_eq.cmd` (to be created in step 2 above)
+- Protocol: virgin → 9-pulse +2.0 V fire → goal-ramp to V_settle → 100 µs hold with continuous CurrentPlot
+- SWB sweep: `@V_settle@ ∈ {−0.5, −0.25, 0.0, +0.25, +0.5, +0.75, +1.0} V`
+- Analysis: `Simulations/analyze_phase1d_leakeq.py` — extract end-of-hold ID per node, plot ID(V_settle), identify V_GS_neutral
+
+### Cyclic LIF protocol (new H3-cycle step, replaces the H3 v3/v4 architecture)
+- File: `simH_optimize/sdevice_simH3_cyclic.cmd` (to be created in step 3 above; clones H3 v4 structure)
+- Same 9-pulse fire bursts as H3 v4; recovery phase replaced by single hold at V_GS_neutral for 5–10 τ_leak ≈ 14–28 µs
+- 5 cycles, same SWB infrastructure; possibly a small final-sweep for confirmation
+- Acceptance: |drift_c3→c5| ≤ 1 %/cyc on fire-burst ID_p9 across cycles, AND fire_ratio ≥ 1.5 in every cycle vs in-cycle pre-burst baseline
+
+### H4 endurance — runs only after cyclic LIF proves out at step 3.
+- Adapt the step-3 cmd to 20+ cycles; add V_pgm perturbation `@V_pgm@ ∈ {1.95, 2.00, 2.05} V` for M8 sensitivity
+- Metrics: long-tail M1, M8 C2C variability
+
+### H5 energy — no sim, analytical from step 3 cyclic-LIF data.
+- `E_gate = ½ · C_gg · V_pgm² · N_pulses` per fire burst; C_gg from H0g
+- `E_read = ∫ V_DS · I_D dt` integrated over each 100 ns read window across one steady-state cycle
+- `E_total = E_gate + E_read` per fire event
 
 ## H4 — Endurance + Variability (5-cycle full train)
 - Run: adapt simC v6 cmd with V_pgm = V_pgm_opt and reset from H3, 5 cycles × 9 pulses.
@@ -283,8 +408,8 @@ Wake-up effect from H0e and now H3 v2 is real on this device; bake "cycle 1 is w
 
 | # | Metric | Target | Status |
 |---|---|---|---|
-| M1 | Drift | ≤ 1.0 %/cycle | pending H4 |
-| M2 | fire_ratio @ cycle 5 | ≥ 1.5 | **PASS — H1 v3 (sub-V_t read): 4.79× @ V_pgm=2.0 V, 7.49× @ V_pgm=2.5 V, monotonic; first-pulse fires already PASS at V_pgm=1.5 V (2.18×)** |
+| M1 | Drift (cycle-to-cycle fire-burst response, original definition) | ≤ 1.0 %/cycle | **pending leak-eq scan + cyclic-LIF protocol** — par audit confirmed τ_P = 10 µs already active; protocol path identified |
+| M2 | fire_ratio (9-pulse train, in-cycle vs pre-cycle baseline) | ≥ 1.5 | **PASS for cycle 1 (single-shot from virgin) — triple-confirmed at 4.79×; cyclic confirmation pending leak-eq scan** |
 | M3 | Memory window | ≥ 0.5 V | **PASS — H0a v5 (1.40 V) AND H2 v6 (852 mV @ V_pgm=3.5 V, >2.95 V @ V_pgm=6 V)** |
 | M4 | Analog states | ≥ 9 | **TREND PASS** — H2 v6 shows monotonic V_t shift -200 mV → -829 mV across V_pgm 1.5 → 3.5 V (4/5 distinguishable @ 50 mV sep on the 5-node sweep); 9-level demo pending the {1.5..4.0} V at 0.25-V step expansion |
 | M5 | E_gate | ≤ 50 fJ | pending H5 |
@@ -314,8 +439,11 @@ Wake-up effect from H0e and now H3 v2 is real on this device; bake "cycle 1 is w
 | H2 v5 (ran, root-caused) | (prior cmd) v4 + 10 µs pulses + 100 µs reads | confirmed FE bipolar switching via Pol_y traces, but V_t-extraction blurred by slow read sweep | – |
 | **H2 v6 ✓ PASS** | `simH_optimize/sdevice_simH2_PE_loop.cmd` — 10 µs pulses + 100 ns Transient reads, 2026-05-16 | `Simulations/analyze_phase1d_h2.py` → `Simulations/phase1d_h2/`; M3 PASS at V_pgm ≥ 3.5 V, MW(V_pgm) monotonic | none |
 | H2 v6 / M4 expansion (next) | same cmd, SWB sweep `@V_pgm@ ∈ {1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.5, 4.0}` V (9 nodes at 0.25 V step) | reuse analyzer | – |
-| H3 v2 (ran, FAIL on intent) | `simH_optimize/sdevice_simH3_reset.cmd` (Goal-driven fires + resets, V_pgm=2.0 V, @V_reset@ ∈ {−3,−5,−7} V, 2026-05-11) | `Simulations/analyze_phase1d_h3.py` → `Simulations/phase1d_h3/h3_metrics.txt` — reset over-drives past virgin; fire reverses direction at the new baseline | – |
-| H3 v3 (next) | edit `sdevice_simH3_reset.cmd`: @V_reset@ ∈ {−1.0,−1.5,−2.0,−2.5} V, t_reset 10 µs → 1 µs, 3 → 5 cycles (re-derive time anchors) | extend `analyze_phase1d_h3.py` — drift_c3→c5, fire_ratio against in-cycle ID_settle | – |
+| H3 v2 (ran, FAIL on intent) | `simH_optimize/sdevice_simH3_reset.cmd` (Goal-driven fires + resets, V_pgm=2.0 V, V_reset ∈ {−3,−5,−7} V, 2026-05-11) | `Simulations/analyze_phase1d_h3.py` (early version) — reset over-drives past virgin; fire reverses direction at the new baseline | – |
+| H3 v3 (ran, M1 PASS / M2 FAIL) | `simH_optimize/sdevice_simH3_reset.cmd` (v3 — V_reset ∈ {−1.0,−1.5,−2.0,−2.5} V, t_reset=1 µs, 5 cycles × 3 fires, 2026-05-17) | `Simulations/analyze_phase1d_h3.py` → `Simulations/phase1d_h3/h3_metrics.txt` — drift killed but 3-pulse fire never escapes the wake-up dip | – |
+| H3 v4 (ran, M1 PASS / M2 PASS @ c1 / latch confirmed) | `simH_optimize/sdevice_simH3_reset.cmd` (5 cycles × 9 fires, generated by `_gen_h3_v4_cmd.py`, 2026-05-17). Outputs `h3_outputs/v4/` | `Simulations/analyze_phase1d_h3.py` → `Simulations/phase1d_h3/h3_metrics.txt` — c1 reproduces H1 v3 fire 4.79×; c2+ shows device latches (τ_P=0 limit). Tier-A reframed Option A. | – |
+| **Leak-equilibrium scan (next)** | new `simH_optimize/sdevice_simH_leak_eq.cmd`: single 9-pulse fire from virgin + 100 µs hold at V_settle; SWB `@V_settle@ ∈ {−0.5..+1.0} V` | new `Simulations/analyze_phase1d_leakeq.py` — end-of-hold ID per V_settle, identify V_GS_neutral | – |
+| Cyclic LIF protocol | new `simH_optimize/sdevice_simH3_cyclic.cmd`: H3 v4 structure with recovery+settle replaced by hold at V_GS_neutral for 5–10·τ_leak | extend `analyze_phase1d_h3.py` for fire-burst drift on ID_p9 across cycles | – |
 | H4 | adapt simC v6 cmd | – | – |
 | H5 | (no new sim) | – | – |
 
