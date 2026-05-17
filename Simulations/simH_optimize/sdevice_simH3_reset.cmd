@@ -17,7 +17,7 @@
 *== Goal: drop cycle-to-cycle ID drift below 1.0 %/cycle (M1).
 *==
 *== Sweep — V_reset only (L3 reduced) in this single cmd file:
-*==   @V_reset@ ∈ {-3.0, -5.0, -7.0} V
+*==   V_reset ∈ {-3.0, -5.0, -7.0} V
 *==
 *== Reset pulse cadence (hardcoded centerpoint):
 *==   t_reset = 10 µs  (FE saturation hold)
