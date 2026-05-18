@@ -1,60 +1,67 @@
 *===================================================================
-*== PHASE 1D — LEAK-EQUILIBRIUM CHARACTERIZATION v2
+*== PHASE 1D — PULSED-ERASE CHARACTERIZATION
 *==
-*== Purpose: identify the gate voltage V_GS_neutral at which the
-*==   post-fire leak equilibrium equals the virgin baseline current.
+*== Purpose: identify whether a brief super-coercive negative pulse
+*==   from the +Pol branch (post 9-pulse fire) flips the FE across
+*==   the coercive field onto the -Pol branch, and which V_erase
+*==   amplitude best does so.
 *==
-*== v1 ran 2026-05-18, V_settle in {-0.5..+1.0} V.  Result: at every
-*==   tested V_settle the FE relaxes FURTHER into +Pol partial state,
-*==   not back to virgin.  Confirms the depolarization-screened MFIS
-*==   asymmetry: sub-coercive gate bias never drives polarization
-*==   toward zero at our HZO stack.  V_GS_neutral (if it exists as a
-*==   static DC bias) lies in the super-coercive negative range.
+*== Context — prior leak-eq scans ruled out static DC reset:
+*==   v1 (2026-05-18): V_settle in {-0.5..+1.0} V at 100 us hold.
+*==     All cases relaxed FURTHER into +Pol partial state.  No
+*==     V_GS_neutral in the moderate-bias range.
+*==   v2 (2026-05-18): V_settle in {-3.5..-1.5} V at 100 us hold.
+*==     Post-hold ratio 542x..1221x virgin at V_G=-0.5V.  Static
+*==     negative bias hold ALSO drives further into +Pol.  No DC
+*==     V_GS_neutral exists in the practical voltage range.
 *==
-*== v2 changes (2026-05-18):
-*==   - SWB sweep extended into super-coercive erase region:
-*==        V_settle in {-3.5, -3.0, -2.5, -2.0, -1.5} V  (L5)
-*==     Brackets the H3 v2 hint that V_reset = -3 V at 10 us is the
-*==     boundary where the leak endpoint falls near 3x virgin.
-*==   - Post-hold read appended: after the 100 us hold at V_settle,
-*==     the gate is ramped back to V_GS = -0.5 V for a 100 ns read
-*==     (post_hold_read_).  ID at this read directly compares to the
-*==     virgin baseline measured at the start of the experiment.
+*==   The depolarization-screened internal field at the FE has a
+*==   positive (program-direction) component for every gate bias
+*==   from -3.5 V to +1.0 V.  Static holds can't cross the coercive
+*==   field on the negative side; a transient pulse may.
+*==
+*==   H2 v6 already showed -6 V x 10 us *from virgin* flips V_t to
+*==   >+1.0 V (saturated -Pol rail).  This run tests whether the
+*==   same pulse from the +Pol branch (post-fire) achieves the
+*==   same flip.
 *==
 *== Par-file context (audited 2026-05-17):
 *==   tau_E = (0, 1e-6, 0)   auxiliary-field relaxation 1 us
 *==   tau_P = (0, 1e-5, 0)   polarization relaxation 10 us (leak)
-*==   Effective tau_leak fit from v1 hold trajectories: ~7 us
-*==   No par change required.
+*==   No par change for this experiment.
 *==
 *== Protocol per node:
 *==   STEP 0  initialize at virgin
 *==   STEP 1  Quasistationary ramp V_DS to 0.05 V
-*==   STEP 2  Quasistationary ramp V_G  to -0.5 V (sub-V_t baseline)
+*==   STEP 2  Quasistationary ramp V_G  to -0.5 V
 *==   STEP 3  100 ns baseline read at V_G = -0.5 V
 *==   STEP 4  9-pulse fire burst at V_pgm = +2.0 V (1.818 us total)
-*==   STEP 5  Goal-ramp gate from -0.5 V to V_settle over 10 ns
-*==   STEP 6  Hold gate at V_settle for 100 us
-*==   STEP 7  Goal-ramp gate from V_settle back to -0.5 V over 10 ns
-*==   STEP 8  100 ns post-hold read at V_G = -0.5 V (virgin check)
+*==   STEP 5  Goal-ramp gate from -0.5 V to V_erase over 10 ns
+*==   STEP 6  Erase pulse: hold at V_erase for 10 us
+*==   STEP 7  Goal-ramp gate from V_erase back to -0.5 V over 10 ns
+*==   STEP 8  Relaxation hold at V_G = -0.5 V for 100 us
+*==           (FE re-equilibrates on whichever Preisach branch it
+*==            lands on after the erase pulse)
 *==
 *== Time anchors (seconds):
 *==   baseline_pre_      [-1.0e-7,    0.0]
 *==   p1..p9             [0.0,        1.818e-6]
-*==   to_settle_         [1.818e-6,   1.828e-6]
-*==   hold_              [1.828e-6,   1.01828e-4]
-*==   to_read_back_      [1.01828e-4, 1.01838e-4]
-*==   post_hold_read_    [1.01838e-4, 1.01938e-4]
+*==   to_erase_          [1.818e-6,   1.828e-6]
+*==   erase_             [1.828e-6,   1.1828e-5]   (10 us hold at V_erase)
+*==   to_relax_          [1.1828e-5,  1.1838e-5]
+*==   relax_             [1.1838e-5,  1.1184e-4]   (100 us hold at -0.5V)
 *==
 *== SWB sweep (set in SWB project):
-*==   Parameter:  V_settle
-*==   Sweep (L5): -3.5  -3.0  -2.5  -2.0  -1.5    V
+*==   Parameter:  V_erase
+*==   Sweep (L4): -4.0  -6.0  -8.0  -10.0    V
 *==
-*== Acceptance: at least one V_settle gives post_hold_read_ end-ID
-*==   within +-20% of virgin baseline (2.13e-7 to 3.19e-7 uA/um at
-*==   V_G = -0.5 V).  That voltage is V_GS_neutral.
+*== Acceptance / interpretation:
+*==   ratio < 1   ->  FE flipped to -Pol branch (low ID).  erase WORKS.
+*==   ratio ~ 1   ->  FE near virgin.  Ideal V_erase found.
+*==   ratio >> 1  ->  FE still on +Pol branch.  erase too weak.
+*==   Pick V_erase that gives smallest |log10(ratio)| while ratio < ~3.
 *==
-*== Total wall time per node: ~102 us simulated.
+*== Total wall time per node: ~112 us simulated.
 *===================================================================
 
 File {
@@ -413,64 +420,79 @@ Solve {
       CurrentPlot( Time = (Range=(1.7180e-06 1.8180e-06) Intervals=20) ) }
 
   *====================================================================
-  *== STEP 5: GOAL-RAMP GATE TO V_settle  (10 ns)
+  *== STEP 5: GOAL-RAMP GATE FROM -0.5 V TO V_erase  (10 ns)
   *====================================================================
-  NewCurrentPrefix="to_settle_"
+  NewCurrentPrefix="to_erase_"
   Transient (
     InitialTime=1.8180e-06 FinalTime=1.8280e-06
     InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
-    Goal { Name="gate_contact" Voltage= @V_settle@ }
+    Goal { Name="gate_contact" Voltage= @V_erase@ }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
   *====================================================================
-  *== STEP 6: HOLD AT V_settle FOR 100 us  (>= 10 * tau_P)
+  *== STEP 6: ERASE PULSE — hold at V_erase for 10 us
+  *==   Super-coercive negative pulse intended to flip the FE from
+  *==   the +Pol branch (set by the fire burst) to the -Pol branch.
+  *==   10 us matches H2 v6 pulse cadence that gave clean MW from virgin.
   *====================================================================
-  NewCurrentPrefix="hold_"
+  NewCurrentPrefix="erase_"
   Transient (
-    InitialTime=1.8280e-06 FinalTime=1.0183e-04
-    InitialStep=1e-11 MaxStep=2e-6 MinStep=1e-15
+    InitialTime=1.8280e-06 FinalTime=1.1828e-05
+    InitialStep=1e-11 MaxStep=2e-7 MinStep=1e-15
     Increment=1.4
   ) { Coupled (Iterations = 100) {Poisson Electron Hole}
-      CurrentPlot( Time = (Range=(1.8280e-06 1.0183e-04) Intervals=80) ) }
+      CurrentPlot( Time = (Range=(1.8280e-06 1.1828e-05) Intervals=40) ) }
 
   *====================================================================
-  *== STEP 7: GOAL-RAMP GATE BACK TO V_G = -0.5 V  (10 ns)
+  *== STEP 7: GOAL-RAMP GATE FROM V_erase BACK TO V_G = -0.5 V  (10 ns)
   *====================================================================
-  NewCurrentPrefix="to_read_back_"
+  NewCurrentPrefix="to_relax_"
   Transient (
-    InitialTime=1.0183e-04 FinalTime=1.0184e-04
+    InitialTime=1.1828e-05 FinalTime=1.1838e-05
     InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7
     Increment=1.4
     Goal { Name="gate_contact" Voltage= -0.5 }
   ) { Coupled (Iterations = 100) {Poisson Electron Hole} }
 
   *====================================================================
-  *== STEP 8: POST-HOLD READ AT V_G = -0.5 V  (100 ns)
+  *== STEP 8: RELAXATION HOLD at V_G = -0.5 V for 100 us
+  *==   Lets the FE re-equilibrate on whichever Preisach branch it
+  *==   landed on after the erase pulse.  Final ID at end of this hold
+  *==   is the steady-state ID at V_G = -0.5 V on that branch.
   *====================================================================
-  NewCurrentPrefix="post_hold_read_"
+  NewCurrentPrefix="relax_"
   Transient (
-    InitialTime=1.0184e-04 FinalTime=1.0194e-04
-    InitialStep=1e-11 MaxStep=5e-9 MinStep=1e-15
+    InitialTime=1.1838e-05 FinalTime=1.1184e-04
+    InitialStep=1e-11 MaxStep=2e-6 MinStep=1e-15
     Increment=1.4
   ) { Coupled (Iterations = 100) {Poisson Electron Hole}
-      CurrentPlot( Time = (Range=(1.0184e-04 1.0194e-04) Intervals=20) ) }
+      CurrentPlot( Time = (Range=(1.1838e-05 1.1184e-04) Intervals=80) ) }
 
 }
 
 *===================================================================
 *== SWB SETUP (set in SWB project, not in this file):
-*==   Parameter:  V_settle
-*==   Sweep (L5): -3.5  -3.0  -2.5  -2.0  -1.5    V
+*==   Parameter:  V_erase   (renamed from V_settle in earlier versions)
+*==   Sweep (L4): -4.0  -6.0  -8.0  -10.0    V
+*==   These bracket sub-coercive (-4V) to deep super-coercive (-10V).
+*==   H2 v6 showed -6V x 10us from VIRGIN flips V_t to >+1V (saturated
+*==   -Pol rail).  This run tests whether the same pulse from the
+*==   +Pol branch (after a 9-pulse fire burst) achieves the same flip.
 *==
-*== POST-PROCESSING (Simulations/analyze_phase1d_leakeq.py):
+*== POST-PROCESSING (Simulations/analyze_phase1d_leakeq.py, pulsed-erase mode):
 *==   1. Per node, extract:
-*==      - ID_baseline_virgin = end of baseline_pre_  (V_G = -0.5 V)
-*==      - ID_p9              = end of p9_read_       (post-burst, V_G = -0.5 V)
-*==      - ID_hold(t)         = ID across the 100 us hold (V_G = V_settle)
-*==      - ID_post_hold_read  = end of post_hold_read_ (V_G = -0.5 V) <- DIRECT virgin comparison
-*==   2. virgin_restoration_ratio = ID_post_hold_read / ID_baseline_virgin
-*==   3. PASS: virgin_restoration_ratio in [0.8, 1.2] on at least one V_settle.
-*==      That voltage is V_GS_neutral.
-*==   4. If multiple V_settle pass, pick the one with smallest |log10(ratio)|.
+*==      - ID_baseline_virgin = end of baseline_pre_         (V_G = -0.5 V)
+*==      - ID_p9              = end of p9_read_              (post-burst at -0.5V)
+*==      - ID_during_erase    = ID(t) across erase_          (at V_G = V_erase)
+*==      - ID_relax           = ID(t) across relax_          (at V_G = -0.5 V)
+*==      - ID_end_relax       = end of relax_                (long-term equilibrium at -0.5V)
+*==   2. virgin_restoration_ratio = ID_end_relax / ID_baseline_virgin
+*==      Expected outcomes:
+*==        ratio < 1   ->  FE flipped to -Pol branch (high V_t, low ID): erase WORKED.
+*==        ratio ~ 1   ->  FE returned near virgin: ideal V_erase found.
+*==        ratio >> 1  ->  FE stuck on +Pol branch: erase pulse not strong enough.
+*==   3. The V_erase that gives ratio closest to 1 (or any ratio < 1, indicating
+*==      we've crossed the coercive boundary) defines the working erase pulse
+*==      for the cyclic LIF protocol.
 *===================================================================

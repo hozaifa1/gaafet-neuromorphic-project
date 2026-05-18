@@ -7,27 +7,22 @@ ID at end of fire burst (p9, V_G=-0.5V): 1.273e-06 uA/um  (4.79x baseline)
 Per V_settle node:
 V_settle | ID_start_hold | ID_end_hold  | tau_leak (us) | Pol_y_end | ID_virgin_pred | ratio_end/virgin
 ----------------------------------------------------------------------------------------------------
--0.50 V |   1.258e-06 |  2.099e-06 |      -2.30    |  -0.0000 |    2.658e-07 |     7.899e+00
--0.25 V |   1.618e-03 |  2.404e-02 |       6.68    |  -0.0000 |    8.405e-05 |     2.860e+02
-+0.00 V |   1.641e+01 |  3.156e+01 |       7.20    |  -0.0000 |    2.658e-02 |     1.187e+03
-+0.25 V |   1.121e+02 |  1.299e+02 |       7.58    |  -0.0000 |    8.405e+00 |     1.545e+01
-+0.50 V |   1.745e+02 |  1.893e+02 |       7.75    |  -0.0000 |    2.658e+03 |     7.122e-02
-+0.75 V |   2.137e+02 |  2.258e+02 |       7.90    |  -0.0000 |    8.405e+05 |     2.687e-04
-+1.00 V |   2.399e+02 |  2.503e+02 |       8.00    |  -0.0000 |    2.658e+08 |     9.417e-07
+-3.50 V |   3.453e-02 |  1.404e-05 |       7.52    |  +0.0000 |    2.658e-37 |     5.281e+31
+-3.00 V |   2.979e-02 |  7.752e-06 |       7.69    |  +0.0000 |    2.658e-32 |     2.917e+26
+-2.50 V |   2.452e-02 |  5.773e-06 |       8.07    |  +0.0000 |    2.658e-27 |     2.172e+21
+-2.00 V |   1.880e-02 |  4.010e-06 |       9.96    |  +0.0000 |    2.658e-22 |     1.509e+16
+-1.50 V |   1.282e-02 |  2.020e-06 |      42.81    |  -0.0000 |    2.658e-17 |     7.602e+10
 
-V_GS_neutral selection — SS-projection comparison (approximate, valid only below virgin V_t):
-V_settle |  ratio  | within +-20%? | within factor-of-2?
-----------------------------------------------------------------------
--0.50 V |   7.899 |     no       |     no 
--0.25 V | 286.018 |     no       |     no 
-+0.00 V | 1187.406 |     no       |     no 
-+0.25 V |  15.455 |     no       |     no 
-+0.50 V |   0.071 |     no       |     no 
-+0.75 V |   0.000 |     no       |     no 
-+1.00 V |   0.000 |     no       |     no 
+Virgin-restoration selection — DIRECT comparison at V_G=-0.5V:
+V_settle | ID_post_hold_read  | virgin_baseline | ratio   | branch
+----------------------------------------------------------------------------------------
+-3.50 V |     1.441e-04   |   2.658e-07  |  542.179 |  +Pol deep
+-3.00 V |     1.732e-04   |   2.658e-07  |  651.526 |  +Pol deep
+-2.50 V |     2.003e-04   |   2.658e-07  |  753.785 |  +Pol deep
+-2.00 V |     2.385e-04   |   2.658e-07  |  897.224 |  +Pol deep
+-1.50 V |     3.245e-04   |   2.658e-07  | 1220.862 |  +Pol deep
 
-BEST V_GS_neutral candidate (SS projection): V_settle = -0.50 V
-  end-of-hold ID = 2.099e-06 uA/um
-  virgin-pred ID = 2.658e-07 uA/um
-  ratio          = 7.899  (FAIL +-20%)
-  tau_leak fit   = -2.30 us
+BEST candidate (smallest |log10(ratio)|): V_settle = -3.50 V
+  ID at end of relax phase (V_G=-0.5V) = 1.441e-04 uA/um
+  virgin baseline                       = 2.658e-07 uA/um
+  ratio                                 = 542.179  (FAIL +-20%)

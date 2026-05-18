@@ -358,7 +358,31 @@ This was confused at first by the stale comment on `Step_2/lif_parameters.py` li
 
 Step 2a ran clean but landed entirely on the wrong side of the coercive boundary. V_GS_neutral, if it exists as a static DC bias, is in the negative-V range that brackets the boundary between sub-coercive (no erase) and super-coercive overshoot (−Pol saturation). H3 v2 data hints the bracket is around V_reset = −3 V at ~10 µs hold (3.1× virgin endpoint) — close but not exact.
 
-**Step 2b — leak-equilibrium scan, V_settle ∈ negative super-coercive range (NEXT).** New cmd `simH_optimize/sdevice_simH_leak_eq.cmd` (regenerated): same protocol structure as 2a, sweep extended into the super-coercive erase region. Sweep: `V_settle ∈ {−3.5, −3.0, −2.5, −2.0, −1.5} V`. Hold duration kept at 100 µs (≥ 10·τ_P) for the FE to fully equilibrate. Direct virgin-comparison added by appending a 100 ns post-hold read at V_GS = −0.5 V, so the metric is unambiguous: post-hold-read ID = virgin baseline at −0.5 V iff the FE returned to virgin polarization.
+**Step 2b — leak-equilibrium scan, V_settle ∈ negative super-coercive range (RAN 2026-05-18).** Outputs `simH_optimize/leak_eq_outputs/` (overwritten from v1; v1 archive may need re-extraction if needed). Analyzer `Simulations/analyze_phase1d_leakeq.py`. Findings:
+
+| V_settle | Post-hold ID at V_GS=−0.5 V | Ratio to virgin | τ_leak (µs) |
+|---|---|---|---|
+| −1.5 V | 3.25e-4 µA/µm | 1221× | 42.8 |
+| −2.0 V | 2.39e-4 | 897× | 10.0 |
+| −2.5 V | 2.00e-4 | 754× | 8.1 |
+| −3.0 V | 1.73e-4 | 652× | 7.7 |
+| −3.5 V | 1.44e-4 | 542× | 7.5 |
+
+Direction of trend is correct (more negative V_settle reduces the +Pol shift) but the *floor* of the post-hold ratio is ~500× virgin, far from acceptance (1× ± 20 %). Linear extrapolation of log(ratio) vs V_settle would need V_settle ≈ −20 V to hit ratio = 1, which is unphysical. Cross-check against H3 v2's protocol (which adds a 10 µs settle at V_GS=−0.5 V *after* the V_reset hold) shows the FE always re-equilibrates at ~3–10× virgin at V_GS=−0.5 V regardless of how negative the prior bias was — meaning there is a **stable +Pol-branch attractor near V_GS=−0.5 V at ~3–10× virgin**, and no static DC bias relaxes the FE off this branch back to virgin.
+
+**Step 2b verdict: no static DC V_GS_neutral exists on this device with the current par.** The depolarization-screened internal field at the FE has a positive (program-direction) component for every gate bias from −3.5 V to +1.0 V tested across v1 + v2. The Preisach model, once on the +Pol branch after the fire burst, can't be relaxed back to virgin via constant gate bias.
+
+**Decision point — three real options:**
+
+- **Option B' (pulsed erase, NEXT)**: brief super-coercive negative pulse (V_erase ≈ −4 to −10 V) for 1–10 µs, followed by 100 µs relaxation at V_GS=−0.5 V. The pulse mechanism is different from a hold — short pulses can overcome the depolarization screening before quasi-steady charge redistribution builds it up. H2 v6 already showed −6 V × 10 µs *from virgin* flips V_t > +1.0 V (saturated −Pol rail). Test whether the same pulse *from the +Pol branch* (post-fire) flips across the coercive field. **One sim run, conclusive.**
+
+- **Option B″ (par change)**: reduce depolarization screening in the par (thinner SiO2, weaker image-charge coupling). Cost: re-run H0a v5 + H0e + H2 v6 + H1 + H3 to confirm calibration anchors hold. Last-resort if B' fails.
+
+- **Option C (reframe LIF semantics)**: accept the +Pol-branch operating regime and the ~3–10× virgin rest state as the device's "resting potential." Real biological neurons don't reset to zero — they reset to a non-zero potential. The publishable claim becomes "sub-coercive +Pol-branch integrate-and-fire neuron with stable resting state," supported by H3 v4's <0.4 %/cyc multi-cycle drift. Frame in-cycle U-shape (H3 v4 c2-c5) as burst-encoding rather than rate-encoding.
+
+**Recommendation: Option B' next.** If it works, cyclic LIF without par changes. If not, firm evidence forces choice between B″ and C with no ambiguity.
+
+**Step 2 — original protocol description (kept for reference).** Per node:
 
 **Step 2 — original protocol description (kept for reference).** Per node:
 1. Initialize at virgin.
