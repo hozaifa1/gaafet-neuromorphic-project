@@ -72,9 +72,9 @@ Step 3b (2026-05-19) re-ran the canonical cmd on the remote. Analyzer banner now
 
 ## Next steps
 
-1. **H4 endurance** (Phase 1D plan §H4): adapt `sdevice_simH3_cyclic.cmd` to 20+ cycles, add SWB `@V_pgm@ ∈ {1.95, 2.0, 2.05} V` for M8 cycle-to-cycle variability, hardcode V_erase = −6 V. Same 5-min generator + 75-min remote run + ~5-min analyzer pipeline.
-2. **H5 energy** (analytical, no new sim): `E_gate = ½·C_gg·V_pgm²·N_pulses` per fire burst (C_gg from H0g); `E_read = ∫ V_DS·I_D dt` integrated over each 100 ns read window across one steady-state cycle (use c4 or c5 — they're identical); `E_total = E_gate + E_read`.
-3. **Writeup updates**: replace the "restore ±25 % of virgin" claim throughout `Writing_Materials/` with the new `M-rest` framing (stable non-zero rest state, biological-LIF analogy).
+1. ~~**H4 endurance** (Phase 1D plan §H4): adapt `sdevice_simH3_cyclic.cmd` to 20+ cycles, add SWB `@V_pgm@ ∈ {1.95, 2.0, 2.05} V` for M8 cycle-to-cycle variability, hardcode V_erase = −6 V.~~ **DONE** — H4 PASS: M1/M-rest/M2 all PASS; M8 σ/μ = 6.03 % across ±25 mV V_pgm jitter (c10–c20), deterministic V_pgm coupling. See [`Writing_Materials/Phase1D_Analysis/Endurance/H4_endurance_analysis.md`](../Endurance/H4_endurance_analysis.md).
+2. ~~**H5 energy** (analytical, no new sim): `E_gate = ½·C_gg·V_pgm²·N_pulses` per fire burst; `E_total = E_gate + E_read`.~~ **DONE** — H5: E_fire = 1.151 pJ/burst (128 fJ/pulse), E_total = 1.142 pJ/cycle. M5 (≤50 fJ/pulse) and M6 (≤100 fJ/cycle) FAIL — framed as read-floor / endurance-vs-energy trade-off. See [`Writing_Materials/Phase1D_Analysis/Energy/H5_energy.md`](../Energy/H5_energy.md).
+3. **Writeup updates**: ~~replace the "restore ±25 % of virgin" claim throughout `Writing_Materials/`~~ DONE — all Writing_Materials/*.md files updated to M-rest framing (stable +Pol-partial rest state, biological-LIF analogy, MFIS depolarisation screening rationale).
 4. **`Step_2/lif_parameters.py` rewrite**: numbers from Step 3b are the publishable ones. V_pgm = +2.0 V, V_erase = −6 V, t_pulse = 100 ns, t_erase = 10 µs, t_relax = 70 µs, fire_ratio_steady_state = 3.06×, rest_state = 1.44× virgin, τ_relax = 13.7 µs.
 
 ## Files

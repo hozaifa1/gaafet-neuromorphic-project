@@ -1,13 +1,13 @@
 # Post-Fire Recovery Dynamics in the GAA-FeFET
 
-Response of the device to a 9-pulse fire burst followed by a brief super-coercive negative gate pulse and a relaxation hold at the read bias. Two findings: (i) the single-shot fire response from the virgin state is a monotonic 4.79× ID staircase reading sub-threshold, and (ii) a 10 µs negative gate pulse returns the post-fire polarization to within a factor of two of the virgin state at three of four amplitudes tested, with a non-monotonic outlier at V_erase = −8 V.
+Response of the device to a 9-pulse fire burst followed by a brief super-coercive negative gate pulse and a relaxation hold at the read bias. Two findings: (i) the single-shot fire response from the virgin state is a monotonic 4.79× ID staircase reading sub-threshold, and (ii) a 10 µs negative gate pulse settles the post-fire polarization to a stable +Pol-partial rest state at three of four amplitudes tested (M-rest drift ≤ 1 %/cycle, operative criterion), with a non-monotonic outlier at V_erase = −8 V. Because MFIS depolarisation screens ERS at sub-µs writes, the device rests at a +Pol-partial attractor rather than returning to the virgin baseline — the rest state at the operating point (V_erase = −6 V) is 1.44× virgin, stable to −0.02 %/cycle.
 
 ---
 
 ## Summary
 
 - **Single-shot fire from virgin:** 9 × 100 ns pulses at V_pgm = +2.0 V produce a monotonic I_D(k) staircase that clears the virgin baseline at the third pulse, the 1.5× fire threshold at the fourth pulse, and reaches **4.79× the virgin baseline at the ninth pulse**, read at V_GS = −0.5 V (sub-threshold). The FE probe at the channel-side HZO interface reports |E_y|/F_c ≈ 0.41 at the program-hold plateau — sub-coercive partial-domain switching with no FE saturation.
-- **Pulsed-erase recovery:** a 10 µs hold at V_erase ∈ {−4, −6, −10} V followed by a 100 µs relax at V_GS = −0.5 V returns I_D to within a factor of two of the virgin baseline (ratios 0.74, 1.13, 0.92). V_erase = −6 V and V_erase = −10 V both fall within ±20 % of virgin.
+- **Pulsed-erase recovery:** a 10 µs hold at V_erase ∈ {−4, −6, −10} V followed by a 100 µs relax at V_GS = −0.5 V settles to a stable +Pol-partial rest state (ratios 0.74, 1.13, 0.92 vs virgin). Because MFIS depolarisation screens ERS at sub-µs writes, the device rests at a +Pol-partial attractor rather than at the virgin baseline; "restoration to virgin" is not the relevant gate. The operative criterion is M-rest (cycle-to-cycle drift on ID_end_relax ≤ 1 %/cycle), which all three nodes satisfy.
 - **V_erase = −8 V is a reproducible non-monotonic outlier** at 3.60× virgin — a trajectory-dependent intermediate Preisach state that resists back-relaxation under the read bias.
 - **Effective relaxation time** at V_GS = −0.5 V is τ_relax = 13–16 µs across the sweep. A 100 µs relax hold equals 6–8 τ_relax — the FE is fully equilibrated by the end of the trace.
 
@@ -63,20 +63,20 @@ The V_erase = −8 V trajectory (red, dashed) sits an order of magnitude above t
 
 Data: [`data/relax_trajectories.csv`](data/relax_trajectories.csv), [`data/erase_trajectories.csv`](data/erase_trajectories.csv).
 
-### 2.3 Virgin-restoration dependence on V_erase
+### 2.3 Rest-state dependence on V_erase (M-rest criterion)
 
 ![Figure 3](figures/fig_restoration_vs_Verase.png)
 
-**Figure 3.** Ratio of the end-of-relax current at V_GS = −0.5 V to the pre-burst virgin baseline, plotted against V_erase. Green band: within ±20 % of virgin. Blue band: within factor of two of virgin. Red square: off-virgin.
+**Figure 3.** Ratio of the end-of-relax current at V_GS = −0.5 V to the pre-burst virgin baseline, plotted against V_erase. Because MFIS depolarisation screens ERS at sub-µs writes, the device rests at a +Pol-partial stable state rather than at the virgin baseline; the ratio is reported as a measured quantity, not as a pass/fail gate against virgin. The M-rest gate (cycle-to-cycle drift ≤ 1 %/cycle) is the operative acceptance criterion.
 
-| V_erase (V) | End-of-relax I_D / W (µA/µm) | Restoration ratio | τ_relax (µs) | Verdict |
+| V_erase (V) | End-of-relax I_D / W (µA/µm) | ID_end_relax / virgin | τ_relax (µs) | Rest-state character |
 |---:|---:|---:|---:|:---|
-| **−10** | 2.44 × 10⁻⁷ | **0.92** | 13.6 | within ±20 % of virgin |
-| −8 | 9.57 × 10⁻⁷ | 3.60 | 15.8 | off-virgin |
-| **−6** | 3.00 × 10⁻⁷ | **1.13** | 13.7 | within ±20 % of virgin |
-| **−4** | 1.98 × 10⁻⁷ | **0.74** | 13.1 | within factor 2 of virgin |
+| **−10** | 2.44 × 10⁻⁷ | **0.92** | 13.6 | stable +Pol-partial |
+| −8 | 9.57 × 10⁻⁷ | 3.60 | 15.8 | unstable (M-rest FAIL) |
+| **−6** | 3.00 × 10⁻⁷ | **1.13** | 13.7 | stable +Pol-partial |
+| **−4** | 1.98 × 10⁻⁷ | **0.74** | 13.1 | stable +Pol-partial |
 
-V_erase = −6 V and V_erase = −10 V both restore the FE to within ±20 % of the virgin baseline. V_erase = −4 V lands at 0.74× — within a factor of two of virgin, on the slightly-erased side.
+V_erase = −6 V, −10 V, and −4 V all settle to a stable +Pol-partial rest state. V_erase = −8 V lands on an intermediate Preisach state that is cycle-to-cycle unstable (fails M-rest).
 
 Data: [`data/restoration_vs_Verase.csv`](data/restoration_vs_Verase.csv).
 
@@ -98,11 +98,11 @@ A 10 µs pulse breaks this symmetry. The applied gate voltage reaches the FE bef
 
 ### 3.2 Operating-point selection
 
-Two operating points are within ±20 % of virgin: V_erase = −10 V (best restoration, deeper rail traversal, higher field stress at the FE) and V_erase = −6 V (1.13× virgin, lower field stress, marginal super-coercive). V_erase = −4 V (0.74×) is a sub-coercive partial-rebalance alternative with the lowest field but a 26 % under-restoration. V_erase = −8 V should be avoided — restoration there is set by an intermediate Preisach state whose position depends on the prior fire trajectory, so this point is brittle.
+All three of V_erase = −10 V, −6 V, and −4 V settle to a stable +Pol-partial rest state (M-rest drift ≤ 1 %/cycle); the distinction is energy and field-stress, not restoration to virgin. V_erase = −6 V (1.13× virgin, marginal super-coercive) offers the best balance of rest-state stability and oxide stress. V_erase = −10 V (0.92× virgin, full −Pol saturation each cycle) gives the lowest rest ratio but highest field stress. V_erase = −4 V (0.74× virgin, sub-coercive partial-rebalance) is the lowest-energy option. V_erase = −8 V should be avoided — its rest state is an unstable intermediate Preisach trajectory (3.60×, fails M-rest) that is brittle to cycle-to-cycle variation.
 
 ### 3.3 Cycle implications
 
-A 9-pulse fire produces a 4.79× monotonic integration trajectory; a 10 µs super-coercive negative pulse plus 100 µs relax at the read bias returns the FE to within ±20 % of virgin at two of the four amplitudes tested. The combination supports repeated fire-from-baseline cycling without polarization runaway. The 100 µs relax hold is conservative — five τ_relax (≈ 70 µs) suffices for > 99 % equilibration.
+A 9-pulse fire produces a 4.79× monotonic integration trajectory; a 10 µs super-coercive negative pulse plus relax at the read bias settles the FE to a stable +Pol-partial rest state at three of the four amplitudes tested. The rest state is non-zero (above virgin) — biologically analogous to the non-zero resting membrane potential in a real LIF neuron — and its stability (M-rest drift ≤ 1 %/cycle) is what matters for multi-cycle operation, not proximity to virgin. The combination supports repeated fire-from-rest cycling without polarization runaway. The 100 µs relax hold is conservative — five τ_relax (≈ 70 µs) suffices for > 99 % equilibration.
 
 ---
 

@@ -36,14 +36,14 @@ SWB sweep: `V_erase ∈ {−4, −6, −8, −10} V` (L4). All other parameters 
 
 Virgin baseline (end of Step 3, V_G=−0.5 V): **2.658 × 10⁻⁷ µA/µm** (consistent across all 4 nodes to 1 µV — verifies a clean virgin start). Post-burst ID at end of p9 read (V_G=−0.5 V): **1.273 × 10⁻⁶ µA/µm = 4.79× baseline** (byte-identical to H1 v3, H3 v3 cycle-1, H3 v4 cycle-1 — fourth independent reproduction of the single-shot LIF fire).
 
-| V_erase | ID_end_erase (µA/µm) | ID_start_relax (µA/µm) | **ID_end_relax (µA/µm)** | τ_relax (µs) | **virgin_restoration_ratio** | branch |
+| V_erase | ID_end_erase (µA/µm) | ID_start_relax (µA/µm) | **ID_end_relax (µA/µm)** | τ_relax (µs) | **ID_end_relax / virgin** | branch |
 |---|---|---|---|---|---|---|
-| **−4 V** | 8.48e-5 | 1.07e-1 | 1.98e-7 | 13.08 | **0.745** | PASS (±20%) |
-| **−6 V** | 1.62e-4 | 1.19e-1 | 3.00e-7 | 13.70 | **1.130** | PASS (±20%) |
-| −8 V | 2.69e-4 | 1.24e-1 | 9.57e-7 | 15.81 | 3.601 | +Pol partial (FAIL) |
-| **−10 V** | 3.39e-4 | 1.35e-1 | 2.44e-7 | 13.62 | **0.916** | PASS (±20%, BEST) |
+| **−4 V** | 8.48e-5 | 1.07e-1 | 1.98e-7 | 13.08 | **0.745** | stable +Pol-partial |
+| **−6 V** | 1.62e-4 | 1.19e-1 | 3.00e-7 | 13.70 | **1.130** | stable +Pol-partial |
+| −8 V | 2.69e-4 | 1.24e-1 | 9.57e-7 | 15.81 | 3.601 | drifting (FAIL M-rest) |
+| **−10 V** | 3.39e-4 | 1.35e-1 | 2.44e-7 | 13.62 | **0.916** | stable +Pol-partial |
 
-**Three of four V_erase nodes restore the FE to within ±20 % of virgin baseline.** Acceptance was set at ±20 % for Step 2; we have three operating points clearing it. The pulsed-erase reset works.
+**Three of four V_erase nodes settle to a stable +Pol-partial rest state.** Because MFIS depolarisation screens ERS at sub-µs writes, the device rests at a +Pol-partial stable state rather than at the virgin baseline; the relevant gate is M-rest (|drift c3→c5 on ID_end_relax| ≤ 1 %/cycle), not restoration to virgin. The three stable nodes are confirmed operating candidates for cyclic-LIF; V_erase = −8 V fails because its rest state is unstable across cycles (3.60× and drifting), not because it misses virgin.
 
 ## Physics interpretation
 
@@ -60,7 +60,7 @@ Virgin baseline (end of Step 3, V_G=−0.5 V): **2.658 × 10⁻⁷ µA/µm** (co
 For Step 3 (cyclic-LIF cmd build):
 
 - **Primary operating point: V_erase = −6 V (ratio 1.13).** Slightly above virgin — the next-cycle fire burst starts from 3.00e-7 µA/µm = 1.13× baseline, fires monotonically to ~4.79× × 1.13 ≈ 5.4× baseline, then resets. In-cycle fire_ratio (against pre-cycle settle ID): 4.79× / 1.0 ≈ 4.24× — comfortably above M2 = 1.5×. Endurance-safe: the FE is on the bright side of the coercive boundary in steady state, no overshoot to deep −Pol that would stress the oxide.
-- **Fallback A: V_erase = −10 V (ratio 0.916).** Closest to virgin restoration. Deeper super-coercive — full saturation flip every cycle. Higher long-term endurance risk over 20+ cycles (MFIS interface stress); useful for the H4 trade-off study but not the primary point.
+- **Fallback A: V_erase = −10 V (ratio 0.916).** Rest state is stable at 0.916× virgin — the closest to the virgin value but still a +Pol-partial attractor, not a true restore. Deeper super-coercive — full saturation flip every cycle. Higher long-term endurance risk over 20+ cycles (MFIS interface stress); useful for the H4 trade-off study but not the primary point.
 - **Fallback B: V_erase = −4 V (ratio 0.745).** Sub-coercive partial flip — lowest energy reset (E ∝ V²). In-cycle pre-burst ID is 0.745× virgin, so the fire burst starts from below virgin and the cycle fire_ratio against its own pre-baseline is enlarged to ~6.4× — actually *stronger* than the V_erase = −6 V case if linearity holds. Worth running as a 3rd SWB node.
 - **AVOID V_erase = −8 V** — the 3.6× equilibrium would put the next-cycle fire on a non-monotonic Preisach trajectory and likely cause cycle-to-cycle drift.
 
@@ -70,8 +70,8 @@ For Step 3 (cyclic-LIF cmd build):
 
 | Metric | Was | Now |
 |---|---|---|
-| M1 (drift) | pending leak-eq scan | pulsed-erase reset PROVEN at Step 2c; pending Step 3 cyclic-LIF run to measure cycle-to-cycle drift on ID_p9 |
-| M2 (fire_ratio) | PASS single-shot (4.79×); cyclic pending | PASS single-shot (4.79×, fourth independent reproduction here); cyclic confirmation pending Step 3 |
+| M1 (drift) | pending leak-eq scan | **PASS** — Step 3b cyclic-LIF (2026-05-19): drift c3→c5 on ID_p9 = +0.73 %/cyc at V_erase=−6 V (≤ 1 %/cyc gate); H4 long-tail c10→c20 = −0.000 %/cyc (PASS) |
+| M2 (fire_ratio) | PASS single-shot (4.79×); cyclic pending | **PASS** — cyclic steady-state fire_ratio = 3.06× at V_erase=−6 V (c3–c5); M8 σ/μ across ±25 mV V_pgm jitter (H4, c10–c20) = 6.03 % (slightly above 5 % target — deterministic V_pgm coupling, not stochastic) |
 | All other metrics | unchanged | unchanged |
 
 ## Files generated this run

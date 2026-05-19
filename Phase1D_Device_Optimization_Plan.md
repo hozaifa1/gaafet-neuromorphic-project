@@ -21,8 +21,8 @@ Run-list and decision-log only. Publication-grade outputs live in `Writing_Mater
 | **H2 v6** | MW(V_pgm) via 10 µs pulses + 100 ns Transient reads | ✓ **PASS** | M3 PASS at V_pgm ≥ 3.5 V (MW = 852 mV @ 3.5 V; > 2.95 V @ 6 V); M4 trend PASS |
 | **H3 Step 2c** | Pulsed-erase scan (post-fire +Pol latch recovery) | ✓ **PASS** | **V_erase_opt = −6 V**: ratio 1.13 to virgin baseline; τ_relax = 13.7 µs |
 | **H3 Step 3b** | Cyclic LIF (5 cycles × 9 fires + 10 µs erase + 70 µs relax) | ✓ **PASS** | **V_erase = −6 V**: M1 PASS (+0.73 %/cyc on ID_p9), M2 PASS every cycle, rest baseline drift −0.02 %/cyc |
-| **H4** | Endurance + variability (20+ cycles, V_pgm perturbation) | **NEXT** | Re-run of Phase 1C `simF_endurance/` at the new sub-coercive operating point (V_pgm = +2 V, pulsed V_erase = −6 V) — old simF used V_pulse = +6 V / V_reset = −5 V hold (invalidated by H1 v3 over-switching finding). cmd: `simH_optimize/sdevice_simH4_endurance.cmd` (already generated; SWB `@V_pgm@ ∈ {1.95, 1.975, 2.0, 2.025, 2.05}`, V_erase = −6 V hardcoded, 20 cycles) |
-| **H5** | Energy accounting (reuse existing infrastructure) | **PREVIEW DONE** | Reuse `Simulations/simE_energy/extract_energy.py` (now also handles cyclic `cN_pN_*` naming). Step 3b numbers: E_fire (steady c3..c5 mean) = **1.151 pJ per 9-pulse burst at V_erase = −6 V** (gate + drain integrated over rise+write+fall+read). Per-tag CSVs in `simH_optimize/cyclic_lif_outputs/cyclic_vm{4,6,10}_energy_summary.csv`. Erase-phase energy still to add (script currently skips `erase_*` segments). Full writeup pending H4 steady-state data. |
+| **H4** | Endurance + variability (20 cycles × V_pgm L5 = ±25 mV around 2.0 V) | ✓ **PASS / M8 partial** | 20-cycle long-tail at V_pgm = 2.0 V: M1 +0.015 %/cyc (ID_p9), M-rest −0.000 %/cyc (relax) — both two decades below the 1 %/cyc gate. fire_ratio c10..c20 mean = 3.07×, M2 PASS every cycle at every node. **M8 σ/μ across V_pgm L5 = 6.03 %** (vs ≤ 5 %): the V_pgm-jitter coupling of fire_ratio is deterministic (Δfr/fr ≈ +5.4 %/25 mV) and *flat across cycles* — driver-circuit constraint, not stochastic drift. Writeup `Writing_Materials/Phase1D_Analysis/Endurance/H4_endurance_analysis.md`; analyzer `analyze_phase1d_h4.py`; raw `endurance_outputs/` (4046 .plt, 440 MB). |
+| **H5** | Energy accounting (M5 + M6, no new sim) | ✓ **DONE / both FAIL honestly** | Run on H4 V_pgm=2.0 V steady-state c10..c20. **E_fire = 1.151 pJ/burst (127.88 fJ/pulse), E_erase = 10.26 fJ, E_relax = −19.67 fJ (net dissipative), E_total = 1.142 pJ/cycle.** M5 (≤ 50 fJ/pulse) fails 2.6×; M6 (≤ 100 fJ/cycle) fails 11.4×. Floor is the 9-pulse integration read mandated by the LIF protocol — frame as analog-LIF read-floor / endurance-vs-energy trade-off, not a device defect. Analyzer `analyze_phase1d_h5.py`; writeup `Writing_Materials/Phase1D_Analysis/Energy/H5_energy.md`. |
 
 τ_P selection (10 µs = 1e-5 s): already done in Phase 1C [`simD_leak/`](Simulations/simD_leak/) and locked in [`Simulations/sdevice_gaafet_lif.par`](Simulations/sdevice_gaafet_lif.par) line 68. Re-confirmed by the H3 par audit on 2026-05-17. Effective τ_leak in this operating regime measured at 13.7 µs (H3 Step 2c fit), consistent with the par.
 
@@ -58,10 +58,10 @@ Earlier failed iterations (H1 v1/v2, H2 v3/v4/v5, H3 v2/v3/v4, leak-eq Step 2a/2
 | M-rest | Rest-baseline drift c3→c5 | ≤ 1 %/cycle | ✓ PASS (−0.02 %/cyc); replaces stale "restore ±25 % of virgin" gate (depolarization-screened MFIS rests at +Pol-partial, not at virgin — biologically analogous) |
 | M3 | Memory window | ≥ 0.5 V | ✓ PASS (1.40 V H0a v5; 852 mV H2 v6) |
 | M4 | Analog states | ≥ 9 | TREND PASS (H2 v6) — 9-level demo deferred to optional expansion |
-| M5 | E_gate (per fire event) | ≤ 50 fJ | **Preview from H3 Step 3b via `extract_energy.py`**: E_fire(c3..c5 mean) = 1.151 pJ / 9 pulses ≈ **128 fJ/pulse** at V_pgm = 2.0 V. Currently OVER the 50 fJ/pulse target (lower pulse-count or per-pulse split needed). Final number pending H4. |
-| M6 | E_total (fire + erase per cycle) | ≤ 100 fJ | Pending — needs erase-phase integration (extract_energy.py extension) on H4 steady-state cycle |
+| M5 | E_gate (per fire event) | ≤ 50 fJ | **127.88 fJ/pulse** (H5, c10..c20 mean at V_pgm = 2.0 V) — FAIL by 2.6×. Floor set by analog LIF read at V_GS=−0.5 V. Trade-off reported, not solved. |
+| M6 | E_total (fire + erase per cycle) | ≤ 100 fJ | **1141.51 fJ/cycle** (H5, c10..c20 mean) — FAIL by 11.4×. 9-pulse fire burst is 99 % of the cost (E_erase ≈ 10 fJ, E_relax ≈ −20 fJ net dissipative). |
 | M7 | V_pgm | ≤ 2.0 V | ✓ PASS (V_pgm_opt = 2.0 V) |
-| M8 | C2C σ/μ | ≤ 5 % | Pending H4 |
+| M8 | C2C σ/μ | ≤ 5 % | **6.03 %** at V_pgm L5 c10..c20 (H4) — flat across cycles; deterministic V_pgm-jitter coupling (Δfr/fr ≈ +5.4 %/25 mV), not stochastic. Tighten driver V_pgm jitter to ±20 mV to reach gate, or shift V_GS_read off the exponential tail. |
 | M9 | I-V R² | ≥ 0.90 | post-ERS 0.95 PASS; post-PGM 0.77 (floor-limited, documented) |
 | M9b | MW vs Tasneem | – | 2.8× — differentiator |
 | M10 | SS | 88–132 mV/dec | post-PGM 100 PASS; post-ERS 164 (documented as MFIS asymmetry) |
@@ -69,7 +69,7 @@ Earlier failed iterations (H1 v1/v2, H2 v3/v4/v5, H3 v2/v3/v4, leak-eq Step 2a/2
 | M12a | P–E loop topology | qualitative | ✓ PASS (H0e) |
 | M12b | V_c,gate agreement | ≤ 5 % | ✓ PASS (0.5 %, H0e) |
 
-**Outstanding before submission:** H4 (M8 + long-tail M1), H5 (M5 + M6). All other gates closed.
+**Outstanding before submission:** none — H4 and H5 done. Open trade-offs to discuss in manuscript: M5/M6 over target (read-floor / endurance trade-off, reported honestly); M8 at 6.03 % (driver V_pgm spec constraint, not stochastic).
 
 ---
 
@@ -84,8 +84,8 @@ Earlier failed iterations (H1 v1/v2, H2 v3/v4/v5, H3 v2/v3/v4, leak-eq Step 2a/2
 | H2 v6 | `simH_optimize/sdevice_simH2_PE_loop.cmd` | `analyze_phase1d_h2.py` → `Simulations/phase1d_h2/` |
 | H3 Step 2c (pulsed-erase scan) | `simH_optimize/sdevice_simH_leak_eq.cmd` | `analyze_phase1d_leakeq.py` → `Simulations/phase1d_leakeq/` |
 | **H3 Step 3b (cyclic LIF)** | `simH_optimize/sdevice_simH3_cyclic.cmd` (gen: `_gen_h3_cyclic_cmd.py` with `assert_alignment`; runner: `cyclic_lif_outputs/run_cyclic_lif.csh`) | `analyze_phase1d_cyclic.py` → `Simulations/phase1d_cyclic/`; figures `Writing_Materials/Phase1D_Analysis/Cyclic_LIF/figures/`; writeup `Writing_Materials/Phase1D_Analysis/Cyclic_LIF/Cyclic_LIF_Analysis.md` |
-| H4 (next; succeeds Phase 1C [`simF_endurance/`](Simulations/simF_endurance/)) | `simH_optimize/sdevice_simH4_endurance.cmd` (gen: `_gen_h4_endurance_cmd.py` with `assert_alignment`; SWB `@V_pgm@ ∈ {1.95, 1.975, 2.0, 2.025, 2.05} V`, V_erase = −6 V hardcoded, 20 cycles) | extend `analyze_phase1d_cyclic.py` with cross-node σ/μ for M8 |
-| H5 (no new sim; reuses Phase 1C [`simE_energy/extract_energy.py`](Simulations/simE_energy/extract_energy.py)) | – | Script extended 2026-05-19 to handle cyclic `cN_pN_*` naming + `--include` tag filter. Per-tag CSVs already in `simH_optimize/cyclic_lif_outputs/cyclic_vm{4,6,10}_energy_summary.csv`. Erase-phase segments still to add. |
+| **H4** (succeeds Phase 1C [`simF_endurance/`](Simulations/simF_endurance/)) | `simH_optimize/sdevice_simH4_endurance.cmd` (gen: `_gen_h4_endurance_cmd.py`; SWB `@V_pgm@ ∈ {1.95, 1.975, 2.0, 2.025, 2.05} V`, V_erase = −6 V hardcoded, 20 cycles) | `analyze_phase1d_h4.py` → `Simulations/phase1d_h4/{h4_per_node.csv, h4_m8_per_cycle.csv, h4_summary.txt}`; writeup `Writing_Materials/Phase1D_Analysis/Endurance/H4_endurance_analysis.md`; raw `Simulations/endurance_outputs/` |
+| **H5** (no new sim; uses H4 `endurance_outputs/`) | – | `analyze_phase1d_h5.py` integrates V·I over fire (rise/write/fall/read × 9), erase (rise/hold/fall), and relax segments at V_pgm = 2.0 V. Outputs `Simulations/phase1d_h5/{h5_per_segment.csv, h5_per_cycle.csv, h5_summary.txt}`. Writeup `Writing_Materials/Phase1D_Analysis/Energy/H5_energy.md`. |
 | τ_P selection (Phase 1C, already done) | `simD_leak/sdevice_simD_leak.cmd` swept τ_P ∈ {0, 1e-6, 1e-5, 1e-4, 1e-3} | Selected τ_P = 1e-5 (10 µs); locked in `sdevice_gaafet_lif.par` line 68. Re-confirmed by H3 par audit 2026-05-17. |
 
 All par changes (none after H0e) go in `Simulations/sdevice_gaafet_lif.par`. Log in `Calibration_Log_2026_01_15.md`.
@@ -94,8 +94,8 @@ All par changes (none after H0e) go in `Simulations/sdevice_gaafet_lif.par`. Log
 
 ## Next actions
 
-1. **H4 endurance** — push the already-generated [`sdevice_simH4_endurance.cmd`](Simulations/simH_optimize/sdevice_simH4_endurance.cmd) to the remote, launch the SWB L5 run on `@V_pgm@ ∈ {1.95, 1.975, 2.0, 2.025, 2.05} V`. Wall-clock ≈ 100 min/node × 5 nodes ≈ 8.5 h. Replaces Phase 1C `simF_endurance/` (which used the now-invalidated V_pulse = +6 V over-switching operating point).
-2. **H5 energy** — extend [`Simulations/simE_energy/extract_energy.py`](Simulations/simE_energy/extract_energy.py) to also integrate `erase_rise|erase_hold|erase_fall|relax` segments so the per-cycle E_total covers fire + erase + relax. Run on H4 steady-state cycle (c10..c20) at V_pgm = 2.0 V. Write up to `Writing_Materials/Phase1D_Analysis/Energy/H5_energy.md`. Current preview from H3 Step 3b: **E_fire = 1.151 pJ per 9-pulse burst at V_erase = −6 V** (128 fJ/pulse, gate+drain integrated).
+1. **H4 endurance** ✓ **DONE** (2026-05-19) — 5-node SWB L5 complete in `Simulations/endurance_outputs/`. Analyzer `analyze_phase1d_h4.py`. Headline: M1 / M-rest / M2 PASS at all 5 nodes (long-tail drift < 0.02 %/cyc); M8 = 6.03 % flat across c10..c20 → deterministic V_pgm coupling, *not* stochastic drift. See `Writing_Materials/Phase1D_Analysis/Endurance/H4_endurance_analysis.md`.
+2. **H5 energy** ✓ **DONE** (2026-05-19) — `analyze_phase1d_h5.py` integrates fire + erase + relax on H4 V_pgm=2.0 V cycles. c10..c20 mean: E_fire = 1.151 pJ/burst (128 fJ/pulse), E_total = 1.142 pJ/cycle. M5 & M6 fail honestly — read-floor / endurance trade-off. Writeup in `Writing_Materials/Phase1D_Analysis/Energy/H5_energy.md`.
 3. **`Step_2/lif_parameters.py` rewrite** — flush measured numbers from H3 Step 3b (and H4 once it lands) into the LIF parameter file.
 4. **Writing pass** — replace the stale "restore to virgin ±25 %" framing throughout `Writing_Materials/` with the M-rest stable-rest-state framing.
 

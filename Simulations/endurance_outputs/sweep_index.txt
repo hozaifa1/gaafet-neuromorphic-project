@@ -1,0 +1,6 @@
+# Phase 1D H4 endurance sweep  (2026-05-19)
+  endurance_v195  ->  V_pgm = 1.95 V
+  endurance_v1975  ->  V_pgm = 1.975 V
+  endurance_v200  ->  V_pgm = 2.0 V
+  endurance_v2025  ->  V_pgm = 2.025 V
+  endurance_v205  ->  V_pgm = 2.05 V
