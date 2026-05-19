@@ -33,7 +33,7 @@ except ImportError:
     sys.exit(1)
 
 
-SEG_RE = re.compile(r"p(\d{2})_(rise|write|fall|read)_")
+SEG_RE = re.compile(r"(?:c(\d+)_)?p(\d+)_(rise|write|fall|read)_")
 
 
 def read_plt(path: str) -> tuple[list[str], np.ndarray]:
@@ -95,10 +95,12 @@ def process_file(path: str) -> dict | None:
     e_drain = integrate_segment(t, data[:, vd_idx], data[:, id_idx])
     name = os.path.basename(path)
     m = SEG_RE.search(name)
-    pulse = int(m.group(1)) if m else -1
-    segment = m.group(2) if m else "unknown"
+    cycle = int(m.group(1)) if (m and m.group(1)) else 0  # 0 = no cycle prefix (legacy single-burst)
+    pulse = int(m.group(2)) if m else -1
+    segment = m.group(3) if m else "unknown"
     return {
         "file": name,
+        "cycle": cycle,
         "pulse": pulse,
         "segment": segment,
         "t_start": float(t[0]),
@@ -114,14 +116,27 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Energy extraction from simE .plt files")
     p.add_argument("results_dir", help="Directory containing pXX_*.plt files")
     p.add_argument("--out", default="energy_summary.csv", help="Output CSV path")
+    p.add_argument(
+        "--include",
+        default="",
+        help="Substring that must appear in the filename (e.g. 'cyclic_vm6' to "
+        "scope a multi-node SWB output dir to one V_erase tag).",
+    )
     args = p.parse_args()
 
-    pattern = os.path.join(args.results_dir, "p[0-9][0-9]_*_*.plt")
-    files = sorted(glob(pattern))
-    if not files:
-        # Try one level deeper (SWB tdrdat output structure)
-        pattern = os.path.join(args.results_dir, "**", "p[0-9][0-9]_*_*.plt")
-        files = sorted(glob(pattern, recursive=True))
+    # Match both legacy single-burst (pXX_*) and cyclic (cN_pN_*) naming.
+    patterns = [
+        os.path.join(args.results_dir, "p[0-9]*_*_*.plt"),
+        os.path.join(args.results_dir, "c[0-9]*_p[0-9]*_*_*.plt"),
+        os.path.join(args.results_dir, "**", "p[0-9]*_*_*.plt"),
+        os.path.join(args.results_dir, "**", "c[0-9]*_p[0-9]*_*_*.plt"),
+    ]
+    files: list[str] = []
+    for pat in patterns:
+        files.extend(glob(pat, recursive=True))
+    files = sorted(set(files))
+    if args.include:
+        files = [f for f in files if args.include in os.path.basename(f)]
     if not files:
         print(f"No matching .plt files in {args.results_dir}")
         return 1
@@ -132,43 +147,67 @@ def main() -> int:
         if r is not None:
             rows.append(r)
 
-    rows.sort(key=lambda r: (r["pulse"], r["segment"]))
+    rows.sort(key=lambda r: (r["cycle"], r["pulse"], r["segment"]))
 
     out_path = args.out
     if not os.path.isabs(out_path):
         out_path = os.path.join(args.results_dir, out_path)
     with open(out_path, "w", newline="") as f:
-        f.write("file,pulse,segment,t_start,t_end,E_gate_J,E_drain_J,E_total_J,n_samples\n")
+        f.write(
+            "file,cycle,pulse,segment,t_start,t_end,E_gate_J,E_drain_J,E_total_J,n_samples\n"
+        )
         for r in rows:
             f.write(
-                f"{r['file']},{r['pulse']},{r['segment']},{r['t_start']:.6e},"
-                f"{r['t_end']:.6e},{r['E_gate_J']:.6e},{r['E_drain_J']:.6e},"
-                f"{r['E_total_J']:.6e},{r['n_samples']}\n"
+                f"{r['file']},{r['cycle']},{r['pulse']},{r['segment']},"
+                f"{r['t_start']:.6e},{r['t_end']:.6e},{r['E_gate_J']:.6e},"
+                f"{r['E_drain_J']:.6e},{r['E_total_J']:.6e},{r['n_samples']}\n"
             )
 
-    by_pulse: dict[int, dict[str, float]] = {}
+    by_pulse: dict[tuple[int, int], dict[str, float]] = {}
     for r in rows:
-        d = by_pulse.setdefault(r["pulse"], {"E_gate_J": 0.0, "E_drain_J": 0.0})
+        d = by_pulse.setdefault(
+            (r["cycle"], r["pulse"]),
+            {"E_gate_J": 0.0, "E_drain_J": 0.0},
+        )
         d["E_gate_J"] += r["E_gate_J"]
         d["E_drain_J"] += r["E_drain_J"]
 
     print(f"Wrote: {out_path}")
-    print(f"\nPer-pulse totals (gate + drain):")
-    print(f"{'pulse':>6} {'E_gate (fJ)':>14} {'E_drain (fJ)':>14} {'E_total (fJ)':>14}")
-    e_fire_total = 0.0
-    for pulse in sorted(by_pulse):
-        d = by_pulse[pulse]
-        e_total = d["E_gate_J"] + d["E_drain_J"]
-        e_fire_total += e_total
+    by_cycle: dict[int, float] = {}
+    for (cycle, _pulse), d in by_pulse.items():
+        by_cycle[cycle] = by_cycle.get(cycle, 0.0) + d["E_gate_J"] + d["E_drain_J"]
+
+    if set(by_cycle) == {0}:
+        # Legacy single-burst (no cycle prefix): emit per-pulse table.
+        print(f"\nPer-pulse totals (gate + drain):")
+        print(f"{'pulse':>6} {'E_gate (fJ)':>14} {'E_drain (fJ)':>14} {'E_total (fJ)':>14}")
+        e_fire_total = 0.0
+        for (_cycle, pulse) in sorted(by_pulse):
+            d = by_pulse[(_cycle, pulse)]
+            e_total = d["E_gate_J"] + d["E_drain_J"]
+            e_fire_total += e_total
+            print(
+                f"{pulse:>6} {d['E_gate_J']*1e15:>14.3f} "
+                f"{d['E_drain_J']*1e15:>14.3f} {e_total*1e15:>14.3f}"
+            )
         print(
-            f"{pulse:>6} {d['E_gate_J']*1e15:>14.3f} "
-            f"{d['E_drain_J']*1e15:>14.3f} {e_total*1e15:>14.3f}"
+            f"\nE_fire_total = {e_fire_total*1e15:.3f} fJ "
+            f"= {e_fire_total*1e12:.3f} pJ (sum across all pulses to fire)"
         )
-    print(
-        f"\nE_fire_total = {e_fire_total*1e15:.3f} fJ "
-        f"= {e_fire_total*1e12:.3f} pJ "
-        f"(sum across all pulses to fire)"
-    )
+    else:
+        # Cyclic LIF: emit per-cycle summary (sum across 9 pulses per cycle).
+        print(f"\nPer-cycle fire-burst energy (sum of 9-pulse gate + drain):")
+        print(f"{'cycle':>6} {'E_fire (fJ)':>14}")
+        for cycle in sorted(by_cycle):
+            print(f"{cycle:>6} {by_cycle[cycle]*1e15:>14.3f}")
+        e_steady = (
+            np.mean([by_cycle[c] for c in by_cycle if c >= 3])
+            if any(c >= 3 for c in by_cycle)
+            else float("nan")
+        )
+        print(
+            f"\nE_fire (steady-state, mean c3..) = {e_steady*1e15:.3f} fJ per 9-pulse burst"
+        )
     return 0
 
 

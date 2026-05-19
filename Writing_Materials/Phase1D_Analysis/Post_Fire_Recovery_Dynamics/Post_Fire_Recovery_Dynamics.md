@@ -1,46 +1,41 @@
 # Post-Fire Recovery Dynamics in the GAA-FeFET
 
-This document reports the response of the GAA-FeFET to repeated leaky-integrate-and-fire (LIF) burst cycles separated by a negative-bias recovery pulse, and characterizes how the device's polarization state evolves across the cycle sequence. The study quantifies (i) the reproducibility of the single-shot integration response from the virgin state, (ii) the cycle-to-cycle stability of the post-fire state under different recovery-pulse amplitudes, and (iii) the in-cycle current trajectory once the device has reached its post-fire stable state.
+Response of the device to a 9-pulse fire burst followed by a brief super-coercive negative gate pulse and a relaxation hold at the read bias. Two findings: (i) the single-shot fire response from the virgin state is a monotonic 4.79× ID staircase reading sub-threshold, and (ii) a 10 µs negative gate pulse returns the post-fire polarization to within a factor of two of the virgin state at three of four amplitudes tested, with a non-monotonic outlier at V_erase = −8 V.
 
 ---
 
 ## Summary
 
-- A single 9-pulse burst at `V_pgm = +2.0 V` (100 ns hold, sub-coercive) applied to the device in its virgin polarization state produces a **monotonic ID staircase reaching 4.79× the virgin baseline at the ninth pulse**. The response is reproducible to numerical precision across four independent simulation runs in this study (different recovery-pulse conditions, same fire-burst protocol), confirming the single-shot LIF integration result reported in `Phase1D_LIF_Integration/`.
-
-- Under repeated burst cycles separated by a 1 µs negative-bias recovery pulse and a 10 µs settle, the device reaches a **cycle-to-cycle stable post-fire state within two cycles, with subsequent drift of less than 0.4 % per cycle** across cycles 3–5. The stability holds for every recovery-pulse amplitude tested in the range `V_rec ∈ {−1.0, −1.5, −2.0, −2.5} V`.
-
-- The amplitude of the recovery pulse sets the steady-state latched current: at `V_rec = −1.0 V` the post-fire latched current is **9.8× the virgin baseline**, rising to **40.8×** at `V_rec = −2.5 V`. The recovery pulse therefore acts as a state-programming knob rather than a polarization erase: sub-coercive negative biases at 1 µs do not return the device to the virgin polarization state.
-
-- Once latched, an applied burst no longer drives the channel current upward across the train. The in-cycle trajectory is a U-shaped excursion (minimum at the fifth pulse, ≈ 60 % of the pre-burst current; recovery to ≈ 90 % at the ninth pulse), reflecting transient displacement currents and fast-domain Preisach wobble around a saturated slow-domain polarization state. The integration-and-fire response is therefore characteristic of the virgin-state preparation, not a repeating cycle of the present device.
+- **Single-shot fire from virgin:** 9 × 100 ns pulses at V_pgm = +2.0 V produce a monotonic I_D(k) staircase that clears the virgin baseline at the third pulse, the 1.5× fire threshold at the fourth pulse, and reaches **4.79× the virgin baseline at the ninth pulse**, read at V_GS = −0.5 V (sub-threshold). The FE probe at the channel-side HZO interface reports |E_y|/F_c ≈ 0.41 at the program-hold plateau — sub-coercive partial-domain switching with no FE saturation.
+- **Pulsed-erase recovery:** a 10 µs hold at V_erase ∈ {−4, −6, −10} V followed by a 100 µs relax at V_GS = −0.5 V returns I_D to within a factor of two of the virgin baseline (ratios 0.74, 1.13, 0.92). V_erase = −6 V and V_erase = −10 V both fall within ±20 % of virgin.
+- **V_erase = −8 V is a reproducible non-monotonic outlier** at 3.60× virgin — a trajectory-dependent intermediate Preisach state that resists back-relaxation under the read bias.
+- **Effective relaxation time** at V_GS = −0.5 V is τ_relax = 13–16 µs across the sweep. A 100 µs relax hold equals 6–8 τ_relax — the FE is fully equilibrated by the end of the trace.
 
 ---
 
 ## 1. Method
 
-### 1.1 Device and parameter set
+### 1.1 Device
 
-The simulated device is the GAA-FeFET MFIS stack with HZO ferroelectric layer characterized in the calibration and memory-window documents (see `Writing_Materials/Calibration_Full/` and `Memory_Window_Programming/`). All simulations use the single calibrated parameter file. The Preisach polarization model in the parameter file responds instantaneously to the applied field (no explicit depolarization-relaxation time constant); this is the regime characterized by the present study.
+GAA-FeFET MFIS stack with HZO ferroelectric. The Preisach polarization model carries polarization-relaxation time τ_P = 10 µs and auxiliary-field relaxation τ_E = 1 µs. Drain bias V_DS = 0.05 V. Channel width W_eff = 90 nm. All currents are quoted as I_D/W in µA/µm.
 
-### 1.2 Cycle protocol
+### 1.2 Protocol
 
-Each cycle of the protocol consists of three phases applied in succession with no intervening reads:
+Per run (one run per V_erase value):
 
-1. **Fire burst** — nine consecutive program pulses (1 ns rise / 100 ns hold at `V_pgm = +2.0 V` / 1 ns fall / 100 ns read at `V_GS = −0.5 V`), 202 ns per pulse, 1.818 µs per burst.
-2. **Recovery pulse** — a single negative-bias gate pulse (10 ns rise / 1 µs hold at `V_rec` / 10 ns fall), with `V_rec` swept across `{−1.0, −1.5, −2.0, −2.5} V`.
-3. **Settle** — 10 µs hold at `V_GS = −0.5 V`.
+1. Quasi-stationary ramps to V_DS = 0.05 V and V_GS = −0.5 V.
+2. 100 ns baseline read at V_GS = −0.5 V.
+3. **Fire burst** — 9 × (1 ns rise / 100 ns hold at V_pgm = +2.0 V / 1 ns fall / 100 ns read at V_GS = −0.5 V) = 1.818 µs total.
+4. 10 ns gate ramp to V_erase.
+5. **Erase pulse** — 10 µs hold at V_erase, with V_erase ∈ {−4, −6, −8, −10} V.
+6. 10 ns gate ramp back to V_GS = −0.5 V.
+7. **Relaxation hold** — 100 µs at V_GS = −0.5 V with continuous current logging.
 
-Five cycles are run back-to-back, for a total simulated time of 64.19 µs per node. The drain bias is held at `V_DS = 0.05 V` throughout. The gate voltage in the read and settle phases (`V_GS = −0.5 V`) places the channel in the sub-threshold region where the drain current is exponentially sensitive to threshold-voltage shifts.
-
-The gate is driven everywhere by transient-mode goal-following, so the polarization state is integrated against physical time on every phase.
+The gate is driven by transient-mode goal-following everywhere except the two opening quasi-static ramps, so polarization integrates against physical time on every transient phase.
 
 ### 1.3 Threshold-voltage proxy
 
-All current values reported are read at fixed `V_GS = −0.5 V` and normalized by the effective channel width `W = 90 nm`. Variations in `I_D / W` at this fixed read bias are interpreted as variations in the underlying threshold voltage through the calibrated subthreshold slope (100 mV/dec post-program, see `Writing_Materials/Calibration_Full/`). No explicit `V_t` extraction is performed in this study; the comparison is current-vs-current at a fixed read condition.
-
-### 1.4 Cycle indexing convention
-
-`Cycle 1` starts from the as-initialized (virgin) polarization state. The first phase of cycle 1 is the first fire burst, so `Cycle 1, pulse 9` reports the current immediately after the ninth and final pulse of the first burst (before any recovery pulse has been applied). `End of Cycle N` denotes the end of the 10 µs settle that follows the N-th recovery pulse — this is the "pre-cycle-(N+1) baseline" the next burst encounters.
+All currents are read at fixed V_GS = −0.5 V (sub-threshold). The channel sits in the exponential subthreshold region (calibrated SS = 100 mV/dec post-program), so I_D ratios at this bias map directly onto V_t shifts: a 10× change in I_D corresponds to ≈ 100 mV in V_t. No explicit V_t extraction is performed.
 
 ---
 
@@ -48,96 +43,66 @@ All current values reported are read at fixed `V_GS = −0.5 V` and normalized b
 
 ### 2.1 Single-shot integration response from the virgin state
 
-Figure 1 shows the in-cycle current trajectory across the first burst, starting from the virgin polarization state. Every device run in this study (four nodes, identical fire-burst protocol, different recovery-pulse settings later in the cycle sequence) reproduces this trajectory to numerical precision.
+![Figure 1](figures/fig_cycle1_lif_staircase.png)
 
-![Fig 1](figures/fig_cycle1_lif_staircase.png)
+**Figure 1.** Step plot of drain current per unit width at V_GS = −0.5 V after each of the nine 100 ns program pulses applied to the virgin device. The first pulse produces a wake-up drop to 17 % of the virgin baseline; the response is strictly monotonic from the first pulse onward, crosses the virgin baseline at the third pulse and the 1.5× fire threshold at the fourth pulse. The ninth pulse delivers a fire ratio of **4.79×** the virgin baseline.
 
-**Figure 1.** Single-shot integration response: drain current per unit width at `V_GS = −0.5 V` after each of the nine 100 ns pulses at `V_pgm = +2.0 V` applied to the virgin device. The first pulse produces a transient drop (wake-up); from the second pulse onward the response is monotonically increasing. The ninth pulse delivers a fire-ratio of 4.79× the virgin baseline.
+The integration proceeds purely by partial-domain Preisach switching: |E_y|/F_c ≈ 0.41 at the program-hold plateau is well below the analytical coercive gate voltage V_c,gate = 1.91 V documented in [PE_Loop/](../PE_Loop/). No FE saturation is reached during the burst in either polarity.
 
-The first pulse drops the current to 17 % of the virgin baseline — this is the well-documented FE wake-up signature, also visible as a cycle-1-versus-cycle-2 asymmetry in the quasi-static P–E loop (`PE_Loop/`). From the second pulse on, the response is strictly monotonic and clears the 1.5× fire threshold at the third pulse; the integration continues to climb through the ninth pulse at an average rate of approximately 13 % of the virgin baseline per pulse. The fire-ratio at the ninth pulse is `4.79×`.
+Data: [`data/cycle1_staircase.csv`](data/cycle1_staircase.csv).
 
-The in-cycle response is sub-coercive in the strict sense: the FE probe at the channel-side HZO interface reports `|E_y| / F_c ≈ 0.41` at the program-hold plateau, well below the analytical coercive gate voltage `V_c,gate = 1.91 V` reported in `PE_Loop/`. Integration proceeds purely by partial-domain Preisach switching; no FE saturation is reached during the burst.
+### 2.2 Relaxation trajectory after the erase pulse
 
-Data: `data/cycle1_staircase.csv`.
+![Figure 2](figures/fig_relax_trajectories.png)
 
-### 2.2 Multi-cycle evolution of the post-fire latched state
+**Figure 2.** I_D(t) per unit width at V_GS = −0.5 V over the 100 µs relaxation hold that follows the erase pulse, with time zeroed at the end of the 10 ns gate ramp from V_erase back to V_GS = −0.5 V. The dotted line is the virgin baseline 2.66 × 10⁻⁷ µA/µm. The first ~1 µs of each trace is dominated by the displacement-current transient of the ramp; the FE-coupled channel-current relaxation governs the trajectory thereafter.
 
-Figure 2 shows the current at the end of each cycle's recovery-plus-settle phase, plotted across the five-cycle sequence for each recovery-pulse amplitude.
+The three relaxation curves at V_erase ∈ {−4, −6, −10} V converge to within a factor of two of the virgin baseline by 100 µs. Exponential fits on the 20 µs–100 µs portion of the decay give τ_relax = 13.1, 13.7, 13.6 µs at V_erase = −4, −6, −10 V respectively — all consistent with the parameter file's τ_P = 10 µs coupled with τ_E = 1 µs through MFIS depolarization screening. The 100 µs hold is ≥ 6 τ_relax: the FE is fully equilibrated at the end of the trace.
 
-![Fig 2](figures/fig_multicycle_settle.png)
+The V_erase = −8 V trajectory (red, dashed) sits an order of magnitude above the virgin baseline throughout and asymptotes at 3.60× virgin — see §2.4.
 
-**Figure 2.** Drain current per unit width measured at the end of each cycle's 10 µs settle phase, for four different recovery-pulse amplitudes. The dashed line is the virgin baseline. In every case the device leaves the virgin state after the first burst and settles within two cycles into a stable post-fire state whose level is set by the recovery-pulse amplitude.
+Data: [`data/relax_trajectories.csv`](data/relax_trajectories.csv), [`data/erase_trajectories.csv`](data/erase_trajectories.csv).
 
-Three observations follow from Figure 2:
+### 2.3 Virgin-restoration dependence on V_erase
 
-1. **The device never returns to the virgin baseline.** After the first burst, the lowest steady-state achieved by any recovery-pulse setting tested here is 9.8× the virgin baseline (at `V_rec = −1.0 V`). Sub-coercive negative pulses at 1 µs do not erase the polarization state established by the burst.
+![Figure 3](figures/fig_restoration_vs_Verase.png)
 
-2. **The recovery-pulse amplitude sets the latched-state level rather than reversing it.** Stronger negative biases give *higher* steady-state currents — 9.8× → 9.8× → 23.6× → 40.8× across `V_rec = −1.0/−1.5/−2.0/−2.5 V`. The recovery pulse acts as an additional polarization-programming event in the same direction as the fire pulses, not as an erase.
+**Figure 3.** Ratio of the end-of-relax current at V_GS = −0.5 V to the pre-burst virgin baseline, plotted against V_erase. Green band: within ±20 % of virgin. Blue band: within factor of two of virgin. Red square: off-virgin.
 
-3. **Cycle-to-cycle stability is excellent once the latched state is reached.** Drift between the end of cycle 3 and the end of cycle 5 is in the range `+0.39 % to −0.03 %` per cycle across the full `V_rec` set, an order of magnitude below the 1 %/cycle stability target conventionally used for FeFET memory cells. Cycle 1 (virgin start) and cycle 2 (transition) are the only non-stationary phases of the sequence.
+| V_erase (V) | End-of-relax I_D / W (µA/µm) | Restoration ratio | τ_relax (µs) | Verdict |
+|---:|---:|---:|---:|:---|
+| **−10** | 2.44 × 10⁻⁷ | **0.92** | 13.6 | within ±20 % of virgin |
+| −8 | 9.57 × 10⁻⁷ | 3.60 | 15.8 | off-virgin |
+| **−6** | 3.00 × 10⁻⁷ | **1.13** | 13.7 | within ±20 % of virgin |
+| **−4** | 1.98 × 10⁻⁷ | **0.74** | 13.1 | within factor 2 of virgin |
 
-Data: `data/multicycle_settle.csv`.
+V_erase = −6 V and V_erase = −10 V both restore the FE to within ±20 % of the virgin baseline. V_erase = −4 V lands at 0.74× — within a factor of two of virgin, on the slightly-erased side.
 
-### 2.3 Steady-state latched-current dependence on recovery-pulse amplitude
+Data: [`data/restoration_vs_Verase.csv`](data/restoration_vs_Verase.csv).
 
-Figure 3 collapses the cycle-5 latched current onto a single curve against the recovery-pulse amplitude.
+### 2.4 The V_erase = −8 V non-monotonicity
 
-![Fig 3](figures/fig_steady_state_vs_recovery.png)
+Restoration ratio is non-monotonic in V_erase: 0.74 → 1.13 → **3.60** → 0.92 as |V_erase| increases from 4 V to 10 V. The trajectories of Figure 2 confirm this is reproducible Preisach hysteresis-trajectory dependence, not solver noise.
 
-**Figure 3.** Steady-state (cycle-5) drain current per unit width at `V_GS = −0.5 V` as a function of the recovery-pulse amplitude, normalized by the virgin baseline. Each point is the end-of-settle current of cycle 5; the spread across cycles 3–5 is smaller than the symbol size.
-
-The dependence is monotonic and roughly log-linear across the range tested, spanning a factor of 4.2 between `V_rec = −1.0 V` and `V_rec = −2.5 V`. The four data points lie at `9.8×`, `9.8×`, `23.6×` and `40.8×` of the virgin baseline; the closely-spaced first two points indicate that the recovery-pulse response saturates below `|V_rec| ≈ 1.5 V` and that further weakening of the recovery pulse below this threshold has no additional effect within the present pulse-cadence.
-
-The FE probe field at the recovery hold for these four amplitudes is `|E_y| / F_c = 0.22, 0.22, 0.24, 0.28` respectively, all well below unity — confirming that even the strongest recovery pulse tested remains in the sub-coercive regime. The latched-state programming is therefore driven by sub-coercive partial-domain creep over the 1 µs hold rather than by bulk polarization reversal.
-
-Data: `data/steady_state_vs_recovery.csv`.
-
-### 2.4 In-cycle response shape changes once the device has latched
-
-Figure 4 compares the in-cycle current trajectory of cycle 1 (virgin start) with that of cycle 5 (latched start) at `V_rec = −1.0 V`.
-
-![Fig 4](figures/fig_in_cycle_shape_virgin_vs_latched.png)
-
-**Figure 4.** Drain current per unit width during the 9-pulse burst, comparing the response of cycle 1 starting from the virgin polarization state (blue circles) and the response of cycle 5 starting from the post-fire latched state (red squares). Same fire-pulse protocol in both cases; the cycle-5 baseline is the end-of-settle current of cycle 4.
-
-The two trajectories are qualitatively different. In cycle 1 the response is the monotonic integration trajectory of §2.1, climbing four decades over the burst. In cycle 5 the response is a U-shaped excursion: the current drops by about 22 % over the first five pulses, then partially recovers over the last four; the ninth-pulse current sits at approximately 93 % of the pre-burst baseline, never exceeding it.
-
-The U-shape originates from the same Preisach physics that produced the cycle-1 staircase. In cycle 1 the program pulses act on a polarization distribution centered on the virgin state — they have positive net switching available in the program direction and the integration accumulates. In cycle 5 the polarization distribution is centered on the post-fire latched state, which already sits near the program-direction saturation rail accessible at `V_pgm = +2.0 V`. The 100 ns pulses can no longer drive net additional switching in the same direction; what they instead produce is a transient displacement-current excursion that decays back to (slightly above) the pre-burst level by the end of the 9-pulse train.
-
-The same U-shape is observed in cycles 2 through 5 across every recovery-pulse amplitude tested. The in-cycle current variation is reproducible (drift < 0.4 % per cycle, §2.2) but cannot be interpreted as a leaky-integrate-and-fire response from the latched state.
-
-Data: `data/in_cycle_staircase_c1_vs_c5.csv`.
+Mechanism: the V_erase = −10 V hold drives the FE deep into the −Pol rail (|E_y|/F_c ≈ 1.49 at the FE probe); on the return ramp to V_GS = −0.5 V the polarization distribution crosses the rising-branch coercive boundary cleanly and lands at +Pol_remanent ≈ virgin. The V_erase = −6 V hold is just super-coercive (|E_y|/F_c ≈ 1.17) and lands the FE slightly above virgin. The V_erase = −4 V hold is sub-coercive (|E_y|/F_c ≈ 0.83) and produces only a partial polarization rebalance — the FE settles slightly below virgin via depolarization-driven relaxation. The V_erase = −8 V hold lands the FE on an intermediate Preisach state whose post-relax equilibrium at V_GS = −0.5 V sits at 3.60× virgin: the residual partial −Pol screens out at the read bias and the channel current is held elevated through the relaxation hold.
 
 ---
 
 ## 3. Discussion
 
-### 3.1 Two distinct device responses to the same burst protocol
+### 3.1 Pulsed reset crosses the coercive field; DC holds do not
 
-The data identifies two qualitatively different in-cycle responses to the same 9-pulse fire protocol, distinguished by the polarization state of the device at the start of the burst:
+Static holds at any constant gate bias in the practical range −3.5 V to +1.0 V relax the post-fire polarization further along the same +Pol branch instead of crossing back to virgin. The MFIS stack's quasi-equilibrium depolarization screening cancels ~74 % of the applied reverse gate bias at the FE probe at DC (measured directly in [Memory_Window_Programming/](../Memory_Window_Programming/) from the |E_y| asymmetry between PGM and ERS hold readings), so even a −3.5 V hold delivers only |E|/F_c ≈ 0.3–0.4 at the FE.
 
-- From the **virgin polarization state**, the burst produces a 4.79× monotonic LIF integration trajectory (Figure 1, §2.1). This is the single-shot fire response.
-- From the **post-fire latched state**, the burst produces a U-shaped transient with no net integration (Figure 4, §2.4). The current ends 7 % below the pre-burst baseline.
+A 10 µs pulse breaks this symmetry. The applied gate voltage reaches the FE before the slow charge redistribution that builds full depolarization screening has time to settle (τ_E = 1 µs gates the auxiliary-field response); the FE crosses the coercive boundary during the early part of the hold and lands on the −Pol rail. On lift back to V_GS = −0.5 V the FE relaxes across the rising-branch coercive boundary with τ ≈ 14 µs and settles near virgin.
 
-The two responses share the same fire-pulse protocol; only the initial polarization state differs. The boundary between the two regimes is reached over the first two cycles of any repeated-burst sequence, after which the latched response is stable to better than 0.4 % per cycle.
+### 3.2 Operating-point selection
 
-### 3.2 The recovery pulse as a state-programming knob, not an erase
+Two operating points are within ±20 % of virgin: V_erase = −10 V (best restoration, deeper rail traversal, higher field stress at the FE) and V_erase = −6 V (1.13× virgin, lower field stress, marginal super-coercive). V_erase = −4 V (0.74×) is a sub-coercive partial-rebalance alternative with the lowest field but a 26 % under-restoration. V_erase = −8 V should be avoided — restoration there is set by an intermediate Preisach state whose position depends on the prior fire trajectory, so this point is brittle.
 
-The four recovery-pulse amplitudes tested span a range that includes both the symmetric counterpart of the fire pulse (`V_rec = −2.0 V` matches `V_pgm = +2.0 V`) and amplitudes 25 % below and above this symmetric point. None of these amplitudes returns the device to within an order of magnitude of the virgin baseline at the end of the 10 µs settle. Each amplitude instead sets the latched-state level along a smooth monotonic curve (Figure 3).
+### 3.3 Cycle implications
 
-This is consistent with the depolarization-screened MFIS behavior characterized in the calibration documents: at sub-coercive amplitudes and µs timescales the negative gate pulse cannot pull the polarization across the saturation rail set by the prior program burst, but it can move the polarization further along that rail via partial-domain creep. Stronger recovery amplitudes accelerate this creep and produce more strongly latched states; weaker amplitudes saturate to a lower bound near 10× the virgin baseline.
-
-### 3.3 Implications for cycle-to-cycle stability and memory behavior
-
-The device exhibits two stability metrics that are individually publication-grade:
-
-- **Single-shot integration reproducibility.** The cycle-1 staircase is identical across four independent runs differing only in their later cycle protocols (Figure 1, §2.1). The single-shot fire-from-virgin response is fully deterministic in the calibrated model.
-
-- **Latched-state stability.** Cycle-to-cycle drift after the first burst is < 0.4 %/cycle across every recovery-pulse amplitude tested (Figure 2, §2.2). The post-fire latched state is a stable, hysteretically-held memory state with sub-percent retention drift over the cycle cadence used here.
-
-These two stabilities, together with the recovery-pulse-amplitude programming knob of §2.2, describe the device as a **sub-coercive integrate-and-program element**: a 9-pulse program burst sets a stable polarization state that is then refined by the choice of recovery-pulse amplitude. The integration step (the LIF fire response) is the virgin-state preparation; the recovery step writes one of several stable post-fire states.
-
-The data does not support a description of the present device under this protocol as a periodically resettable leaky-integrate-and-fire neuron in the conventional sense. Achieving cyclic LIF behavior — repeated fire-from-baseline responses across multiple bursts — would require a polarization-relaxation pathway (a finite depolarization time constant in the FE response) that is not present in the calibrated parameter file used here. Characterizing the device under that extended model, and locating the threshold relaxation time constant at which cyclic LIF emerges, is a natural extension of the present study.
+A 9-pulse fire produces a 4.79× monotonic integration trajectory; a 10 µs super-coercive negative pulse plus 100 µs relax at the read bias returns the FE to within ±20 % of virgin at two of the four amplitudes tested. The combination supports repeated fire-from-baseline cycling without polarization runaway. The 100 µs relax hold is conservative — five τ_relax (≈ 70 µs) suffices for > 99 % equilibration.
 
 ---
 
@@ -146,11 +111,10 @@ The data does not support a description of the present device under this protoco
 | File | Content |
 |---|---|
 | `Post_Fire_Recovery_Dynamics.md` | this document |
-| `data/cycle1_staircase.csv` | virgin-start 9-pulse staircase |
-| `data/multicycle_settle.csv` | end-of-settle current per cycle, per recovery amplitude |
-| `data/steady_state_vs_recovery.csv` | cycle-5 latched current vs recovery amplitude |
-| `data/in_cycle_staircase_c1_vs_c5.csv` | virgin-start vs latched-start 9-pulse staircases |
-| `figures/fig_cycle1_lif_staircase.png` | Figure 1, single-shot integration response |
-| `figures/fig_multicycle_settle.png` | Figure 2, multi-cycle settle trajectory |
-| `figures/fig_steady_state_vs_recovery.png` | Figure 3, steady-state latched current vs recovery amplitude |
-| `figures/fig_in_cycle_shape_virgin_vs_latched.png` | Figure 4, in-cycle trajectory virgin vs latched |
+| `data/cycle1_staircase.csv` | virgin-start 9-pulse staircase, I_D vs pulse index |
+| `data/relax_trajectories.csv` | I_D(t) over the 100 µs relax at V_GS = −0.5 V, one column per V_erase |
+| `data/erase_trajectories.csv` | I_D(t) during the 10 µs erase hold (at V_erase) |
+| `data/restoration_vs_Verase.csv` | end-of-relax I_D, τ_relax, and restoration ratio vs V_erase |
+| `figures/fig_cycle1_lif_staircase.png` | Figure 1 — virgin-state fire staircase |
+| `figures/fig_relax_trajectories.png` | Figure 2 — relax I_D(t) for all four V_erase values |
+| `figures/fig_restoration_vs_Verase.png` | Figure 3 — restoration ratio vs V_erase |

@@ -1,0 +1,4 @@
+# Phase 1D cyclic-LIF sweep  (2026-05-18)
+  cyclic_vm4  ->  V_erase = -4.0 V
+  cyclic_vm6  ->  V_erase = -6.0 V
+  cyclic_vm10  ->  V_erase = -10.0 V
