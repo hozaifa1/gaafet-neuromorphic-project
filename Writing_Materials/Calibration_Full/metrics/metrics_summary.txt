@@ -1,4 +1,4 @@
-Phase 1D — H0a v5 calibration metrics
+Phase 1D - H0a v5 calibration metrics
 Reference: Tasneem 2022 IEEE TED Fig 3(c)
 ============================================================
 
@@ -8,7 +8,7 @@ TCAD (this work, 10 nm HZO GAA-FeFET, n-type):
   Memory window MW           = 1.399 V
   SS post-ERS (band fit)     = 163.8 mV/dec  V=[-0.302,+0.178] N=9
   SS post-PGM (band fit)     = 100.1 mV/dec  V=[-1.502,-1.022] N=9
-  I_off floor                = 3 nA/um
+  I_off floor                = 3 nA/um (log-clipped for plots)
 
 Tasneem 2022 reference (paper-stated):
   Memory window dV_t = 0.5 V
@@ -16,21 +16,27 @@ Tasneem 2022 reference (paper-stated):
   SS virgin          = 70 mV/dec
   V_t criterion      = I/W = 1e-4 uA/um
 
-Tasneem digitized (extracted from Fig 3(c) curves):
+Tasneem digitised (extracted from Fig 3(c) curves):
   V_t post-PGM (red)  = -1.533 V
   V_t post-ERS (blue) = -1.211 V
   V_t virgin   (dot)  = -1.312 V
-  Digitized MW        = 0.321 V
+  Digitised MW        = 0.321 V
   SS post-PGM (band)  = 46.9 mV/dec  V=[-1.210,-1.166] N=9
   SS post-ERS (band)  = 118.8 mV/dec  V=[-1.357,-1.100] N=9
 
-Shape-match R^2 (V_t-aligned + I-normalized, V_G-V_t in [-1, +0.5]):
-  post-PGM  R^2 = +0.7736
-  post-ERS  R^2 = +0.9351
+Distilled marker counts (Section 7.2 selection):
+  post-PGM distilled  N = 5  CSV: csvs/Tasneem_Plot_red_distilled.csv
+  post-ERS distilled  N = 6  CSV: csvs/Tasneem_Plot_blue_distilled.csv
+
+Shape-match R^2 (V_t-aligned + I-normalised, V_G-V_t in [-0.5, +0.5]):
+  post-PGM  R^2 (full)      = +0.7965
+  post-ERS  R^2 (full)      = +0.9672
+  post-PGM  R^2 (distilled) = +0.7343
+  post-ERS  R^2 (distilled) = +0.9661
 
 Tier A interpretation:
   Devices have different geometries (10 nm HZO GAA vs 5 nm ZrO2 planar L=8 um).
-  Magnitudes (I_on, MW) differ by physics — NOT calibration error.
+  Magnitudes (I_on, MW) differ by physics - NOT calibration error.
   Theoretical max MW = 2*F_c*t_FE = 2.4 V (TCAD stack) vs 1.2 V (Tasneem).
   Calibration is on PHYSICS SHAPE (SS, hysteresis topology) after V_t-align.
-  R^2 reported above reflects shape match in normalized subthreshold region.
+  R^2 reported above reflects shape match in normalised subthreshold region.
