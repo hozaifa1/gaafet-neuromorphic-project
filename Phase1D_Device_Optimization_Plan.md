@@ -59,6 +59,11 @@ Earlier failed iterations (H1 v1/v2, H2 v3/v4/v5, H3 v2/v3/v4, leak-eq Step 2a/2
 | Analog-state ladder | 7 levels (L3..L9) @ +39 %/level | H12 |
 
 ---
+## Phase 1C → Phase 1D operating-point change (why H4/H5 aren't redundant with simD/E/F)
+
+Phase 1C used **V_pulse = +6.0 V**, **V_reset = −5.0 V hold**, **V_GS_read = +0.2 V** (above-V_t). The H1 v3 sweep in Phase 1D found that V_pgm = +6 V causes **non-monotonic over-switching** — ID peaks at p6 (~7.4 pA/µm) and collapses to 0.86 pA/µm by p9 — explaining the +4.74 %/cyc drift driver seen in Phase 1C `simF_endurance/`. Phase 1D moved to the sub-coercive operating point **V_pgm = +2.0 V**, **V_GS_read = −0.5 V** (sub-V_t, exponential sensitivity), and **pulsed V_erase = −6 V + 70 µs relax**. simD (τ_P selection), simE (energy extractor), simF (endurance protocol) are reused at the new operating point — H4 is the simF protocol relaunched at the V_pgm = +2 V / V_erase = −6 V point with 20 cycles + V_pgm variability, and H5 is simE's `extract_energy.py` pointed at H3 Step 3b / H4 outputs (now with cyclic-naming support).
+
+---
 
 ## Submission gate
 
@@ -162,107 +167,3 @@ H0f is removed from the Outstanding list, removed from the "Beyond cycle structu
 The decision to advance to Python-side modelling is locked. See the [Python-modelling direction](#python-modelling-direction-2026-05-21) section below for the recommended next sprint.
 
 ---
-
-## Python-modelling direction (2026-05-21)
-
-### Three options considered
-
-| Option | Description | Effort | Reviewer reception | Verdict |
-|---|---|---|---|---|
-| **(A)** | Single-neuron TCAD-to-LIF lookup-table demo | ~3 days | Mid — "extracted, not predicted" | adequate but unambitious |
-| **(B)** | Calibrated stochastic SNN on MNIST/N-MNIST using H4/H8 device statistics | ~2–3 weeks | **High — links TCAD physics to system accuracy in one paper** | **RECOMMENDED** |
-| (C) | Full SPICE-equivalent compact model | ~4–6 weeks | High but expensive | overscoped — leave for Phase 2 paper |
-
-### Recommended sprint: Option (B)
-
-**Goal:** publishable claim of the form *"TCAD-calibrated FeFET LIF neurons, trained on N-MNIST under H4-measured V_pgm-jitter noise, achieve X % accuracy at Y pJ / inference."*
-
-**Sprint outline** (single Nature Electronics figure-of-merit panel)
-
-1. **Build the LIF lookup table from H-step data.** Use H4 endurance + H9 N=5 to extract:
-   - `ID(V_GS_read, n_pulses_since_erase, cycle_index, V_pgm)` — 4-D table
-   - τ_relax = 13.7 µs (locked from H3 Step 2c)
-   - V_t shift per pulse (from H2 v6 MW vs V_pgm)
-   - 7-level analog state mapping (H12 L3..L9)
-2. **Wrap as a PyTorch `nn.Module`** with surrogate-gradient backprop. Forward = lookup-table interpolation; backward = analytic surrogate gradient (super-spike or fast-sigmoid) — standard Neftci 2019 practice.
-3. **Inject H4 variability** as a per-step V_pgm noise term (Gaussian σ = 25 mV → measured Δfr/fr = +5.4 %/25 mV).
-4. **Run on N-MNIST** (event-based, native to LIF networks) — 100–300 neuron classifier, 1 hidden layer, ~10 epochs.
-5. **Report accuracy at three energy budgets:**
-   - "lossless TCAD" (no noise injection) — upper bound
-   - "calibrated V_pgm jitter" — manuscript headline
-   - "tightened driver (V_pgm ±20 mV)" — proposed circuit-spec result
-6. **Energy / inference** = (#fire bursts) × (637 fJ/cycle from H9 N=5) + (#erase events) × (10 fJ) — sub-pJ-per-inference target is realistic at this gate area.
-
-### Where the modelling lives
-
-```
-GAAFet/
-  Step_2/                        # existing dir, currently has lif_parameters.py
-    lif_parameters.py            # rewritten 2026-05-19 for the locked H3 op-point — NEEDS N=5 update
-    lif_table_builder.py         # NEW: build the 4-D lookup table from H4/H9/H12 .plt files
-    lif_neuron.py                # NEW: PyTorch nn.Module wrapping the table
-    snn_nmnist.py                # NEW: training script + variability injection
-    figures/                     # NEW: training curves, accuracy-vs-noise figure
-```
-
-The TCAD work is now the *device* layer of a *device → neuron → SNN → task* stack. The manuscript can be either (i) a one-paper top-tier story that includes the SNN result, or (ii) a paired pair — a TCAD device paper (this one) + a follow-on SNN-on-FeFET paper that re-uses the locked operating point and the H4 variability characterisation.
-
-The Phase 1D TCAD work is **submission-ready as a standalone TED paper today**; adding (B) makes it a Nature Electronics candidate. The user's request to "move on to python modelling" suggests aiming for (i) — combined paper — and (B) is the right scope.
-
----
-
-## Energy-improvement roadmap (post-H5, revised after H6 falsification on 2026-05-21)
-
-H5 lands at **128 fJ/pulse, 1.151 pJ/burst, 1.142 pJ/cycle**. The original roadmap assumed the **read floor** (8 × ~12 fJ/pulse-read) was the largest single contributor. **H6 falsified this** — removing 8 of 9 inline reads saved 0 fJ. The per-segment breakdown shows the actual cost lives almost entirely in the 100 ns write hold at V_pgm = 2.0 V:
-
-| Segment | Wall time | Energy/pulse | % of pulse |
-|---|---:|---:|---:|
-| rise  | 1 ns | 0.80 fJ | 0.6 % |
-| **write** | **100 ns** | **126.72 fJ** | **99.1 %** |
-| fall  | 1 ns | 0.28 fJ | 0.2 % |
-| read  | 100 ns | 0.08 fJ | 0.06 % |
-
-The 127 fJ/pulse is the **FE-switching-charge floor**: Q_switch (≈ 50 fC) × V_pgm (2.0 V) ≈ 100 fJ of polarisation charge through the gate per write, plus ~25 fJ of drain channel current at the polarised V_t. Reducing this requires either V_pgm (anti-goal — H1 v3 over-switching) or smaller gate area / FE thickness (device-stack change, blocked by Tasneem calibration anchor).
-
-### Revised rank-ordered roadmap
-
-| # | Knob | Mechanism | Expected saving | Status | .cmd |
-|---|---|---|---:|---|---|
-| ~~1~~ | ~~Deferred-read LIF (H6)~~ | ~~Remove 8 of 9 inline reads~~ | ~~15–25 fJ/pulse~~ | **❌ FALSIFIED (2026-05-21).** Actual saving = +1 fJ (solver noise). Read floor < 0.1 fJ/pulse, not the 12 fJ assumed. | `sdevice_simH6_deferred_read.cmd` — run complete, conclusion fixed |
-| ~~2~~ | ~~V_DS_read 50 → 10 mV (H7)~~ | ~~E_drain_read ∝ V_DS × I_D × t~~ | ~~30–60 fJ/pulse~~ | **❌ CANCEL.** H5/H6 show the read segment is < 0.1 fJ/pulse total — at most ~0.06 fJ savings possible. Cmd file retained for record only. | `sdevice_simH7_VDSread.cmd` — DO NOT RUN |
-| ~~3~~ | ~~Read-pulse-width 100 → 30 ns (H8)~~ | ~~E_read ∝ t_read~~ | ~~70–80 fJ/pulse~~ | **❌ CANCEL.** Same reason — savings bounded by 0.08 fJ/pulse. Cmd files retained for record. | `sdevice_simH8_tread_*.cmd` — DO NOT RUN |
-| **1** | **Burst length 9 → 5 (H9)** | **E_fire scales linearly in N (write segment dominates)** | **Measured: 637 fJ/cycle vs 1154 fJ at N=9 = −44.8 %** | **✓ DONE 2026-05-21. N=5 LOCKED.** fire_ratio at N=5 = 2.65×/3.04× (M2 +1.15× margin, well above the ≥ 20 % target). M1 drift c3→c5 ≈ 0 %/cyc. | `sdevice_simH9_burst_N{5,6,7,8,9}.cmd` — run complete |
-| ~~2 (new)~~ | ~~Write-time shortening 100 → 30 / 50 / 70 ns~~ | ~~If FE switches faster than 100 ns the displacement-current integral shortens proportionally~~ | ~~Up to 70 % of write segment~~ | **❌ DEFERRED.** H0e shows ΔP saturates within ~5 ns at V_pgm = 2 V, so shortening t_write to 50 ns would not reduce the integrated FE switching charge (only the ~25 fJ drain-channel contribution). Net headroom < 20 fJ/pulse → not worth a new H-step. Revisit if reviewer requests. | (not generated) |
-
-**Final result at the locked stack: H9 N=5 → E_fire = 646 fJ/burst, E_total = 637 fJ/cycle.** That's 45 % better than the original N=9 reference. **M5/M6 still fail by 2.6× and 6.4× respectively — the 129 fJ/pulse is the FE-switching-charge floor and cannot be reduced further without a device-stack change** (smaller gate area, thinner FE, or lower V_pgm via remnant-polarisation tuning). Optional H13 t_write sweep (30/50/70 ns) was *not* run — judgement call: at 100 ns the FE polarisation is already saturated at V_pgm = 2.0 V (H0e shows ΔP saturates inside ~5 ns at 2 V), so shortening t_write to 50 ns would not reduce the integrated switching charge, only the small drain-channel contribution (~25 fJ/pulse upper bound). Not enough headroom to justify the extra simulation; revisit only if a reviewer requests it.
-
-The honest manuscript framing: **"M5/M6 are not achievable within the Tasneem-calibrated device envelope; the 129 fJ/pulse is the FE-switching-charge floor of the polarised gate. H9 demonstrates that burst-length scaling (N=9→5) recovers 45 % of the cycle energy while preserving +1.15× M2 margin — the maximum circuit-level saving available at this stack."** H6 is reported as a published negative result that demonstrates the read-floor hypothesis was tested and ruled out.
-
-### Reviewer-response sims — all done as of 2026-05-21
-
-| # | H-step | Status |
-|---|---|---|
-| H0f | Multi-domain Preisach | ❌ **CANCELLED** — invalid keyword; see [H0f decision section](#h0f-cancellation-decision-2026-05-21). H4's M8 deterministic-coupling finding supersedes the hypothesis it would have tested. |
-| H10 | Retention sweep (10 / 100 / 1000 s) | ✓ DONE — Quasistationary equilibrium; report as lower bound; cite Tasneem 10⁴ s ≥ 0.6. |
-| H11 | Cross-temperature (250 / 300 / 350 K) | ✓ DONE — 250–300 K PASS, 350 K FAIL on M2 (thermal-leak swamps sub-V_t read). |
-| H12 | 9-level analog-state demo | ✓ DONE — 7-level honest count (L3..L9, +39 %/level, 45× ID range). |
-
-### Execution order (final, 2026-05-21)
-
-All H-step TCAD work is complete. Next sprint is Python modelling (see [Python-modelling direction](#python-modelling-direction-2026-05-21) above).
-
-### Anti-goals (do NOT do)
-
-- **Do not raise V_pgm to scale down N_FIRES.** H1 v3 already proved V_pgm > 2.5 V triggers non-monotonic over-switching → kills M1/M2. The 9-pulse-at-2-V regime is the *only* operating point that closes M1/M2/M-rest simultaneously, so all energy optimisation must happen at this V_pgm, not above it.
-- **Do not drop V_GS_read above −0.3 V.** Sensitivity falls off the exponential tail; M2 fire_ratio collapses from 3× to ~1.3× as the read voltage walks toward V_t.
-- **Do not change the .par** (HZO thickness, AreaFactor, coercive field) for energy reasons — that would invalidate the calibration anchor against Tasneem and force a full H0 re-validation.
-
-### What is *not* needed
-
-- No new device file. `sdevice_gaafet_lif.par` is locked.
-- No new calibration step. H0a v5 / H0e / H0g remain the anchor.
-- No new physics modules (mobility, FE Preisach syntax, gate boundary) — all four proposed sims re-use the H4 `.cmd` template with one numerical change each.
-
-## Phase 1C → Phase 1D operating-point change (why H4/H5 aren't redundant with simD/E/F)
-
-Phase 1C used **V_pulse = +6.0 V**, **V_reset = −5.0 V hold**, **V_GS_read = +0.2 V** (above-V_t). The H1 v3 sweep in Phase 1D found that V_pgm = +6 V causes **non-monotonic over-switching** — ID peaks at p6 (~7.4 pA/µm) and collapses to 0.86 pA/µm by p9 — explaining the +4.74 %/cyc drift driver seen in Phase 1C `simF_endurance/`. Phase 1D moved to the sub-coercive operating point **V_pgm = +2.0 V**, **V_GS_read = −0.5 V** (sub-V_t, exponential sensitivity), and **pulsed V_erase = −6 V + 70 µs relax**. simD (τ_P selection), simE (energy extractor), simF (endurance protocol) are reused at the new operating point — H4 is the simF protocol relaunched at the V_pgm = +2 V / V_erase = −6 V point with 20 cycles + V_pgm variability, and H5 is simE's `extract_energy.py` pointed at H3 Step 3b / H4 outputs (now with cyclic-naming support).
