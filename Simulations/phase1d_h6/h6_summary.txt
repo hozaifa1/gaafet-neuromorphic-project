@@ -1,0 +1,77 @@
+Phase 1D - H6 deferred-read summary  (V_pgm = 2.000 V baseline)
+============================================================================================
+Source: Simulations/simH_optimize/h6_outputs/   (5-node SWB, 20 cycles)
+Cycle structure: 9 fire pulses (rise + 100 ns write + fall, NO inline read)
+                 + ONE 100 ns burst_read at V_GS=-0.5 V after p9
+                 + erase rise/10 us hold/fall + 70 us relax
+                 = 81.038 us per cycle (vs H4's 81.838 us, saves 0.8 us/cycle)
+
+KNOWN ISSUE (precision bug in _cmd_helpers.fmt at .4e):
+  - c1, c2     : write/burst_read .plt files complete - CLEAN DATA
+  - c3..c8     : .plt files exist but sparse (CurrentPlot Range outside
+                 Sentaurus' actual Transient window; partial sampling)
+  - c9..c20    : write/burst_read .plt files MISSING (CurrentPlot Range
+                 entirely outside Transient window)
+  Generator patched (.10e) for H7..H12; H6 re-run NOT needed since the
+  clean c1-c2 data already answers the M5/M6 read-floor question.
+
+Per-cycle energy at V_pgm=2.000 V (fJ; sparse cycles likely undercounted):
+cycle |  E_fire  | E_b_read | E_erase  | E_relax  |  E_total  | ID_burst (A) | flags
+--------------------------------------------------------------------------------------------
+  c 1  |  1201.11 |     0.08 |    10.30 |   -19.54 |   1191.95 | -2.586e-13  [CLEAN]
+  c 2  |  1124.42 |     0.08 |    10.23 |   -19.66 |   1115.06 | -4.112e-13  [CLEAN]
+  c 3  |   992.22 |    -0.00 |     2.67 |    -0.06 |    994.84 | -3.066e-13  
+  c 4  |   830.75 |    -0.00 |     2.68 |    -0.06 |    833.38 | -3.168e-13  
+  c 5  |   646.06 |    -0.00 |     2.69 |    -0.06 |    648.70 | -3.195e-13  
+  c 6  |   464.97 |     0.08 |     2.72 |    -0.06 |    467.71 | -3.219e-13  
+  c 7  |   282.88 |    -0.00 |     2.73 |    -0.06 |    285.55 | -3.190e-13  
+  c 8  |   104.43 |     0.00 |     2.74 |    -0.06 |    107.12 | nan  
+  c 9  |    42.90 |     0.00 |     2.75 |    -0.06 |     45.59 | nan  [no burst_read][incomplete fire]
+  c10  |    42.90 |     0.00 |     2.75 |    -0.06 |     45.58 | nan  [no burst_read][incomplete fire]
+  c11  |    42.90 |     0.00 |     2.77 |    -0.06 |     45.61 | nan  [no burst_read][incomplete fire]
+  c12  |    47.77 |     0.00 |     2.78 |    -0.06 |     50.50 | nan  [no burst_read][incomplete fire]
+  c13  |    31.83 |     0.00 |     2.79 |    -0.06 |     34.57 | nan  [no burst_read][incomplete fire]
+  c14  |    20.76 |     0.00 |     2.85 |    -0.06 |     23.55 | nan  [no burst_read][incomplete fire]
+  c15  |    20.76 |     0.00 |     2.84 |    -0.06 |     23.54 | nan  [no burst_read][incomplete fire]
+  c16  |    20.77 |     0.00 |     2.87 |    -0.06 |     23.58 | nan  [no burst_read][incomplete fire]
+  c17  |    20.76 |     0.00 |     2.68 |    -0.06 |     23.38 | nan  [no burst_read][incomplete fire]
+  c18  |   142.40 |     0.00 |     2.66 |    -0.06 |    145.00 | nan  [no burst_read][incomplete fire]
+  c19  |    20.75 |     0.00 |     2.71 |    -0.06 |     23.39 | nan  [no burst_read][incomplete fire]
+  c20  |    20.75 |     0.00 |     2.64 |    -0.06 |     23.33 | nan  [no burst_read][incomplete fire]
+--------------------------------------------------------------------------------------------
+c1-c2 |  1162.76 |     0.08 |    10.27 |   -19.60 |   1153.51 |
+
+Headline (c1-c2 mean -- only fully-resolved cycles):
+  E_fire  (9 pulses, NO inline read) = 1162.76 fJ   (129.20 fJ/pulse)
+  E_burst_read (single 100 ns read)  =    0.08 fJ
+  E_erase                            =   10.27 fJ
+  E_relax                            =  -19.60 fJ
+  E_total per cycle                  = 1153.51 fJ
+  E_pulse_eq (=(E_fire+E_b_read)/9)  =  129.20 fJ
+
+Comparison with H5 (H4 source, c10..c20 mean, 9-pulse inline read):
+                            H5 (inline read)   H6 (deferred read)   delta
+  E_fire (9 pulses) [fJ]     1150.91             1162.76            +11.85
+  E_pulse_eq        [fJ]      127.88              129.20            +1.32
+  E_erase           [fJ]       10.26               10.27            +0.01
+  E_relax           [fJ]      -19.67              -19.60            +0.07
+  E_total/cycle     [fJ]     1141.51             1153.51            +12.00
+  E_total savings vs H5:    -1.1 %
+
+Acceptance on c1-c2 (best available):
+  M5  E_pulse_eq <=  50 fJ   ->   129.20 fJ   FAIL
+  M6  E_total    <= 100 fJ   ->  1153.51 fJ   FAIL
+
+Burst-read ID (V_pgm=2.000 V):
+  baseline_pre ID = 2.392e-14 A  (=  1.685e-07 uA/um)
+  c1 ID_burst_read = -2.586e-13 A   fire_ratio = -10.81x
+  c2 ID_burst_read = -4.112e-13 A   fire_ratio = -17.19x
+
+Across V_pgm nodes (c1-c2 means):
+v_node | E_fire | E_b_read | E_erase | E_relax | E_total | ID_burst_c2 (A)
+--------------------------------------------------------------------------------
+ 1.950 | 1154.45 |     0.08 |   10.28 |  -19.60 | 1145.20 | -3.840e-13
+ 1.975 | 1158.66 |     0.08 |   10.27 |  -19.60 | 1149.40 | -3.975e-13
+ 2.000 | 1162.76 |     0.08 |   10.27 |  -19.60 | 1153.51 | -4.112e-13
+ 2.025 | 1166.77 |     0.08 |   10.27 |  -19.60 | 1157.52 | -4.249e-13
+ 2.050 | 1170.68 |     0.08 |   10.27 |  -19.60 | 1161.44 | -4.386e-13
