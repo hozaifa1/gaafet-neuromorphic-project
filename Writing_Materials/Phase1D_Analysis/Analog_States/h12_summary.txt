@@ -1,0 +1,29 @@
+Phase 1D - H12 9-level analog-state summary  (V_GS_read = -0.5 V)
+============================================================================================
+Source: Simulations/simH_optimize/h12_outputs/  (single-shot 9-rung sweep)
+Rungs: V_pgm = 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4 V
+Each rung: rise(1ns) + 100 ns write + fall(1ns) + 100 ns read; no erase between.
+
+   L |  V_pgm |      ID_read |  ratio L_k/L_1 |  log10 sep
+--------------------------------------------------------------------------------------------
+   1 |  0.80 V | 1.572e-14 |         1.000x |       --  
+   2 |  1.00 V | 6.937e-15 |         0.441x |    -0.3551
+   3 |  1.20 V | 2.402e-15 |         0.153x |    -0.4607
+   4 |  1.40 V | 1.221e-14 |         0.777x |    +0.7062
+   5 |  1.60 V | 2.244e-14 |         1.428x |    +0.2644
+   6 |  1.80 V | 3.333e-14 |         2.121x |    +0.1717
+   7 |  2.00 V | 5.045e-14 |         3.211x |    +0.1801
+   8 |  2.20 V | 7.814e-14 |         4.972x |    +0.1900
+   9 |  2.40 V | 1.087e-13 |         6.914x |    +0.1432
+
+Full L1 -> L9 window (decades of I_D): 0.840
+Full L1 -> L9 ratio: 6.91e+00x
+Min adjacent log10 separation: -0.4607  (~-65.4 %/level minimum)
+Mean adjacent log10 separation: +0.1050
+
+Monotonic state walk L1 -> L9: FAIL
+M4 full PASS (9 monotonic + every adjacent log10 sep >= 0.04 (~10 %/level)): TREND/PARTIAL
+
+Longest monotonic 10%-separated subset: L3..L9 (7 levels), V_pgm = 1.2 .. 2.4 V
+  min adjacent log10 sep in subset = +0.143  (+39.1 %/level)
+  --> Reportable as a 6+-level analog-state demo (M4 trend pass; full-9 deferred).

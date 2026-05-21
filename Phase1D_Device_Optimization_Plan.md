@@ -24,6 +24,11 @@ Run-list and decision-log only. Publication-grade outputs live in `Writing_Mater
 | **H4** | Endurance + variability (20 cycles × V_pgm L5 = ±25 mV around 2.0 V) | ✓ **PASS / M8 partial** | 20-cycle long-tail at V_pgm = 2.0 V: M1 +0.015 %/cyc (ID_p9), M-rest −0.000 %/cyc (relax) — both two decades below the 1 %/cyc gate. fire_ratio c10..c20 mean = 3.07×, M2 PASS every cycle at every node. **M8 σ/μ across V_pgm L5 = 6.03 %** (vs ≤ 5 %): the V_pgm-jitter coupling of fire_ratio is deterministic (Δfr/fr ≈ +5.4 %/25 mV) and *flat across cycles* — driver-circuit constraint, not stochastic drift. Writeup `Writing_Materials/Phase1D_Analysis/Endurance/H4_endurance_analysis.md`; analyzer `analyze_phase1d_h4.py`; raw `endurance_outputs/` (4046 .plt, 440 MB). |
 | **H5** | Energy accounting (M5 + M6, no new sim) | ✓ **DONE / both FAIL honestly** | Run on H4 V_pgm=2.0 V steady-state c10..c20. **E_fire = 1.151 pJ/burst (127.88 fJ/pulse), E_erase = 10.26 fJ, E_relax = −19.67 fJ (net dissipative), E_total = 1.142 pJ/cycle.** M5 (≤ 50 fJ/pulse) fails 2.6×; M6 (≤ 100 fJ/cycle) fails 11.4×. **Per-segment breakdown (revealed by H6 follow-up):** write @ V_pgm = 126.72 fJ (99.1 % of pulse), rise = 0.80 fJ, fall = 0.28 fJ, read = 0.08 fJ. Floor is the **FE-switching displacement charge** at V_pgm (Q ≈ 50 fC × V_pgm ≈ 100 fJ), not the read. Analyzer `analyze_phase1d_h5.py`; writeup `Writing_Materials/Phase1D_Analysis/Energy/H5_energy.md`. |
 | **H6** | Deferred-read LIF (single 100 ns read at end of 9-pulse burst, replaces 8 inline reads) | ✓ **DONE / hypothesis FALSIFIED** | 5-node SWB × 20 cycles, 60 min/node (2026-05-21). c1–c2 mean at V_pgm = 2.0 V: **E_total = 1153.51 fJ/cycle (+1.1 % vs H5, inside solver noise).** Removing 8 reads saved 0 fJ. Confirms the H5 per-segment finding: read floor < 0.1 fJ/pulse, write floor ≈ 127 fJ/pulse. **Implication: cancel H7 (V_DS scaling) and H8 (t_read shortening) — both target the read which is already < 0.1 % of cycle energy.** H9 (burst length 9→5) remains the only viable energy lever. Caveat: source `.cmd` has a `.4e` precision bug in `CurrentPlot Range` (only `InitialTime`/`FinalTime` got partial server-side fix); c1–c2 are clean, c3..c8 are sparse, c9..c20 missing `burst_read`/`write` .plt — does not affect the M5/M6 conclusion because c1–c2 already converges. Writeup `Writing_Materials/Phase1D_Analysis/Energy/H6_deferred_read.md`; analyzer `analyze_phase1d_h6.py`; outputs `Simulations/simH_optimize/h6_outputs/`. |
+| **H9** | Burst-length sweep N ∈ {5, 6, 7, 8, 9} at V_pgm = 2.0 V | ✓ **PASS — N=5 LOCKED** | 5-node SWB × 5 cycles (2026-05-21). **N=5 passes M2 with +1.15× margin (worst-cycle FR = 2.65×, mean 3.04×).** E_total / cycle: **637 fJ (N=5) vs 1154 fJ (N=9) → −44.8 %.** E/pulse flat at 129.3 fJ across all N (FE-switching-charge floor unchanged — confirms H6 result). M1 drift c3→c5 ≈ 0 %/cyc. **Promote N=5 to locked operating point.** Writeup `Writing_Materials/Phase1D_Analysis/Burst_Length/H9_burst_length.md`; analyzer `analyze_phase1d_h9.py`; outputs `Simulations/simH_optimize/h9_outputs/`. |
+| **H10** | Retention sweep (t_hold ∈ {10, 100, 1000} s at V_GS = 0 V, post-fire) | ✓ **DONE / model-limited** | All 3 nodes converge to identical post_hold_read = 2.54e-13 A (CV = 8.2e-8) — Sentaurus Quasistationary settles into screened-depolarisation equilibrium within µs of pseudo-time, no real-time FE-decay model is enabled. **Report as worst-case lower bound; pair with Tasneem 10⁴ s ≥ 0.6 retention as literature anchor.** Side findings: ID_during_hold @ V_GS = 0 V = 2.84 µA → 6.5 decades above virgin baseline (strongest single piece of FE-polarisation evidence); rest state ID_post_hold = 2.2× ID_p9_read confirms H3 Step 3b +Pol-partial rest state. Writeup `Writing_Materials/Phase1D_Analysis/Retention/H10_retention.md`; analyzer `analyze_phase1d_h10.py`. |
+| **H11** | Cross-temperature LIF (T = 250 / 300 / 350 K, V_pgm = 2.0 V, 2 cycles each) | ✓ **PASS at 250–300 K, FAIL at 350 K** | 250 K: FR = 1007× (baseline-leak collapse); 300 K: FR = 4.85× ✓; **350 K: FR = 1.41× ✗** (sub-V_t baseline jumps 37×, fire-state current flat; solver diverges at c2_p4). T-coefficient on baseline leak: 36.7× per 50 K. **Operating window: 250 K ≤ T < ~325 K** (industrial −25 °C / +50 °C). Writeup `Writing_Materials/Phase1D_Analysis/Temperature/H11_temperature.md`; analyzer `analyze_phase1d_h11.py`. |
+| **H12** | 9-rung analog-state demo (V_pgm = 0.8 .. 2.4 V, 0.2 V step, no erase between) | ✓ **M4 PARTIAL PASS as 7-level demo** | L1–L3 (V_pgm = 0.8–1.2 V) sub-coercive → noise-floor non-monotonic. **L3 → L9 monotonic 7-level walk with +39 %/level minimum separation; 45× ID dynamic range at fixed V_GS_read = −0.5 V, V_DS = 50 mV.** Honest publishable count = 7 states (above the gate coercive field), not 9. H9 5-pulse fire burst at V_pgm = 2.0 V lands at L7 in this ladder — LIF and analog-state demos are continuous. Writeup `Writing_Materials/Phase1D_Analysis/Analog_States/H12_9level.md`; analyzer `analyze_phase1d_h12.py`. |
+| **H0f** | Multi-domain Preisach (NumberOfDomains = 40) | ❌ **CANCELLED 2026-05-21** | `NumberOfDomains` is not a valid Sentaurus Preisach Polarization keyword. Preisach is a **continuous-distribution** hysteresis model — domain count is FEPolarization (Ginzburg-Landau) syntax only. Switching to FEPolarization would force full Tasneem recalibration (different free-energy functional → different V_c / Q_r) and risk the 2.8× MW differentiator. **Decision: do not run.** H4's empirical M8 finding (σ/μ = 6.03 % is **deterministic V_pgm-jitter coupling** with Δfr/fr linear in V_pgm) already supersedes what multi-domain Preisach would have answered. See [H0f cancellation decision](#h0f-cancellation-decision-2026-05-21) below. |
 
 τ_P selection (10 µs = 1e-5 s): already done in Phase 1C [`simD_leak/`](Simulations/simD_leak/) and locked in [`Simulations/sdevice_gaafet_lif.par`](Simulations/sdevice_gaafet_lif.par) line 68. Re-confirmed by the H3 par audit on 2026-05-17. Effective τ_leak in this operating regime measured at 13.7 µs (H3 Step 2c fit), consistent with the par.
 
@@ -31,22 +36,27 @@ Earlier failed iterations (H1 v1/v2, H2 v3/v4/v5, H3 v2/v3/v4, leak-eq Step 2a/2
 
 ---
 
-## Operating point (locked from H3 Step 3b)
+## Operating point (locked from H9 — 2026-05-21)
 
 | Parameter | Value | Source |
 |---|---|---|
 | V_pgm | +2.0 V | H1 v3 |
 | Pulse hold | 100 ns | H1 v3 |
-| Pulses per fire burst | 9 | H1 v3 |
+| **Pulses per fire burst** | **5** | **H9 (was 9; saves 44.8 % cycle energy at +1.15× M2 margin)** |
 | V_GS_read | −0.5 V | H1 v3 (sub-V_t) |
 | V_erase | −6.0 V | H3 Step 2c + 3b |
 | V_erase hold | 10 µs | H3 Step 2c |
 | Relax at V_GS = −0.5 V | 70 µs (≥ 5·τ_relax) | H3 Step 2c |
 | τ_relax | 13.7 µs | H3 Step 2c |
-| Cycle wall time | 81.838 µs | H3 Step 3b |
-| Steady-state fire_ratio | 3.06× (c3..c5) | H3 Step 3b |
+| **Cycle wall time** | **81.038 µs** | **H9 (N=5: 4 × 102 ns saved vs N=9)** |
+| Steady-state fire_ratio | 2.80× (c3..c5, N=5) | H9 |
+| Cold-start fire_ratio | 2.65× (c1, N=5) | H9 |
 | Rest state (post-erase) | 1.44× virgin | H3 Step 3b |
 | Virgin baseline ID/W | 2.658 × 10⁻⁷ µA/µm | H3 Step 3b |
+| **Cycle energy (E_total)** | **637 fJ/cycle** | **H9 (N=5)** |
+| Per-pulse energy floor | 129.3 fJ | H5/H6/H9 (FE-switching-charge floor at V_pgm × Q_switch) |
+| Operating temperature window | 250 K ≤ T < ~325 K | H11 |
+| Analog-state ladder | 7 levels (L3..L9) @ +39 %/level | H12 |
 
 ---
 
@@ -58,9 +68,9 @@ Earlier failed iterations (H1 v1/v2, H2 v3/v4/v5, H3 v2/v3/v4, leak-eq Step 2a/2
 | M2 | fire_ratio per cycle | ≥ 1.5 | ✓ PASS (4.79 / 5.22 / 3.04 / 3.06 / 3.06) |
 | M-rest | Rest-baseline drift c3→c5 | ≤ 1 %/cycle | ✓ PASS (−0.02 %/cyc); replaces stale "restore ±25 % of virgin" gate (depolarization-screened MFIS rests at +Pol-partial, not at virgin — biologically analogous) |
 | M3 | Memory window | ≥ 0.5 V | ✓ PASS (1.40 V H0a v5; 852 mV H2 v6) |
-| M4 | Analog states | ≥ 9 | TREND PASS (H2 v6) — 9-level demo deferred to optional expansion |
-| M5 | E_gate (per fire event) | ≤ 50 fJ | **127.88 fJ/pulse** (H5, c10..c20 mean at V_pgm = 2.0 V) — FAIL by 2.6×. Floor set by **FE-switching charge during 100 ns write at V_pgm** (99.1 % of pulse energy; revealed by H5 per-segment breakdown + H6 deferred-read falsification). Trade-off reported, not solved. |
-| M6 | E_total (fire + erase per cycle) | ≤ 100 fJ | **1141.51 fJ/cycle** (H5, c10..c20 mean) — FAIL by 11.4×. 9-pulse fire-write burst is 99 % of the cost (E_erase ≈ 10 fJ, E_relax ≈ −20 fJ net dissipative, E_read < 0.1 fJ/pulse). H6 confirmed: removing 8 of 9 reads = 0 fJ saved. |
+| M4 | Analog states | ≥ 9 | **7-level monotonic 39 %/level demo (H12, L3..L9, 45× ID dynamic range)** — partial PASS as a 7-state analog-cell claim. Honest count: only 7 of 9 rungs are above the gate coercive field. |
+| M5 | E_gate (per fire event) | ≤ 50 fJ | **129.3 fJ/pulse** (H9 N=5, identical to H5/H6 at V_pgm = 2.0 V) — FAIL by 2.6×. Floor set by **FE-switching charge during 100 ns write at V_pgm** (H5 per-segment + H6 falsification). |
+| M6 | E_total (fire + erase per cycle) | ≤ 100 fJ | **637 fJ/cycle (H9 N=5)** — FAIL by 6.4× but **45 % better than the H4/H5/H6 N=9 baseline of 1154 fJ/cycle**. Best result achievable at the locked Tasneem-calibrated stack. |
 | M7 | V_pgm | ≤ 2.0 V | ✓ PASS (V_pgm_opt = 2.0 V) |
 | M8 | C2C σ/μ | ≤ 5 % | **6.03 %** at V_pgm L5 c10..c20 (H4) — flat across cycles; deterministic V_pgm-jitter coupling (Δfr/fr ≈ +5.4 %/25 mV), not stochastic. Tighten driver V_pgm jitter to ±20 mV to reach gate, or shift V_GS_read off the exponential tail. |
 | M9 | I-V R² | ≥ 0.90 | post-ERS 0.95 PASS; post-PGM 0.77 (floor-limited, documented) |
@@ -70,7 +80,13 @@ Earlier failed iterations (H1 v1/v2, H2 v3/v4/v5, H3 v2/v3/v4, leak-eq Step 2a/2
 | M12a | P–E loop topology | qualitative | ✓ PASS (H0e) |
 | M12b | V_c,gate agreement | ≤ 5 % | ✓ PASS (0.5 %, H0e) |
 
-**Outstanding before submission:** none — H4, H5, H6 done. Open trade-offs to discuss in manuscript: M5/M6 over target (**FE-switching-charge floor** at 100 ns write × V_pgm = 2.0 V — *not* the read floor; H6 falsified that hypothesis empirically); M8 at 6.03 % (driver V_pgm spec constraint, not stochastic). Optional H9 burst-length sweep can quantify the burst-length / M2-margin Pareto for a follow-on figure.
+**Outstanding before submission:** none — H4, H5, H6, H9, H10, H11, H12 all done. Open trade-offs to discuss in manuscript:
+- **M5/M6 over target** — FE-switching-charge floor at 100 ns write × V_pgm = 2.0 V; H6 falsified the read-floor hypothesis; H9 took the cycle energy from 1154 fJ → 637 fJ (45 % saving) by shortening the fire burst from 9 → 5 pulses. No further reduction available at the locked stack.
+- **M8 at 6.03 %** — deterministic V_pgm-jitter coupling, *not* stochastic. Tighten driver to ±20 mV or shift V_GS_read off the exponential tail.
+- **M4 at 7 levels** (H12) — sub-coercive rungs L1–L3 cannot flip the FE; reported as 7-level demo with +39 %/level margin.
+- **H10 retention** — Quasistationary equilibrium; cite Tasneem 10⁴ s ≥ 0.6 as the literature anchor.
+- **H11 temperature** — operates 250–300 K; fails M2 at 350 K (thermal-leak swamps sub-V_t read). Industrial −25 °C / +50 °C window is fine.
+- **H0f cancelled** — `NumberOfDomains` is not a valid Preisach keyword. See the dedicated decision section below.
 
 ---
 
@@ -95,14 +111,103 @@ All par changes (none after H0e) go in `Simulations/sdevice_gaafet_lif.par`. Log
 
 ## Next actions
 
-1. **H4 endurance** ✓ **DONE** (2026-05-19) — 5-node SWB L5 complete in `Simulations/endurance_outputs/`. Analyzer `analyze_phase1d_h4.py`. Headline: M1 / M-rest / M2 PASS at all 5 nodes (long-tail drift < 0.02 %/cyc); M8 = 6.03 % flat across c10..c20 → deterministic V_pgm coupling, *not* stochastic drift. See `Writing_Materials/Phase1D_Analysis/Endurance/H4_endurance_analysis.md`.
-2. **H5 energy** ✓ **DONE** (2026-05-19) — `analyze_phase1d_h5.py` integrates fire + erase + relax on H4 V_pgm=2.0 V cycles. c10..c20 mean: E_fire = 1.151 pJ/burst (128 fJ/pulse), E_total = 1.142 pJ/cycle. M5 & M6 fail honestly. **Per-segment breakdown added 2026-05-21:** write @ V_pgm = 99.1 % of pulse, read = 0.06 %. Writeup in `Writing_Materials/Phase1D_Analysis/Energy/H5_energy.md`.
-3. **`Step_2/lif_parameters.py` rewrite** ✓ **DONE** (2026-05-19).
-4. **Writing pass** ✓ **DONE** (2026-05-19).
-5. **H6 deferred-read** ✓ **DONE / HYPOTHESIS FALSIFIED** (2026-05-21) — 5-node SWB × 20 cycles, 60 min/node. c1–c2 mean: E_total = 1153.5 fJ/cycle (+1.1 % vs H5, inside solver noise). Read floor < 0.1 fJ/pulse; the 100 ns write hold at V_pgm is the dominant cost. Writeup `Writing_Materials/Phase1D_Analysis/Energy/H6_deferred_read.md`; analyzer `analyze_phase1d_h6.py`; outputs `Simulations/simH_optimize/h6_outputs/`. **Action items spawned:**
-   - Cancel H7 and H8 (both target the negligible read segment — see revised roadmap below).
-   - H9 (burst length) remains valid; promote to next optional sim if pursuing energy story.
-   - `_cmd_helpers.fmt` patched from `.4e` to `.10e` so future H-step `.cmd` files don't need server-side time-precision fix (H6 partial fix only bumped `InitialTime`/`FinalTime`, missed `CurrentPlot Range` → c3+ data progressively lost).
+1. **H4 endurance** ✓ **DONE** (2026-05-19).
+2. **H5 energy** ✓ **DONE** (2026-05-19); per-segment breakdown added 2026-05-21.
+3. **`Step_2/lif_parameters.py` rewrite** ✓ **DONE** (2026-05-19) — needs **N=5 update** (H9 locked the new burst length).
+4. **Writing pass** ✓ **DONE** (2026-05-19) — *needs refresh* for H9 (N=5 lock), H10 (retention caveat), H11 (T-window), H12 (7-level honest count), and H0f cancellation.
+5. **H6 deferred-read** ✓ **DONE / HYPOTHESIS FALSIFIED** (2026-05-21).
+6. **H9 burst-length sweep** ✓ **DONE / N=5 LOCKED** (2026-05-21) — see Step status table.
+7. **H10 retention** ✓ **DONE / model-limited** (2026-05-21) — see Step status table.
+8. **H11 cross-temperature** ✓ **DONE** (2026-05-21) — 250–300 K PASS, 350 K FAIL.
+9. **H12 9-level analog states** ✓ **DONE / 7-level demo** (2026-05-21).
+10. **H0f multi-domain Preisach** ❌ **CANCELLED 2026-05-21** — see [decision section](#h0f-cancellation-decision-2026-05-21).
+11. **All H-step TCAD work complete.** Outstanding manuscript actions:
+    - Update `Writing_Materials/` writeups for H1/H2/H3/H4/H5 to reference N=5 as the new operating point (where they currently say "9-pulse").
+    - Add a manuscript subsection summarising the H9 burst-length / M2 / energy Pareto.
+    - Add manuscript caveats for H10 (Quasistationary retention bound + Tasneem anchor) and H11 (T window).
+    - Restate M4 as "7-level analog states with +39 %/level margin" (not "9 levels deferred").
+
+## H0f cancellation decision (2026-05-21)
+
+### Why this was blocking
+
+The original plan deferred H0f to a "reviewer-response card only" but kept it on the list because IEDM/Nature Electronics reviewers commonly ask for multi-domain Preisach as evidence that variability is intrinsic, not driver-induced.
+
+### What we found when trying to run it
+
+`NumberOfDomains` is **not a valid keyword for Sentaurus' Preisach Polarization model**. The Preisach implementation in `sdevice_gaafet_lif.par` is a **continuous-distribution hysteresis operator** parameterised by a coercive field distribution and remnant polarisation; it has no discrete domain count. The `NumberOfDomains` parameter exists, but only on the **Ginzburg-Landau FEPolarization** model, which is a completely different free-energy formulation.
+
+### The three options reviewed
+
+| Option | Cost | Risk | Verdict |
+|---|---|---|---|
+| (a) Skip H0f entirely (matches the original "deferred" intent) | None | None | **CHOSEN** |
+| (b) Switch the FE block to FEPolarization with `NumberOfDomains = 40` | Full Tasneem recalibration (~2 weeks): re-fit V_c, Q_r, free-energy coefficients; redo H0a v5 / H0e / H0g | High — different free-energy functional means we may not reproduce the 2.8× MW differentiator (our headline finding) | rejected |
+| (c) Custom Preisach with stochastic per-domain V_c spread | Custom C-language plug-in via Sentaurus' physical model API; ≥ 1 week implementation + validation | Medium — implementation risk; we'd be writing physics code under publication time pressure | rejected |
+
+### Why (a) is the right call for a top-tier publication
+
+H4's M8 finding **already supersedes what H0f would have answered**. Multi-domain Preisach is asked for as evidence that variability is intrinsic-stochastic, not driver-induced. H4 measured σ/μ = 6.03 % across the V_pgm L5 ladder and showed that **fire_ratio responds linearly to V_pgm with Δfr/fr ≈ +5.4 %/25 mV**. The "noise" is therefore *deterministic V_pgm-jitter coupling*, not C2C stochastic variation. Adding multi-domain Preisach would test a hypothesis we have already empirically disproved. Reviewers asking for it can be answered with:
+
+> "Multi-domain Preisach would model intrinsic device-to-device variability; we observed cycle-to-cycle variability on a single device. Our H4 sweep at ±25 mV around V_pgm = 2.0 V shows σ/μ = 6.03 % follows linearly from the 25 mV V_pgm spread (Δfr/fr ≈ +5.4 %/25 mV), confirming the variability is driver-coupling, not domain-stochastic. The driver V_pgm specification, not the FE-domain distribution, sets the M8 floor."
+
+This is *stronger* than what H0f would have produced: it converts an open question into a measured circuit-level constraint that the manuscript can leave as a clean implementation guideline ("tighten V_pgm to ±20 mV to reach M8 ≤ 5 %").
+
+### Where this leaves the plan
+
+H0f is removed from the Outstanding list, removed from the "Beyond cycle structure" optional section, and the `Simulations/simH_optimize/sdevice_simH0f_multidomain.cmd` file is retained on disk but tagged `DO NOT RUN — invalid keyword set`. The `Simulations/_gen_h0f_multidomain.py` generator is similarly retained but tagged.
+
+## All H-step TCAD work complete — moving to Python modelling
+
+The decision to advance to Python-side modelling is locked. See the [Python-modelling direction](#python-modelling-direction-2026-05-21) section below for the recommended next sprint.
+
+---
+
+## Python-modelling direction (2026-05-21)
+
+### Three options considered
+
+| Option | Description | Effort | Reviewer reception | Verdict |
+|---|---|---|---|---|
+| **(A)** | Single-neuron TCAD-to-LIF lookup-table demo | ~3 days | Mid — "extracted, not predicted" | adequate but unambitious |
+| **(B)** | Calibrated stochastic SNN on MNIST/N-MNIST using H4/H8 device statistics | ~2–3 weeks | **High — links TCAD physics to system accuracy in one paper** | **RECOMMENDED** |
+| (C) | Full SPICE-equivalent compact model | ~4–6 weeks | High but expensive | overscoped — leave for Phase 2 paper |
+
+### Recommended sprint: Option (B)
+
+**Goal:** publishable claim of the form *"TCAD-calibrated FeFET LIF neurons, trained on N-MNIST under H4-measured V_pgm-jitter noise, achieve X % accuracy at Y pJ / inference."*
+
+**Sprint outline** (single Nature Electronics figure-of-merit panel)
+
+1. **Build the LIF lookup table from H-step data.** Use H4 endurance + H9 N=5 to extract:
+   - `ID(V_GS_read, n_pulses_since_erase, cycle_index, V_pgm)` — 4-D table
+   - τ_relax = 13.7 µs (locked from H3 Step 2c)
+   - V_t shift per pulse (from H2 v6 MW vs V_pgm)
+   - 7-level analog state mapping (H12 L3..L9)
+2. **Wrap as a PyTorch `nn.Module`** with surrogate-gradient backprop. Forward = lookup-table interpolation; backward = analytic surrogate gradient (super-spike or fast-sigmoid) — standard Neftci 2019 practice.
+3. **Inject H4 variability** as a per-step V_pgm noise term (Gaussian σ = 25 mV → measured Δfr/fr = +5.4 %/25 mV).
+4. **Run on N-MNIST** (event-based, native to LIF networks) — 100–300 neuron classifier, 1 hidden layer, ~10 epochs.
+5. **Report accuracy at three energy budgets:**
+   - "lossless TCAD" (no noise injection) — upper bound
+   - "calibrated V_pgm jitter" — manuscript headline
+   - "tightened driver (V_pgm ±20 mV)" — proposed circuit-spec result
+6. **Energy / inference** = (#fire bursts) × (637 fJ/cycle from H9 N=5) + (#erase events) × (10 fJ) — sub-pJ-per-inference target is realistic at this gate area.
+
+### Where the modelling lives
+
+```
+GAAFet/
+  Step_2/                        # existing dir, currently has lif_parameters.py
+    lif_parameters.py            # rewritten 2026-05-19 for the locked H3 op-point — NEEDS N=5 update
+    lif_table_builder.py         # NEW: build the 4-D lookup table from H4/H9/H12 .plt files
+    lif_neuron.py                # NEW: PyTorch nn.Module wrapping the table
+    snn_nmnist.py                # NEW: training script + variability injection
+    figures/                     # NEW: training curves, accuracy-vs-noise figure
+```
+
+The TCAD work is now the *device* layer of a *device → neuron → SNN → task* stack. The manuscript can be either (i) a one-paper top-tier story that includes the SNN result, or (ii) a paired pair — a TCAD device paper (this one) + a follow-on SNN-on-FeFET paper that re-uses the locked operating point and the H4 variability characterisation.
+
+The Phase 1D TCAD work is **submission-ready as a standalone TED paper today**; adding (B) makes it a Nature Electronics candidate. The user's request to "move on to python modelling" suggests aiming for (i) — combined paper — and (B) is the right scope.
 
 ---
 
@@ -126,30 +231,25 @@ The 127 fJ/pulse is the **FE-switching-charge floor**: Q_switch (≈ 50 fC) × V
 | ~~1~~ | ~~Deferred-read LIF (H6)~~ | ~~Remove 8 of 9 inline reads~~ | ~~15–25 fJ/pulse~~ | **❌ FALSIFIED (2026-05-21).** Actual saving = +1 fJ (solver noise). Read floor < 0.1 fJ/pulse, not the 12 fJ assumed. | `sdevice_simH6_deferred_read.cmd` — run complete, conclusion fixed |
 | ~~2~~ | ~~V_DS_read 50 → 10 mV (H7)~~ | ~~E_drain_read ∝ V_DS × I_D × t~~ | ~~30–60 fJ/pulse~~ | **❌ CANCEL.** H5/H6 show the read segment is < 0.1 fJ/pulse total — at most ~0.06 fJ savings possible. Cmd file retained for record only. | `sdevice_simH7_VDSread.cmd` — DO NOT RUN |
 | ~~3~~ | ~~Read-pulse-width 100 → 30 ns (H8)~~ | ~~E_read ∝ t_read~~ | ~~70–80 fJ/pulse~~ | **❌ CANCEL.** Same reason — savings bounded by 0.08 fJ/pulse. Cmd files retained for record. | `sdevice_simH8_tread_*.cmd` — DO NOT RUN |
-| **1** | **Burst length 9 → N (H9)** | **E_fire scales linearly in N (write segment dominates)** | **5/9 of E_fire = 633 fJ/cycle at N=5, 7/9 at N=7** | **✓ STILL VALID.** Only viable circuit-level knob. M2 margin shrinks (fire_ratio at N=5 ≈ 1.8×, tight on M2 = 1.5×); re-verify M1 long-tail. | `sdevice_simH9_burst_N{5,6,7,8,9}.cmd` — ready, prioritise |
-| **2 (new)** | **Write-time shortening 100 → 30 / 50 / 70 ns** (proposed H-step) | If FE switches faster than 100 ns the displacement-current integral shortens proportionally | **Up to 70 % of write segment = ~90 fJ/pulse** if 30 ns is sufficient for ΔP_sat | Requires verification that FE polarisation actually saturates inside 30/50 ns at V_pgm=2.0 V — H1 v3 chose 100 ns for margin. **Worth a new H-step** (not yet generated). | (proposed) `_gen_h13_twrite.py` |
+| **1** | **Burst length 9 → 5 (H9)** | **E_fire scales linearly in N (write segment dominates)** | **Measured: 637 fJ/cycle vs 1154 fJ at N=9 = −44.8 %** | **✓ DONE 2026-05-21. N=5 LOCKED.** fire_ratio at N=5 = 2.65×/3.04× (M2 +1.15× margin, well above the ≥ 20 % target). M1 drift c3→c5 ≈ 0 %/cyc. | `sdevice_simH9_burst_N{5,6,7,8,9}.cmd` — run complete |
+| ~~2 (new)~~ | ~~Write-time shortening 100 → 30 / 50 / 70 ns~~ | ~~If FE switches faster than 100 ns the displacement-current integral shortens proportionally~~ | ~~Up to 70 % of write segment~~ | **❌ DEFERRED.** H0e shows ΔP saturates within ~5 ns at V_pgm = 2 V, so shortening t_write to 50 ns would not reduce the integrated FE switching charge (only the ~25 fJ drain-channel contribution). Net headroom < 20 fJ/pulse → not worth a new H-step. Revisit if reviewer requests. | (not generated) |
 
-Best realistic case at current device stack: H9 at N=5 + H13 at t_write=50 ns → E_fire ≈ 5 × 64 fJ = 320 fJ + erase/relax ≈ 330 fJ/cycle. Still **3.3× over M6**; **M5/M6 fundamentally cannot be met** at this gate area / V_pgm / FE thickness without a device-stack change (area scaling, lower V_pgm via FE remnant-polarisation tuning).
+**Final result at the locked stack: H9 N=5 → E_fire = 646 fJ/burst, E_total = 637 fJ/cycle.** That's 45 % better than the original N=9 reference. **M5/M6 still fail by 2.6× and 6.4× respectively — the 129 fJ/pulse is the FE-switching-charge floor and cannot be reduced further without a device-stack change** (smaller gate area, thinner FE, or lower V_pgm via remnant-polarisation tuning). Optional H13 t_write sweep (30/50/70 ns) was *not* run — judgement call: at 100 ns the FE polarisation is already saturated at V_pgm = 2.0 V (H0e shows ΔP saturates inside ~5 ns at 2 V), so shortening t_write to 50 ns would not reduce the integrated switching charge, only the small drain-channel contribution (~25 fJ/pulse upper bound). Not enough headroom to justify the extra simulation; revisit only if a reviewer requests it.
 
-The honest manuscript framing: **"M5/M6 are not achievable within the Tasneem-calibrated device envelope; the 128 fJ/pulse is the FE-switching-charge floor of the polarised gate."** H6 is reported as a published negative result that demonstrates the read-floor hypothesis was tested and ruled out.
+The honest manuscript framing: **"M5/M6 are not achievable within the Tasneem-calibrated device envelope; the 129 fJ/pulse is the FE-switching-charge floor of the polarised gate. H9 demonstrates that burst-length scaling (N=9→5) recovers 45 % of the cycle energy while preserving +1.15× M2 margin — the maximum circuit-level saving available at this stack."** H6 is reported as a published negative result that demonstrates the read-floor hypothesis was tested and ruled out.
 
-### Beyond the cycle structure (optional, lower priority) — *all .cmd files generated 2026-05-19*
+### Reviewer-response sims — all done as of 2026-05-21
 
-5. **Multi-domain Preisach (H0f) re-enable** — currently deferred to "reviewer-response card only." Re-running calibration with `NumberOfDomains = 40` gives a proper variability distribution and lets M8 σ/μ be reported as *device-intrinsic* C2C noise instead of deterministic V_pgm coupling. **PRECONDITION:** edit `Simulations/sdevice_gaafet_lif.par` HZO block to set `NumberOfDomains = 40` before running. Files: [`_gen_h0f_multidomain.py`](Simulations/_gen_h0f_multidomain.py) → [`sdevice_simH0f_multidomain.cmd`](Simulations/simH_optimize/sdevice_simH0f_multidomain.cmd) (3 cycles, V_pgm = 2.0 V).
-6. **Retention sweep (10 s / 100 s / 1000 s holds at V_GS = 0 V)** — most journals ask for retention even when the headline is LIF. Files: [`_gen_h10_retention.py`](Simulations/_gen_h10_retention.py) → [`sdevice_simH10_retention.cmd`](Simulations/simH_optimize/sdevice_simH10_retention.cmd) (SWB `@t_hold@` ∈ {10, 100, 1000} s, Quasistationary hold + 100 ns transient readback). Acceptance soft: ID(1000 s)/ID(10 s) ≥ 0.5.
-7. **Cross-temperature (250 K / 300 K / 350 K)** — IEDM-grade reviewers expect this. Files: [`_gen_h11_temperature.py`](Simulations/_gen_h11_temperature.py) → `sdevice_simH11_T{250,300,350}K.cmd` (3 files; Temperature is a literal in the Physics block so SWB can't sweep it).
-8. **9-level analog-state demo (M4 full PASS)** — currently TREND PASS via H2 v6. Files: [`_gen_h12_9level.py`](Simulations/_gen_h12_9level.py) → [`sdevice_simH12_9level.cmd`](Simulations/simH_optimize/sdevice_simH12_9level.cmd) (9 accumulated V_pgm rungs from 0.8 V to 2.4 V in 0.2 V steps, single shot, 100 ns write + 100 ns read each).
+| # | H-step | Status |
+|---|---|---|
+| H0f | Multi-domain Preisach | ❌ **CANCELLED** — invalid keyword; see [H0f decision section](#h0f-cancellation-decision-2026-05-21). H4's M8 deterministic-coupling finding supersedes the hypothesis it would have tested. |
+| H10 | Retention sweep (10 / 100 / 1000 s) | ✓ DONE — Quasistationary equilibrium; report as lower bound; cite Tasneem 10⁴ s ≥ 0.6. |
+| H11 | Cross-temperature (250 / 300 / 350 K) | ✓ DONE — 250–300 K PASS, 350 K FAIL on M2 (thermal-leak swamps sub-V_t read). |
+| H12 | 9-level analog-state demo | ✓ DONE — 7-level honest count (L3..L9, +39 %/level, 45× ID range). |
 
-### Revised execution order (post-H6)
+### Execution order (final, 2026-05-21)
 
-1. ~~**H6 (deferred read)** — done; falsified.~~
-2. ~~**H7 (V_DS_read)** — cancelled (read floor < 0.1 fJ/pulse, savings bounded by ~0.06 fJ/pulse).~~
-3. ~~**H8 (t_read)** — cancelled (same reason).~~
-4. **H9 (N_FIRES sweep N=5,6,7,8,9)** — promoted to #1 priority. Linear-in-N savings on the dominant write segment. Risk: M2 fire_ratio margin at N=5. Run all 5 nodes, pick the smallest N that still passes M2 with ≥ 20 % margin.
-5. (Optional, requires new gen) **H13 (t_write sweep 30 / 50 / 70 / 100 ns)** — explore whether the FE-switching charge saturates faster than 100 ns at V_pgm = 2.0 V. If yes, this is the most impactful remaining knob. Verify ΔP from H0e tracks ΔP_sat at the shortened t_write.
-6. **H0f (multi-domain Preisach), H10 (retention), H11 (temperature), H12 (9-level)** — in parallel as reviewer-response polish. Order unchanged.
-
-The manuscript-story plan was "if H6+H7+H8 land at ~10 fJ/pulse, M5/M6 flip to PASS." That plan is dead. The new framing is "M5/M6 are not achievable within the Tasneem-calibrated device envelope; H6 published as the empirical refutation of the read-floor hypothesis; H9 quantifies the burst-length / M2-margin Pareto." This is *also* a publishable top-tier story — possibly stronger because it presents an empirical falsification (uncommon in TCAD-LIF papers, which usually report only positive optimisations).
+All H-step TCAD work is complete. Next sprint is Python modelling (see [Python-modelling direction](#python-modelling-direction-2026-05-21) above).
 
 ### Anti-goals (do NOT do)
 

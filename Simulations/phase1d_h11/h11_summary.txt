@@ -1,0 +1,17 @@
+Phase 1D - H11 cross-temperature summary (V_pgm = 2.000 V)
+============================================================================================
+Source: Simulations/simH_optimize/h11_outputs/  (3 nodes: T = 250 / 300 / 350 K)
+Probe: baseline_pre + 2 cycles (c1, c2) of locked LIF; report ID_p1 / ID_p9.
+
+      T |  baseline ID |      c1_p1 |    c1_last | kc1 |    c1_FR |    c2_last | kc2 |    c2_FR |   drift %
+--------------------------------------------------------------------------------------------------------------
+   250K | 1.559e-16 | 2.012e-14 | 1.570e-13 |   9 | 1007.33x | 2.315e-13 |   9 | 1485.00x |   +47.42
+   300K | 2.392e-14 | 3.860e-15 | 1.159e-13 |   9 |    4.85x | 1.855e-13 |   9 |    7.76x |   +60.04
+   350K | 8.787e-13 | 8.652e-13 | 1.240e-12 |   9 |    1.41x | 2.734e-14 |   3 |    0.03x |   -97.80
+
+Baseline subthreshold-leak T-coefficient (V_GS = -0.5 V):
+  ID(250 K) / ID(300 K) = 0.007
+  ID(350 K) / ID(300 K) = 36.736
+  ID(350 K) / ID(250 K) = 5636.380  (thermal activation at -0.5 V)
+
+M2 fire_ratio >= 1.5 at every T (c1):  FAIL
