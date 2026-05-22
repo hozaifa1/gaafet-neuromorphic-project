@@ -1,0 +1,85 @@
+#define ParFileDir .
+
+Material="HfO2" {
+  #includeext "ParFileDir/HfO2.par"
+}
+
+Material="Silicon" {
+    #includeext "ParFileDir/Silicon.par"
+
+    ConstantMobility { * Correct placement: 'ConstantMobility' directly under 'Material'
+        mumax = 300, 470.5 * electron mobility 300 cm2/(V s), default for holes
+        Exponent = 2.5, 2.2
+    }
+
+    Band2BandTunneling {
+        * Hurkx model parameters for Band2Band tunneling
+        * Critical for nanoscale GAA devices
+        Agen = 4.0e14    * [1/cm^3/sec] Generation prefactor
+        Bgen = 1.9e7     * [V/cm] Generation field parameter
+        Pgen = 2.5       * [1] Generation power
+        
+        Arec = 4.0e14    * [1/cm^3/sec] Recombination prefactor
+        Brec = 1.9e7     * [V/cm] Recombination field parameter
+        Prec = 2.5       * [1] Recombination power
+        
+        alpha = 0        * 0=both gen+rec, -1=only gen, +1=only rec
+    }
+}
+
+Material="TiN" {
+  #includeext "ParFileDir/TiN.par"
+}
+
+* --- Define HZO as an Insulator based on HfO2 ---
+Material="HZO" {
+  #includeext "ParFileDir/HfO2.par"
+
+  * --- Physical Parameters ---
+  * NOTE: Values from Workflow.md and general HZO literature.
+
+  Epsilon {
+    epsilon = 33.0      * Paper value for HZO
+  }
+  BandGap {
+    Chi0 = 2.0          * Electron Affinity [eV]
+    Eg0 = 5.2           * Band Gap [eV] at 0 K
+  }
+
+* --- Saturation Model (Official Syntax: sat_loop_des.cmd) ---
+* Mapped from Paper: Pr=16uC/cm2, Ec=1.2MV/cm
+* DIRECTION FIX: Positive signs for CCW Loop (FeFET Mode)
+Polarization {
+    * Vector format: (x, y, z)
+    * We align with Y-axis (direction="y" in CMD)
+    P_r = (0, 1.6e-5, 0)    * Remanent Polarization [C/cm^2]
+    P_s = (0, 2.0e-5, 0)    * Saturation Polarization [C/cm^2]
+    F_c = (0, 1.2e6, 0)     * Coercive Field [V/cm]
+    * Transient relaxation times (Required for fast transients)
+    * Source: FeFET_CAM official example uses tau_E=1e-9
+    * SWEEP tau_E: Controls FE switching speed. Must be >> pulse_width for
+    *   cumulative integration (each pulse only partially switches domains).
+    *   If tau_E << pw: P reaches equilibrium on pulse 1, no accumulation.
+    *   tau_E = (0, 1e-9, 0)    * 1ns   — OLD: too fast, no integration
+    *   tau_E = (0, 1e-7, 0)    * 100ns — pw/tau=1, ~63% per pulse
+    *   tau_E = (0, 5e-7, 0)    * 500ns — pw/tau=0.2, ~18% per pulse
+    *   tau_E = (0, 1e-6, 0)    * 1us   — pw/tau=0.1, ~10% per pulse (RECOMMENDED)
+    *   tau_E = (0, 5e-6, 0)    * 5us   — pw/tau=0.02, ~2% per pulse
+    tau_E = (0, 1e-6, 0)    * Auxiliary field relaxation time [s]
+    * SWEEP tau_P: Controls depolarization (leak). Manually change per run.
+    *   tau_P = (0, 0, 0)       * 0     — no relaxation (non-volatile)
+    *   tau_P = (0, 1e-6, 0)    * 1us   — fast leak
+    *   tau_P = (0, 1e-5, 0)    * 10us  — moderate leak
+    *   tau_P = (0, 1e-4, 0)    * 100us — slow leak
+    * STEP 2: tau_P controls ferroelectric depolarization (leak).
+    * Phase 1 used tau_P=0 (no leak). Step 2 requires tau_P > 0 for tau_leak extraction.
+    * Run simC v6 with each value below (one at a time) to characterize leak dynamics.
+    *   tau_P = (0, 0, 0)       * 0     — no relaxation (Phase 1 default)
+    *   tau_P = (0, 1e-6, 0)    * 1us   — fast leak (tau_P = tau_E)
+    *   tau_P = (0, 1e-5, 0)    * 10us  — moderate leak (RECOMMENDED START)
+    *   tau_P = (0, 1e-4, 0)    * 100us — slow leak
+    tau_P = (0, 1e-5, 0)    * Polarization relaxation time [s] — STEP 2 default
+    kn = (0, 0, 0)          * Nonlinear coupling constant [cm*s/V]
+}
+
+}
