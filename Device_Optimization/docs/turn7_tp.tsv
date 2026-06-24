@@ -1,0 +1,4 @@
+tag	mesh	WF	VREAD	TAU_P	Vop	WIN	DR	igain	IDrest	IDon	EyFc	Qg	note
+t7_tp20	fe07	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.5	WIN=224318.7	DR=222761.1	igain=0.993	IDrest=1.888e-09	IDon=4.235e-04	EyFc=0.82	Qg=5.286e-16	T7 tp=20ns
+t7_tp50	fe07	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.5	WIN=224039.9	DR=218285.5	igain=0.974	IDrest=1.888e-09	IDon=4.230e-04	EyFc=0.82	Qg=5.313e-16	T7 tp=50ns
+t7_tp10	fe07	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.5	WIN=224408.8	DR=223639.2	igain=0.997	IDrest=1.888e-09	IDon=4.237e-04	EyFc=0.82	Qg=5.283e-16	T7 tp=10ns

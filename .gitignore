@@ -20,6 +20,8 @@
 *.tmp
 *.bak
 *~
+*.csv
+
 
 # IDE and system files
 .windsurf/
@@ -28,14 +30,18 @@ Tutorials/
 Sentaurus/
 Sentaurus_Tutorials/
 PYTHON_Modelling_Fefet_Codes/
-
+autoresearch/
+.claude/
 .vscode/
+Calibration/autocal/
 *.swp
 Thumbs.db
 .DS_Store
 
 # Large binary files
 *.pdf
+*.cmd
+*.par
 
 # Python cache (if using Python scripts)
 __pycache__/

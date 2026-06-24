@@ -1,0 +1,5 @@
+tag	mesh	WF	VREAD	TAU_P	Vop	WIN	DR	igain	IDrest	IDon	EyFc	Qg	note
+t3_si05	si05	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	WIN=47308.6	DR=35706.3	igain=0.755	IDrest=3.723e-09	IDon=1.761e-04	EyFc=0.00	Qg=8.691e-16	T3 Tsi sweep (tox10 base)
+t3_si08	si08	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	WIN=20239.2	DR=14741.8	igain=0.728	IDrest=8.381e-09	IDon=1.696e-04	EyFc=0.68	Qg=8.716e-16	T3 Tsi sweep (tox10 base)
+t3_si10	si10	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	WIN=13338.9	DR=9546.6	igain=0.716	IDrest=1.256e-08	IDon=1.675e-04	EyFc=1.18	Qg=8.732e-16	T3 Tsi sweep (tox10 base)
+t3_si12	si12	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	WIN=9178.1	DR=6472.3	igain=0.705	IDrest=1.807e-08	IDon=1.658e-04	EyFc=1.19	Qg=8.749e-16	T3 Tsi sweep (tox10 base)

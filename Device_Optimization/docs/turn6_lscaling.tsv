@@ -1,0 +1,3 @@
+tag	mesh	WF	VREAD	TAU_P	Vop	WIN	DR	igain	IDrest	IDon	EyFc	Qg	note
+t6_lg50	lg50	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.5	WIN=16080.9	DR=13188.7	igain=0.820	IDrest=5.557e-09	IDon=8.936e-05	EyFc=0.78	Qg=3.307e-16	T6 Lgate=50nm
+t6_lov0	lov0	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.5	WIN=14798.3	DR=14487.4	igain=0.979	IDrest=1.235e-08	IDon=1.828e-04	EyFc=0.78	Qg=4.238e-16	T6 Lov=0

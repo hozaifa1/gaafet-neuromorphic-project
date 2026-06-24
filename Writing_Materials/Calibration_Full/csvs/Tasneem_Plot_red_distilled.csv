@@ -1,9 +1,0 @@
-# distilled markers for figure, sourced from Tasneem_Plot_red.csv (after log-mean smoothing, window=7)
-V_G_V,I_D_uA_per_um,provenance_row_in_source
--1.934723,1.709085e-02,7
--1.831064,6.826880e-03,21
--1.631149,4.155362e-04,48
--1.534894,1.024833e-04,61
--1.431235,2.641080e-05,75
--1.334980,9.993997e-06,88
--1.231321,2.653467e-06,102

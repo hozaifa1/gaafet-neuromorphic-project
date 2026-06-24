@@ -1,0 +1,9 @@
+tag	mesh	WF	VREAD	TAU_P	Vop	WIN	DR	igain	IDrest	IDon	EyFc	Qg	note
+t7b_grad	fe07	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.2	WIN=224249.2	DR=222387.8	igain=0.992	IDrest=1.888e-09	IDon=4.234e-04	EyFc=0.70	Qg=4.322e-16	T7 graded V_pgm sweep N12
+t7c_lif	fe07	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=1.2	WIN=223792.5	DR=222540.7	igain=0.994	IDrest=1.888e-09	IDon=4.225e-04	EyFc=0.27	Qg=1.129e-16	T7c count-to-fire
+t7d_test	fe07	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.0	WIN=0.5	DR=0.5	igain=0.987	IDrest=8.218e-04	IDon=4.351e-04	EyFc=0.61	Qg=3.618e-16	erase protocol test
+t8_lif0	fe07	WF=4.35	VREAD=0.0	TAU_P=1e-05	Vop=2.5	WIN=0.1	DR=0.1	igain=0.968	IDrest=1.295e-02	IDon=1.027e-03	EyFc=0.83	Qg=5.208e-16	LIF demo Vread=0 erase-reset
+t8_ltp	fe07	WF=4.35	VREAD=0.0	TAU_P=1e-05	Vop=2.0	WIN=1013.1	DR=1013.1	igain=13026.814	IDrest=1.295e-02	IDon=1.312e+01	EyFc=0.35	Qg=4.646e-16	LTP cumulative potentiation
+t9_leak	fe07	WF=4.35	VREAD=0.0	TAU_P=1e-05	Vop=2.0	WIN=7.4	DR=7.4	igain=95.743	IDrest=1.295e-02	IDon=9.644e-02	EyFc=0.49	Qg=4.055e-16	leak/retention
+t9_t250	fe07	WF=4.35	VREAD=0.0	TAU_P=1e-05	Vop=2.0	WIN=45932.0	DR=45932.0	igain=139396.460	IDrest=3.155e-04	IDon=1.449e+01	EyFc=0.34	Qg=4.679e-16	LTP 250K
+t9_t350	fe07	WF=4.35	VREAD=0.0	TAU_P=1e-05	Vop=2.0	WIN=1581.5	DR=1581.5	igain=4304.683	IDrest=1.410e-03	IDon=2.230e+00	EyFc=0.37	Qg=4.331e-16	LTP 350K

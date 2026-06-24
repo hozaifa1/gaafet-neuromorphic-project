@@ -1,0 +1,7 @@
+tag	mesh	WF	VREAD	TAU_P	Vop	DR	igain	IDrest	IDp9	EyFc	Qg	note
+t2_tox05	tox05	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	DR=879.562	igain=0.531	IDrest=1.039e-07	IDp9=9.137e-05	EyFc=1.50	Qg=1.107e-15	T2 Tox sweep
+t2_tox10	tox10	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	DR=3997.083	igain=0.695	IDrest=2.850e-08	IDp9=1.139e-04	EyFc=1.18	Qg=8.683e-16	T2 Tox sweep
+t2_tox15	tox15	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	DR=60.716	igain=0.786	IDrest=2.083e-06	IDp9=1.265e-04	EyFc=0.98	Qg=7.187e-16	T2 Tox sweep
+t2b_tox05	tox05	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=1.5	DR=1577.779	igain=0.935	IDrest=1.039e-07	IDp9=1.639e-04	EyFc=0.40	Qg=1.889e-16	T2 Tox05 subcoercive
+t2b_tox10	tox10	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.0	DR=5315.437	igain=0.915	IDrest=2.850e-08	IDp9=1.515e-04	EyFc=0.50	Qg=2.997e-16	T2 Tox10 subcoercive
+t2b_tox15	tox15	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.5	DR=70.152	igain=0.902	IDrest=2.083e-06	IDp9=1.461e-04	EyFc=0.56	Qg=3.697e-16	T2 Tox15 subcoercive

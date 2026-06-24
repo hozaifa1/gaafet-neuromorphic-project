@@ -1,25 +1,34 @@
 ---
-name: Project status (as of 2026-05-03)
-description: Current state of GAA-FeFET LIF neuron thesis. Phase 1B complete; Step 2 SNN v1 reached 90.18% on MIT-BIH 4-class. Phase 1C in progress.
+name: Project status (as of 2026-05-30)
+description: Current state of GAA-FeFET LIF neuron thesis. Calibration shifted to Liao 2022. Phase 1C and 1D TCAD complete. SNN training resumed with pure CE.
 type: project
 ---
 
-**Phase 1A (TCAD device characterization):** DONE. simA/simB transient-readout protocol confirmed partial polarization switching, dVth_per_pulse ≈ 11.36 mV at Vpulse=2V (simB).
+## 1. Device Calibration Shift (New_cal)
+* **Calibration Reference:** Shifted from Tasneem 2022 to **Liao et al. (VLSI 2022) Fig. 7** MFMFS-GAA curves to match the n-channel GAA Nanosheet architecture and operating window.
+* **Tier-1 Calibration Status:** **FAILED** (MW = 0.421 V vs. target 1.094 V / 1.30 V; shape-match $R^2$ = -2.242 post-PGM / -0.611 post-ERS).
+* **Diagnosis:** Absolute threshold voltage ($V_t$) mismatch of ~1.9 V stemming from workfunction differences between TSMC's process and our nominal 4.35 eV.
+* **Tier-2 Plan:** Retune gate electrode workfunction in `New_cal/sdevice_liao2022_writeread.cmd` (sweeping in range `[4.35, 4.5, 4.65, 4.8, 4.95] eV`) to shift $V_{t,PGM}$ into alignment.
 
-**Phase 1B (TCAD LIF demonstration):** DONE. simC v6 (Vpulse=5/6/7V, pw=100ns, Vreset=-5V) achieved fire at P9 (6V) with ratio 2.035×. Reset 77.2%. Plots in `Simulations/py_scripts/simC_v6_fig*.png`. Optimal point: 6V/100ns/-5V/τ_E=1µs.
+## 2. Phase 1C (Remaining Characterization) — DONE
+* **Capacitance (simG):** Intrinsic gate capacitance $C_{gg} = 0.143\text{ fF}$, giving $\tau_{native} = 1.1\text{ ps}$. Rule out capacitorless single-FeFET LIF; external $C_{mem}$ is mandatory.
+* **Leakage (simD):** Confirmed $\tau_{leak} \propto \tau_P$. Locked $\tau_{leak} = 10\ \mu\text{s}$ at the $\tau_P = 10\ \mu\text{s}$ operating point.
+* **Energy (simE):** $E_{pulse} \approx 200\text{ fJ}$ (drain-dominated), total burst energy $E_{fire} \approx 1.8\text{ pJ}$.
+* **Endurance (simF):** Physically correct $\tau_P=10\ \mu\text{s}$ causes non-stationary drift (+4.7%/cycle on baseline) and fire-ratio collapse (integrate-and-fire signal lost over cycles).
 
-**Step 2 (Python SNN, MIT-BIH ECG 4-class):** v1 reports 90.18% test accuracy (303/336), exceeds VO2 baseline (89.58%). **CRITICAL CAVEAT:** v1 is a *port* of the VO2-memristor LSNN code from Yin et al. NCOMMS 2023, with only R_h/R_s swapped to GAA-FeFET values. The CMOS adaptation params (κ, V_t, W/L, R_a, C_a), comparator setpoints (v_th=3.6V, v_h=1.5V), τ=11.11ms target, and the back-calculated external C_mem=1.419µF are **all inherited from the VO2 paper**, not derived from our device. So 90.18% rests on unverified assumptions that Phase 1C must validate.
-- Architecture: VO2LSNN (Bellec et al. NeurIPS 2018) with 60 LIF + 40 ALIF, DelayedLinear layers, max_delay=10.
-- Files: `main_ecg_6_polished.py` (150 epochs cosine LR), `main_ecg_7_resume.py` (2-epoch fine-tune at constant LR with regularizer off).
-- Native polarization-switching variant `model_2.py` only reaches ~70% — BPTT struggles with bounded saturation, so the linear-RC abstraction is the working model.
-- **Do not treat 90.18% as a defended GAA-FeFET claim.** It is a sanity check on a borrowed architecture.
+## 3. Phase 1D (Operating Point & Optimizations) — DONE
+* **Locked Operating Point (from H9 - 2026-05-21):**
+  * $V_{pgm} = +2.0\text{ V}$ (100 ns pulses, sub-coercive)
+  * **Pulses per fire burst: 5** (N=5 locked; saves 44.8% energy: 637 fJ/cycle vs. 1154 fJ/cycle)
+  * $V_{GS,read} = -0.5\text{ V}$ (sub-threshold read)
+  * $V_{erase} = -6.0\text{ V}$ (10 $\mu$s pulse)
+  * Relaxation: $70\ \mu\text{s}$ at $V_{GS} = -0.5\text{ V}$
+  * Steady-state fire ratio: 2.80× (c3-c5, N=5)
+  * Cycle energy: **637 fJ/cycle** (reaches 45% savings from H4 baseline)
+  * Analog cell: Monotonic 7-level walk (L3-L9) with +39%/level separation.
+* **Metric Gates:** SS_PGM (100 mV/dec) and $R^2$ post-ERS (0.95) passed. SS_ERS (164 mV/dec) and post-PGM $R^2$ (0.77) are model-limited (leakage floor). $E_{fire}$ fails M5/M6 gates due to FE-switching charge.
 
-**Phase 1C (TCAD remaining work — current):** Pending parameters needed for the paper:
-1. tau_leak via tau_P > 0 simulation (CRITICAL — currently a placeholder in Step 2)
-2. E_spike via transient power integration during fire (currently rough estimate 97 fJ)
-3. Multi-cycle endurance — does the 22.8% residual P per cycle drift over many cycles?
-4. C_gg (gate capacitance) via AC small-signal — needed to validate that the FeFET's intrinsic capacitance can support the chosen τ without an external 1.419µF.
-
-**Why:** Reason (1)–(3) are listed in `Step_2_Circuit_Integration.md` §6 as pending. (4) was added because Step 2 v1 used an external C_mem of 1.419µF — this is unphysical for an actual single-FeFET LIF neuron (the whole point of the device is "no external capacitor"). Validating the intrinsic C_gg lets us either justify the external cap or rescale the model to native dynamics.
-
-**How to apply:** When the user asks about next steps, default to Phase 1C deliverables; do not propose new device geometry sweeps until Phase 1C completes. When discussing the SNN, treat 90.18% as the established v1 baseline; further work must justify itself against that.
+## 4. Step 2 (Python SNN, MIT-BIH ECG 4-class)
+* **KD Failure Discovery (main_ecg_8c):** Knowledge Distillation from the RC-teacher to the FeFET student failed, causing representational collapse to the majority class (accuracy ~50.89%). KD was dropped entirely.
+* **Pure CE Warmup (main_ecg_8c):** Phase 1 pure Cross Entropy training reached **76.49%** accuracy at epoch 5 — the best polarization-physics network performance to date.
+* **Resume Fine-tuning (main_ecg_8d_pure_ce_resume.py):** Resumes from epoch 5 checkpoint at a constant low LR = 5e-4 with a light spike regularizer ($\lambda = 1e-7$) to push accuracy past 76.49% toward the 78-82% target.

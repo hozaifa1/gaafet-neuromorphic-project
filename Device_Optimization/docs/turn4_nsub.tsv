@@ -1,0 +1,4 @@
+tag	mesh	WF	VREAD	TAU_P	Vop	WIN	DR	igain	IDrest	IDon	EyFc	Qg	note
+t4_nsub15	nsub15	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	WIN=49123.0	DR=37065.9	igain=0.755	IDrest=3.586e-09	IDon=1.761e-04	EyFc=1.17	Qg=8.690e-16	T4 Nsub sweep (si05 base)
+t4_nsub17	nsub17	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	WIN=50540.6	DR=38126.2	igain=0.754	IDrest=3.479e-09	IDon=1.758e-04	EyFc=1.17	Qg=8.699e-16	T4 Nsub sweep (si05 base)
+t4_nsub5e17	nsub5e17	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	WIN=20533.0	DR=7962.8	igain=0.388	IDrest=3.327e-09	IDon=6.832e-05	EyFc=1.18	Qg=8.734e-16	T4 Nsub sweep (si05 base)

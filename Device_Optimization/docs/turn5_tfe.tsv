@@ -1,0 +1,5 @@
+tag	mesh	WF	VREAD	TAU_P	Vop	WIN	DR	igain	IDrest	IDon	EyFc	Qg	note
+t5_fe05	fe05	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.5	WIN=84656.0	DR=77636.9	igain=0.917	IDrest=2.186e-09	IDon=1.851e-04	EyFc=0.88	Qg=6.349e-16	T5 Tfe=5nm
+t5_fe07	fe07	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=2.5	WIN=96240.3	DR=87322.3	igain=0.907	IDrest=1.888e-09	IDon=1.817e-04	EyFc=0.78	Qg=5.434e-16	T5 Tfe=7nm
+t5_fe10	si05	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=3.0	WIN=47503.5	DR=40682.2	igain=0.856	IDrest=3.723e-09	IDon=1.769e-04	EyFc=0.84	Qg=5.826e-16	T5 Tfe=10nm(base)
+t5_fe12	fe12	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=3.0	WIN=21139.2	DR=17992.7	igain=0.851	IDrest=8.223e-09	IDon=1.738e-04	EyFc=0.76	Qg=5.197e-16	T5 Tfe=12nm

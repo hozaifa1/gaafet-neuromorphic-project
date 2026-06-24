@@ -1,0 +1,7 @@
+tag	mesh	WF	VREAD	TAU_P	Vop	DR	IDrest	EyFc	Qg	note
+baseline_check	base	WF=4.35	VREAD=-0.5	TAU_P=1e-05	Vop=4.0	DR=2.592	IDrest=8.746e-05	EyFc=0.84	Qg=6.120e-16	harness validation vs known DR=2.59
+t1_vr03	base	WF=4.35	VREAD=-0.3	TAU_P=1e-05	Vop=4.0	DR=7.541	IDrest=1.344e-02	EyFc=0.83	Qg=6.150e-16	T1 Vread sweep
+t1_vr07	base	WF=4.35	VREAD=-0.7	TAU_P=1e-05	Vop=4.0	DR=244.108	IDrest=5.517e-07	EyFc=0.84	Qg=6.083e-16	T1 Vread sweep
+t1_vr09	base	WF=4.35	VREAD=-0.9	TAU_P=1e-05	Vop=4.0	DR=49163.098	IDrest=2.781e-09	EyFc=0.84	Qg=6.045e-16	T1 Vread sweep
+t1_vr11	base	WF=4.35	VREAD=-1.1	TAU_P=1e-05	Vop=4.0	DR=26797.762	IDrest=5.138e-09	EyFc=0.85	Qg=6.008e-16	T1 Vread sweep
+t1_vr13	base	WF=4.35	VREAD=-1.3	TAU_P=1e-05	Vop=4.0	DR=795.384	IDrest=1.775e-07	EyFc=0.85	Qg=5.967e-16	T1 Vread sweep
