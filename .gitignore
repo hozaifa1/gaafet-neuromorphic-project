@@ -4,7 +4,7 @@
 *.dat
 *.plt
 *.log
-*.py
+# *.py
 *.sav
 
 # Mesh files (large, regenerated)
@@ -20,7 +20,7 @@
 *.tmp
 *.bak
 *~
-*.csv
+# *.csv
 
 
 # IDE and system files
@@ -29,14 +29,15 @@ marker_tool/
 Tutorials/
 Sentaurus/
 Sentaurus_Tutorials/
-PYTHON_Modelling_Fefet_Codes/
-autoresearch/
-.claude/
+# PYTHON_Modelling_Fefet_Codes/
+# autoresearch/
+# .claude/
 .vscode/
 Calibration/autocal/
 *.swp
 Thumbs.db
 .DS_Store
+Device_Optimization/csv_export/iv_curves/
 
 # Large binary files
 *.pdf
@@ -46,5 +47,3 @@ Thumbs.db
 # Python cache (if using Python scripts)
 __pycache__/
 *.pyc
-
-Simulations/simH_optimize/leak_eq_outputs/
