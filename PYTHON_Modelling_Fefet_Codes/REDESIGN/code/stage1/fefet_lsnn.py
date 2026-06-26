@@ -119,6 +119,10 @@ class FeFETLSNN(nn.Module):
         self.spike_for_reg = torch.empty(
             [x.shape[0], x.shape[1], (self.num_lif + self.num_alif)], device=self.device)
         x = x.permute(1, 0, 2)                       # [times, batch, features]
+        # device-map each FeFET weight ONCE per forward (invariant across timesteps)
+        fefet = (self.fc1, self.hidden.rc, self.fc2)
+        for layer in fefet:
+            layer.cache_weight()
         y_seq = []
         for t in range(x.shape[0]):
             y = self.fc1(x[t])
@@ -126,6 +130,8 @@ class FeFETLSNN(nn.Module):
             self.spike_for_reg[:, t] = y
             y = self.lp(y)
             y_seq.append(self.fc2(y).unsqueeze(0))
+        for layer in fefet:
+            layer.clear_cache()
         return torch.cat(y_seq, 0)
 
 

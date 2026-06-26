@@ -73,9 +73,18 @@ class DelayedLinearFeFET(DelayedLinear):
         super().__init__(in_features, out_features, bias, max_delay, diag_disconnect)
         self.register_buffer("levels", log_levels(g_min, g_max, n_levels))
         self.g_min, self.g_max, self.synapse = float(g_min), float(g_max), synapse
+        self._wcache = None
+
+    def cache_weight(self) -> None:
+        # device map is invariant across the 1116 timesteps of one forward -> compute once
+        self._wcache = _map(self.weight, self.synapse, self.levels, self.g_min, self.g_max)
+
+    def clear_cache(self) -> None:
+        self._wcache = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        w_dev = _map(self.weight, self.synapse, self.levels, self.g_min, self.g_max)
+        w_dev = self._wcache if self._wcache is not None else _map(
+            self.weight, self.synapse, self.levels, self.g_min, self.g_max)
         delay_masked_weight = torch.transpose(
             torch.where(self.delay_mask, w_dev, torch.zeros_like(w_dev)), dim0=0, dim1=1)
         self.out_buf += self.einsum_bi_ijk_bjk(x, delay_masked_weight)
@@ -92,9 +101,17 @@ class LinearFeFET(nn.Linear):
         super().__init__(in_features, out_features, bias)
         self.register_buffer("levels", log_levels(g_min, g_max, n_levels))
         self.g_min, self.g_max, self.synapse = float(g_min), float(g_max), synapse
+        self._wcache = None
+
+    def cache_weight(self) -> None:
+        self._wcache = _map(self.weight, self.synapse, self.levels, self.g_min, self.g_max)
+
+    def clear_cache(self) -> None:
+        self._wcache = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        w = _map(self.weight, self.synapse, self.levels, self.g_min, self.g_max)
+        w = self._wcache if self._wcache is not None else _map(
+            self.weight, self.synapse, self.levels, self.g_min, self.g_max)
         return F.linear(x, w, self.bias)
 
 

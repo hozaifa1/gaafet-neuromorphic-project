@@ -36,10 +36,10 @@ FLAGS = dict(
     num_in=3, num_lif=60, num_alif=40, num_out=4, max_delay=10, refractory=0,
     out_cue_duration=116, dt=5.556e-4, tau_lp=11.11e-3,
     batch_size=128, lr=1e-3, grad_clip_norm=1.0, weight_decay=0.0,
-    focal_gamma=2.0, apply_class_weights=True,
+    focal_gamma=0.0, apply_class_weights=True,   # gamma=0 -> proven plain weighted CE baseline
     spike_reg=True, spike_reg_lambda=5e-7, spike_reg_target_f=15.0,
     # surrogate width anneal: wide (small alpha) -> narrow (large alpha) over epochs (R3 s1.2)
-    surrogate_alpha_start=0.5, surrogate_alpha_end=1.5, surrogate_gamma=0.3,
+    surrogate_alpha_start=1.0, surrogate_alpha_end=1.0, surrogate_gamma=0.3,
     # compact-neuron operating point (primary tunables; FeFET weights shift firing)
     c_mem=1e-12, c_a=1e-12, v_threshold=3.6, v_reset=1.5, input_scaling=2.3e-9,
 )
