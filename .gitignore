@@ -47,3 +47,4 @@ Device_Optimization/csv_export/iv_curves/
 # Python cache (if using Python scripts)
 __pycache__/
 *.pyc
+.vercel
