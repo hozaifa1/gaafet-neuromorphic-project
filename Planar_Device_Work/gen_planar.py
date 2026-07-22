@@ -187,6 +187,54 @@ def mw_gen(tdr, par, node, WF, VE=-4.0, VP=4.0, VDS=0.05, PROBEY=PROBEY_DEF, vgs
     return s + b1 + b2 + "}\n"
 
 
+# =====================================================================
+# Transfer-curve / SS sweep: frozen-FE erase -> fine Vg sweep, program -> sweep
+# (replicates Device_Optimization/ivgen.py; use the frozen par tau_E=100us)
+# =====================================================================
+_IV_HEAD = """*== PLANAR transfer/SS sweep (gen_planar.iv_gen): 500us frozen writes, fine Vg sweep.
+File {{ Grid="{tdr}" Parameter="{par}"
+  Plot="planar_outputs/iv_{node}_des.tdr" Current="planar_outputs/iv_{node}_des.plt" Output="planar_outputs/iv_{node}_des.log" }}
+""" + _ELEC + _PHYS + """Solve {{
+  Transient ( InitialTime=0 FinalTime=1 ) {{ Coupled(Iterations=100){{Poisson}} }}
+  NewCurrentPrefix="drain_bias_"
+  Quasistationary ( InitialStep=1e-2 MaxStep=0.1 MinStep=1e-6 Goal{{Name="drain_contact" Voltage={VDS}}} ) {{ Coupled(Iterations=100){{Poisson Electron Hole}} }}
+  NewCurrentPrefix="ers_rise_"
+  Transient ( InitialTime=0 FinalTime=1.0e-08 InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-9 Increment=1.4
+    Goal{{Name="gate_contact" Voltage={VE}}} ) {{ Coupled(Iterations=100){{Poisson Electron Hole}} }}
+  NewCurrentPrefix="ers_hold_"
+  Transient ( InitialTime=1.0e-08 FinalTime=5.0e-04 InitialStep=1e-9 MaxStep=2e-5 MinStep=1e-13 Increment=1.4 ) {{ Coupled(Iterations=100){{Poisson Electron Hole}} }}
+  NewCurrentPrefix="ers_set_"
+  Transient ( InitialTime=5.0e-04 FinalTime=5.0001e-04 InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-9 Increment=1.4
+    Goal{{Name="gate_contact" Voltage={VLO}}} ) {{ Coupled(Iterations=100){{Poisson Electron Hole}} }}
+  NewCurrentPrefix="ers_"
+  Transient ( InitialTime=5.0001e-04 FinalTime=5.0501e-04 InitialStep=1e-9 MaxStep=5e-8 MinStep=1e-12 Increment=1.2
+    Goal{{Name="gate_contact" Voltage={VHI}}} ) {{
+      Coupled(Iterations=100){{Poisson Electron Hole}}
+      CurrentPlot( Time=(Range=(5.0001e-04 5.0501e-04) Intervals=100) ) }}
+  NewCurrentPrefix="pgm_rise_"
+  Transient ( InitialTime=5.0501e-04 FinalTime=5.0502e-04 InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-9 Increment=1.4
+    Goal{{Name="gate_contact" Voltage={VP}}} ) {{ Coupled(Iterations=100){{Poisson Electron Hole}} }}
+  NewCurrentPrefix="pgm_hold_"
+  Transient ( InitialTime=5.0502e-04 FinalTime=1.00502e-03 InitialStep=1e-9 MaxStep=2e-5 MinStep=1e-13 Increment=1.4 ) {{ Coupled(Iterations=100){{Poisson Electron Hole}} }}
+  NewCurrentPrefix="pgm_set_"
+  Transient ( InitialTime=1.00502e-03 FinalTime=1.00503e-03 InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-9 Increment=1.4
+    Goal{{Name="gate_contact" Voltage={VLO}}} ) {{ Coupled(Iterations=100){{Poisson Electron Hole}} }}
+  NewCurrentPrefix="pgm_"
+  Transient ( InitialTime=1.00503e-03 FinalTime=1.01003e-03 InitialStep=1e-9 MaxStep=5e-8 MinStep=1e-12 Increment=1.2
+    Goal{{Name="gate_contact" Voltage={VHI}}} ) {{
+      Coupled(Iterations=100){{Poisson Electron Hole}}
+      CurrentPlot( Time=(Range=(1.00503e-03 1.01003e-03) Intervals=100) ) }}
+}}
+"""
+
+
+def iv_gen(tdr, par, node, WF=4.35, VE=-6.0, VP=4.5, VLO=-1.5, VHI=2.0, VDS=0.05,
+           PROBEY=PROBEY_DEF, TEMP=300, DIGITS=5, TOL=1e-5):
+    return _IV_HEAD.format(tdr=tdr, par=par, node=node, WF=WF, VE=VE, VP=VP,
+                           VLO=VLO, VHI=VHI, VDS=VDS, PROBEY=PROBEY, TEMP=TEMP,
+                           DIGITS=DIGITS, TOL=TOL)
+
+
 if __name__ == "__main__":
     import re
     c = lif_gen("m.tdr", "p.par", "x", 4.35, 0.0, 4.0, N=15, t_p=300e-9,
@@ -197,4 +245,6 @@ if __name__ == "__main__":
     assert all(b >= a for a, b in zip(ts, ts[1:])), "non-monotone time"
     m = mw_gen("m.tdr", "p.par", "y", 4.35)
     assert "@" not in m and m.count("NewCurrentPrefix") == 41 and "substrate_contact" in m
-    print("gen_planar self-check OK:", len(c), "chars LIF /", len(m), "chars MW")
+    iv = iv_gen("m.tdr", "p.par", "z")
+    assert "@" not in iv and iv.count("NewCurrentPrefix") == 9 and "substrate_contact" in iv
+    print("gen_planar self-check OK:", len(c), "LIF /", len(m), "MW /", len(iv), "IV chars")

@@ -1,72 +1,35 @@
-# Planar vs GAA FeFET — LIF / SNN characteristic comparison
+# Planar vs GAA-FeFET — full LIF/SNN characteristic comparison
 
-Both devices use the **identical calibrated FE + interface physics** (Liao 2022 HZO
-Preisach: P_r=32 / P_s=40 µC/cm², F_c=1.4 MV/cm, ε_HZO=33, Dit 4e12, FixedCharge
-7e12, Band2Band/GIDL). **No re-calibration** — the planar simply inherits the locked
-`.par`. The only difference is **device architecture + geometry**, so every gap below
-is attributable to electrostatics, not material fitting.
+Same calibrated FE/interface physics (Liao HZO Preisach P_r=32/P_s=40, F_c=1.4 MV/cm,
+eps=33, Dit 4e12, FixedCharge 7e12, GIDL/B2B). **Geometry-only** difference — no re-calibration.
 
-## Structure
-
-| | GAA (double-gate nanosheet) | Planar (bulk, single top gate) |
-|---|---|---|
-| Gate | wrap-around (2D double-gate, Areafactor=0.071) | single **top** gate only |
-| Body | 5 nm nanosheet (both sides gated) | 50 nm **bulk** p-body (5e17), grounded substrate |
-| IL SiO2 / HZO | 1 nm / 7 nm | 2 nm / 10 nm |
-| L_gate / S-D | 100 nm / n+ 5e19 | 100 nm / n+ 5e19 |
-
-## Characteristics (both at their own re-derived operating point)
-
-| Metric | GAA | Planar | Winner |
+| Metric | GAA (double-gate 5 nm nanosheet) | Planar (bulk, single top gate) | Winner |
 |---|---|---|---|
-| Operating V_pgm | **+2.0 V** | +4.5 V | **GAA** (2.25× lower drive) |
-| ON/OFF memory window @Vg=0 | 3 137× | **5.9×10⁶×** | Planar (raw window) |
-| R_off (erased read) | 7.14×10⁷ Ω | 1.22×10⁹ Ω | — |
-| R_on (programmed read) | 2.34×10⁶ Ω | 2.06×10² Ω | — |
-| g_min = 1/R_off | 1.40×10⁻⁸ S | 8.22×10⁻¹⁰ S | — |
-| g_max = 1/R_on | 4.27×10⁻⁷ S | 4.86×10⁻³ S | — |
-| **Analog LTP levels** | **15** (smooth log) | 8 (abrupt) | **GAA** (2× finer analog) |
-| LTP character | gradual, log-linear over all 15 pulses | dead 7 pulses → near-digital snap | **GAA** |
-| Energy / program pulse (per µm)† | ~1.4×10⁻¹⁷ J* | 6.85×10⁻¹³ J | **GAA** |
-| Fire ratio ID(p9)/ID_base | 30.6 | 1.0×10⁵ | Planar (deep-off floor) |
-| Retention (100 µs hold) | non-volatile plateau | non-volatile plateau (settles to 68% of peak) | tie (both latch) |
-| Gate-controllability of ON state | ON switches off within read window | **latched** (stays ON to Vg=−1 V) | **GAA** |
+| Stack T_ox / T_fe | 1 nm / 7 nm | 2 nm / 10 nm | — |
+| Body / gating | 5 nm sheet, gated both sides | 50 nm bulk, gated one side | — |
+| **SS (erased)** | 79.6 mV/dec | 98.4 mV/dec | **GAA** (steeper) |
+| Vth window (volts) | 0.336 V | >1.94 V | Planar (larger) |
+| ON/OFF current window @Vg=0 | 3137x | 5.91e+06x | Planar (larger) |
+| R_off / R_on | 7.1e+07 / 2.3e+06 Ω | 1.2e+09 / 2.1e+02 Ω | — |
+| g_min / g_max | 1.40e-08 / 4.27e-07 S | 8.22e-10 / 4.86e-03 S | — |
+| **Analog LTP levels** | 15 | 8 | **GAA** (finer) |
+| dVth / pulse | −18.3 mV | -46.0 mV | — |
+| **Op V_pgm** | +2.0 V | +4.5 V | **GAA** (lower) |
+| E / program pulse | ~1.4e-17 J* | 6.85e-13 J* | GAA (lower) |
+| Fire ratio ID(p9)/ID_base | 30.6 | 1.02e+05 | Planar (raw) |
+| Retention (100 µs) | non-volatile | 68% | — |
+| ΔP retained | ~2.26 µC/cm² | 3.89 µC/cm² | — |
 
-## Interpretation
+\* Energy numbers are **not directly comparable**: GAA used charge×V with Areafactor=0.071;
+planar uses ∫V·I dt with Areafactor=1.0 (~14× normalization + method difference). Directionally
+planar costs more per pulse (3× voltage, thicker/larger FE). Re-extract both identically before quoting.
 
-The comparison is **not** one-sided — it splits cleanly along the memory-vs-analog axis:
+## Read of the result
+The thick-T_fe bulk planar wins **raw window** (huge Vth shift, latches fully ON across
+the read range) but at the cost of everything that matters for an **analog LIF neuron**:
+3× the program voltage, worse subthreshold control (single-gate bulk), coarser/fewer
+gradual conductance levels, and higher switching energy. The GAA nanosheet is the better
+neuromorphic device; the planar is a stronger *binary* memory but a worse *analog synapse*.
 
-- **Planar wins raw non-volatile window** (5.9×10⁶× vs 3 137×). Thicker HZO (10 nm →
-  larger switched charge → larger ΔV_t) on a **deep-off bulk body** gives an enormous
-  erase/program ratio. But the programmed branch is **latched ON across the entire
-  read window** (still 154 µA/µm at V_G=−1 V) — a great *digital memory*, a poor
-  *analog transistor*.
-
-- **GAA wins every neuromorphic-relevant axis.** Its superior wrap-around electrostatics
-  give (1) **2.25× lower operating voltage** (2 V vs 4.5 V), (2) a **smooth 15-level
-  log-linear LTP** vs the planar's dead-then-snap quasi-digital transfer (see
-  `plots/compare_ltp.png`), (3) far lower per-pulse energy, and (4) a fully
-  **gate-controllable** ON state. For a leaky-integrate-and-fire synapse — where the
-  value is *graded* analog potentiation at low voltage/energy — the GAA is decisively
-  better.
-
-**Bottom line for the ECG-LSNN:** the GAA's 15 finely-spaced conductance levels at 2 V
-are what the STE-quantized synapse wants; the planar delivers only ~8 abrupt levels and
-needs 4.5 V. The planar's giant window does not translate into analog resolution.
-
-## Caveats
-
-- †**Energy method differs.** Planar E is a rigorous ∫V·I dt over each write pulse;
-  the GAA number (\*) is the earlier `Q_switch × V` order-estimate from
-  `SNN_PARAMETERS.md`. Also GAA reports with Areafactor=0.071 vs planar 1.0. Absolute
-  energies are therefore method- and area-scaled; the **direction** (planar >> GAA per
-  pulse, driven by 4.5 V vs 2 V) is robust. Ratios (window, fire, levels) are
-  Areafactor-invariant and directly comparable.
-- Planar operating point re-derived independently (V_read=0, V_pgm sweep 3.5/4.5/5.5 →
-  4.5 V picked for clean graded integration + fire-at-p9, matching the GAA criterion).
-
-## Files
-- Plots: `plots/compare_memwin.png`, `plots/compare_ltp.png`, `plots/compare_retention.png`
-- ECG-LSNN drop-in params: `planar_params.py` (g_min / g_max / n_levels / energy)
-- Full planar datasheet: `PLANAR_DEVICE.md`
-- Raw TCAD: `outputs/planar/` (memwin), `outputs/lifsw/` (LTP sweep), `outputs/lifret/` (retention)
+Plots: `plots/compare_memwin.png`, `plots/compare_ltp.png`, `plots/compare_retention.png`.
+ECG-LSNN params: `planar_params.py`.

@@ -125,18 +125,18 @@ def _run_sdevice(node, cmd_text, dl_prefixes, outdir):
 
 
 # ---------------- memory-window ----------------
-def run_mw(node, WF=4.35, VE=-4.0, VP=4.0, tau_p=1e-5):
+def run_mw(node, WF=4.35, VE=-4.0, VP=4.0, tau_p=1e-5, vgs=None):
     upload_par(tau_p)
     outdir = HERE / "outputs" / node
-    cmd = G.mw_gen(f"planar_msh.tdr", "app_planar.par", node, WF, VE=VE, VP=VP)
+    cmd = G.mw_gen(f"planar_msh.tdr", "app_planar.par", node, WF, VE=VE, VP=VP, vgs=vgs)
     _run_sdevice(f"mw_{node}", cmd, [f"ers_r*_mw_{node}_des.plt", f"pgm_r*_mw_{node}_des.plt",
                                      f"mw_{node}_des.plt"], outdir)
-    analyze_mw(outdir, node)
+    analyze_mw(outdir, node, vgs=vgs)
 
 
-def analyze_mw(outdir, node):
+def analyze_mw(outdir, node, vgs=None):
     outdir = Path(outdir)
-    vgs = G._VGS
+    vgs = G._VGS if vgs is None else vgs
     def branch(state):
         ids = []
         for i in range(len(vgs)):
@@ -150,11 +150,69 @@ def analyze_mw(outdir, node):
         ratio = pgm / ers
     res["window_ratio"] = np.nanmax(ratio) if np.isfinite(ratio).any() else np.nan
     res["window_vg"] = vgs[int(np.nanargmax(ratio))] if np.isfinite(ratio).any() else None
+    res["ss_ers_mVdec"] = subthreshold_slope(np.array(vgs, float), ers)  # erased/OFF turn-on
     (outdir / f"mw_{node}_analysis.json").write_text(json.dumps(res, indent=2))
     print(f"[mw] {node}  Vg: {vgs}")
     print(f"[mw] ERS uA/um: {[f'{x:.2e}' for x in ers]}")
     print(f"[mw] PGM uA/um: {[f'{x:.2e}' for x in pgm]}")
     print(f"[mw] max ON/OFF ratio = {res['window_ratio']:.1f} at Vg={res['window_vg']}")
+    print(f"[mw] SS(erased) = {res['ss_ers_mVdec']:.1f} mV/dec")
+    return res
+
+
+# ---------------- transfer curve / subthreshold slope ----------------
+def upload_frozen_par():
+    up(HERE / "par" / "app_planar_frozen.par", f"{REMOTE}/app_planar_frozen.par")
+
+
+def run_iv(node="planar", WF=4.35, VE=-6.0, VP=4.5, VLO=-1.5, VHI=2.0):
+    upload_frozen_par()
+    outdir = HERE / "outputs" / node
+    cmd = G.iv_gen("planar_msh.tdr", "app_planar_frozen.par", node, WF=WF, VE=VE,
+                   VP=VP, VLO=VLO, VHI=VHI)
+    _run_sdevice(f"iv_{node}", cmd, [f"ers_iv_{node}_des.plt", f"pgm_iv_{node}_des.plt"], outdir)
+    return analyze_iv(outdir, node)
+
+
+def _sweep_vg_id(fp):
+    """(Vg terminal, |Id| uA/um) arrays from a transfer-sweep plt."""
+    names, a = parse_plt(fp)
+    if len(a) == 0:
+        return None, None
+    vg = a[:, col(names, "gate_contact OuterVoltage")]
+    idd = np.abs(a[:, col(names, "drain_contact TotalCurrent")]) * 1e6 / W_um
+    return vg, idd
+
+
+def subthreshold_slope(vg, idd):
+    """Min (steepest) SS in mV/dec over the rising subthreshold band [10*floor, 0.1*max]."""
+    if vg is None:
+        return np.nan
+    floor = np.nanmin(idd[idd > 0]) if np.any(idd > 0) else np.nan
+    top = np.nanmax(idd)
+    lo, hi = 10 * floor, 0.1 * top
+    ss = []
+    for i in range(1, len(vg)):
+        d_id = idd[i], idd[i - 1]
+        if d_id[0] > d_id[1] > 0 and lo <= d_id[1] <= hi and lo <= d_id[0] <= hi:
+            dv = (vg[i] - vg[i - 1]) * 1e3          # mV
+            ddec = np.log10(d_id[0] / d_id[1])
+            if ddec > 0:
+                ss.append(dv / ddec)
+    return float(np.nanmin(ss)) if ss else np.nan
+
+
+def analyze_iv(outdir, node):
+    outdir = Path(outdir)
+    ve, ie = _sweep_vg_id(outdir / f"ers_iv_{node}_des.plt")
+    vp, ip = _sweep_vg_id(outdir / f"pgm_iv_{node}_des.plt")
+    ss_ers = subthreshold_slope(ve, ie)
+    ss_pgm = subthreshold_slope(vp, ip)
+    res = dict(ss_ers_mVdec=ss_ers, ss_pgm_mVdec=ss_pgm,
+               vg_ers=ve.tolist() if ve is not None else [], id_ers=ie.tolist() if ie is not None else [],
+               vg_pgm=vp.tolist() if vp is not None else [], id_pgm=ip.tolist() if ip is not None else [])
+    (outdir / f"iv_{node}_analysis.json").write_text(json.dumps(res, indent=2))
+    print(f"[iv] {node}  SS(erased) = {ss_ers:.1f} mV/dec   SS(programmed) = {ss_pgm:.1f} mV/dec")
     return res
 
 
@@ -211,6 +269,10 @@ def main():
     m = sub.add_parser("mw"); m.add_argument("node"); m.add_argument("--WF", type=float, default=4.35)
     m.add_argument("--VE", type=float, default=-4.0); m.add_argument("--VP", type=float, default=4.0)
     m.add_argument("--TAUP", type=float, default=1e-5)
+    iv = sub.add_parser("iv"); iv.add_argument("--node", default="planar")
+    iv.add_argument("--WF", type=float, default=4.35); iv.add_argument("--VE", type=float, default=-6.0)
+    iv.add_argument("--VP", type=float, default=4.5); iv.add_argument("--VLO", type=float, default=-1.5)
+    iv.add_argument("--VHI", type=float, default=2.0)
     l = sub.add_parser("lif"); l.add_argument("tag"); l.add_argument("--VPGM", default="2.5,3.5,4.5,5.5")
     l.add_argument("--WF", type=float, default=4.35); l.add_argument("--VREAD", type=float, default=0.0)
     l.add_argument("--N", type=int, default=9); l.add_argument("--TP", type=float, default=100e-9)
@@ -223,6 +285,8 @@ def main():
         sys.exit(0 if build_mesh() else 1)
     if a.cmd == "mw":
         run_mw(a.node, WF=a.WF, VE=a.VE, VP=a.VP, tau_p=a.TAUP)
+    if a.cmd == "iv":
+        run_iv(a.node, WF=a.WF, VE=a.VE, VP=a.VP, VLO=a.VLO, VHI=a.VHI)
     if a.cmd == "lif":
         vpgm = [float(x) for x in a.VPGM.split(",")]
         run_lif(a.tag, vpgm, WF=a.WF, VREAD=a.VREAD, N=a.N, t_p=a.TP, t_read=a.TREAD,
