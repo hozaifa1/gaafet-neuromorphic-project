@@ -1,0 +1,99 @@
+- Sentaurus runs remotely: `du@103.28.121.70`, password is 'bDren@Ugc123'. Drive from Windows via PuTTY plink/pscp  (`C:\Program Files\PuTTY\`). Remote tree `~/Sentaurus-files/Sami_Hozaifa/GAAFet/`,  outputs in `autocal_outputs/`. Wrap remote cmds in `csh -c "source ~/.cshrc && …"`.- 
+- **Only ONE sdevice license.** Parallel runs QUEUE; a run that times out on your  side keeps running remotely and HOLDS the license — free it with  `pkill -9 sdevice`. Keep workers low (1–2). ~3–5 min/run.
+- **Transient `.cmd` step values are NORMALIZED FRACTIONS of the leg duration**   (use ~1e-3…5e-2, NOT absolute seconds — absolute crawls at fs steps and times out). `sde -e -l sde_*.cmd` builds meshes.
+
+---
+name: sdevice runbook (non-SWB sweeps via sed)
+description: How to run Sentaurus sdevice on this Linux server without SWB, including @placeholder@ sweeps. Anchored to the GAAFet/ working dir and the Phase 1D leak-equilibrium sweep (2026-05-17).
+type: reference
+---
+
+# Environment
+
+- Server is **Linux**, default user shell does NOT auto-source the Sentaurus env. Every sdevice invocation must run inside a csh that has sourced `~/.cshrc`.
+- Sentaurus 2023.12 is at `/home/du/Sentaurus/sentaurus/V-2023.12/`. `which sdevice` only resolves **after** `source $HOME/.cshrc` in csh.
+- The user's working tree for this project is `/home/du/Sentaurus-files/Sami_Hozaifa/GAAFet/`. Note the directory is `Sami_Hozaifa` with an underscore, not a hyphen.
+- Memories + plan + SDevice.pdf live in `GAAFet/memories/`.
+
+# Bootstrapping a session from bash
+
+```bash
+csh -c 'source $HOME/.cshrc && cd $HOME/Sentaurus-files/Sami_Hozaifa/GAAFet && pwd && which sdevice'
+```
+
+Do **not** try `bash -c 'source ~/.cshrc'` — `.cshrc` uses csh syntax (`setenv`, `set path`) and bash will explode with `Illegal variable name.` The fix is to wrap every Sentaurus command in `csh -c '...'` or run a csh script that begins with `source $HOME/.cshrc`.
+
+# Running sdevice on a single fully-resolved cmd file
+
+```csh
+source $HOME/.cshrc
+cd /home/du/Sentaurus-files/Sami_Hozaifa/GAAFet
+sdevice <fully_resolved>.cmd
+```
+
+`sdevice` resolves all paths in the `File { Grid Parameter Plot Current Output }` block relative to its cwd. Keep cwd at `GAAFet/` so `n1_msh.tdr` and `sdevice_gaafet_lif.par` resolve without prefixes; redirect outputs into a subdir by giving the substituted output paths as e.g. `leakeq_outputs/leak_v1_des.plt`.
+
+The cmd file always emits a `<prefix>_<plt_basename>` for every `NewCurrentPrefix` step; these land beside the Current= file.
+
+# Running an SWB-style @placeholder@ sweep without SWB
+
+**Pattern used for Phase 1D leak-equilibrium (V_settle L7 sweep) on 2026-05-17.** Keeps the master template's `@...@` tokens intact so it can be re-imported into SWB later.
+
+## Placeholder convention in master cmd files in this project
+
+| Token | Resolves to |
+|---|---|
+| `@tdr@` | upstream mesh, here `n1_msh.tdr` |
+| `@tdrdat@` | output tdr — pick a per-node path |
+| `@plot@` | output plt — pick a per-node path |
+| `@log@` | output log — pick a per-node path |
+| `@<param>@` (e.g. `@V_settle@`, `@V_pgm@`, `@V_reset@`) | the swept parameter value |
+
+## Driver pattern
+
+For sweep of one parameter, write a csh driver that:
+
+1. `source $HOME/.cshrc`
+2. `cd` to `GAAFet/`
+3. for each value V_i in the list:
+   - `sed -e 's|@tdr@|n1_msh.tdr|g' -e 's|@tdrdat@|outdir/tag_i_des.tdr|g' -e 's|@plot@|outdir/tag_i_des.plt|g' -e 's|@log@|outdir/tag_i_des.log|g' -e 's|@<param>@|V_i|g' master.cmd > outdir/tag_i_des.cmd`
+   - guardrail: `grep -c '@[A-Za-z_]*@' outdir/tag_i_des.cmd` must be 0; abort if not
+   - `sdevice outdir/tag_i_des.cmd >& outdir/tag_i_runlog.txt`
+   - abort sweep on non-zero `$status`
+
+Reference driver: `leakeq_outputs/run_leakeq.csh`. Reference index: `leakeq_outputs/sweep_index.txt`.
+
+## Launching from a bash-side tool (this assistant's working mode)
+
+```bash
+cd /home/du/Sentaurus-files/Sami_Hozaifa/GAAFet && \
+  csh leakeq_outputs/run_leakeq.csh > leakeq_outputs/sweep.log 2>&1
+```
+
+Run in background (`run_in_background: true`) for multi-node sweeps; sdevice nodes take minutes each. Tail `sweep.log` (driver-level) and the per-node `*_runlog.txt` (sdevice-level) to monitor.
+
+## Output naming convention agreed with user
+
+- Subdir per experiment: `GAAFet/<expt>_outputs/`. Existing examples in the Phase 1D plan: `simH_optimize/H1sweep_outputs/`, `h2_outputs/`, `H3sweep_outputs/`. Leak-eq lives in `leakeq_outputs/`.
+- Per-node tag: `leak_vN` for `V_settle` sweeps, `n21..n27` style if mimicking SWB node numbers, or signed-voltage tags (`leak_vm0p25`) if max readability needed. The leak-eq sweep used `leak_vN`.
+
+# When to use this vs SWB
+
+- **Use this non-SWB pattern** for: (a) one-off sweeps where the project tree is already in non-SWB shape; (b) when the existing `gtree.dat` is configured for a different sweep parameter (e.g. the current tree is locked on `V_reset` ∈ {−2.5, −2.0, −1.5, −1.0}, mapped to n3/n9/n10/n11); (c) when running on a server without a live SWB GUI; (d) when iterating fast on the master template.
+- **Switch back to SWB** for: paper-quality run records, multi-parameter sweeps, or when re-using upstream sde/mesh tool outputs from the same tree.
+
+# Common gotchas seen in this project
+
+- `source ~/.cshrc` from bash → `Illegal variable name.` Always wrap in `csh -c '...'`.
+- A bare `sdevice xxx.cmd` from bash without prior csh sourcing → command not found. The Sentaurus path is in csh's env only.
+- If the cmd contains `Vsource_pset vg(g 0) { dc=... pwl=(...) }` AND a top-level `Electrode {}` block, the `pwl` signal silently does not reach the contact during `Transient` → all nodes return byte-identical results (the H1 v1 / H2 v1 bug). Use top-level `Electrode` + `Transient + Goal { Name="gate_contact" Voltage=X }` everywhere instead.
+- Quasistationary V_G ramps in fictitious time integrate FE Preisach dynamics → overwrite the FE state being measured (H2 v3 bug). For FE reads, use `Transient + Goal` ramps over 100 ns (H0a v5 recipe).
+- `ACCoupled` CV sweeps require `System {}` circuit nodes; they are incompatible with the top-level `Electrode` + `Goal` pulse driver (H2 v2 parse failure). Pick one paradigm per cmd.
+- **Time-stamp precision in multi-cycle cmds:** Sentaurus rejects any consecutive `Transient` block where `FinalTime <= InitialTime` ("Non-increasing time specification detected"). Scientific-notation mantissa with **4 decimal places (`%.4e`) only resolves 1 ns ramps up to t ≈ 1.6e-5 s**; past that, `1.6368e-04 → 1.6368e-04` (both endpoints of a 1 ns rise) round to the same literal and the run aborts. Always generate multi-cycle cmds with **`%.6e`** (resolution ~4e-11 at t=4e-4 s) — both `_gen_h3_cyclic_cmd.py` and `_gen_h4_endurance_cmd.py` use this. The H4 endurance cmd was originally hand-written with `%.4e` and aborted at cycle 3 on 2026-05-19; fixed by regenerating from `Simulations/_gen_h4_endurance_cmd.py`. Never hand-edit time stamps in cmds that have more than ~5 cycles.
+
+# How to verify a sweep is healthy after launch
+
+1. Inspect first preprocessed cmd: `grep -c '@[A-Za-z_]*@' <first node>_des.cmd` must be 0.
+2. Confirm `File {}` block paths: `Grid` is bare `n1_msh.tdr`, outputs are under the chosen subdir.
+3. Tail per-node `*_runlog.txt`: should show "Computing BE-step ..." within seconds; "Bank/Rose nonlinear solver" iterations means it's healthy.
+4. Confirm STEP-N voltages in the cmd match the swept value (e.g. for V_settle, line ~409 `Goal { ... Voltage= <V_settle> }`).
