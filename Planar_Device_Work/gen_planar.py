@@ -1,15 +1,19 @@
 """Planar-FeFET cmd generators (LIF pulse-train + memory-window I-V).
 
-Direct adaptations of Device_Optimization/lifgen.py + memwingen.py, changed ONLY for
-the planar device:
-  - 4th electrode: substrate_contact (grounded bulk body)
-  - Areafactor = 1.0  (per-um-width; GAA used 0.071 nanosheet-perimeter fudge)
-  - probe_y default = 0.007 um  (HZO midpoint above the top surface: T_ox + T_fe/2)
+TRUE single-gate ABLATION of the optimized GAA: identical T_si=5nm/T_ox=1nm/T_fe=7nm/
+T_metal=5nm/L_gate=100nm/L_ov=15nm/N_sub=1e16/N_sd=5e19/WF=4.35 (Device_Optimization/
+sde/sde_opt.cmd), only the bottom gate stack removed. 3 electrodes (gate/source/drain),
+floating body -- no substrate contact, exactly like GAA has none.
+  - Areafactor = 1.0  (per-um-width; GAA's 0.071 was a double-gate-emulating-GAA-
+    wraparound-perimeter fudge that does not apply once there is no wraparound)
+  - probe_y = T_si/2 + T_ox + T_fe/2 = 0.0025+0.001+0.0035 = 0.007 um (HZO midpoint
+    above the Si top surface, same convention as opt.py's probe_y())
 Same calibrated Physics/Math (FixedCharge 7e12 + Dit acceptor 4e12, Bitlis, BE).
 """
 
 AF = "1.0"
-PROBEY_DEF = 0.007
+T_SI, T_OX, T_FE = 0.005, 0.001, 0.007
+PROBEY_DEF = T_SI / 2.0 + T_OX + T_FE / 2.0   # = 0.007
 
 # ---- shared physics/math body (Areafactor=1.0, 4 electrodes) ----
 _PHYS = """Physics {{
@@ -46,7 +50,6 @@ CurrentPlot {{
 _ELEC = """Electrode {{
   {{ Name="source_contact"     Voltage= 0.0 }}
   {{ Name="drain_contact"      Voltage= 0.0 }}
-  {{ Name="substrate_contact"  Voltage= 0.0 }}
   {{ Name="gate_contact"       Voltage= 0.0  Workfunction={WF} }}
 }}
 """
@@ -239,12 +242,12 @@ if __name__ == "__main__":
     import re
     c = lif_gen("m.tdr", "p.par", "x", 4.35, 0.0, 4.0, N=15, t_p=300e-9,
                 V_erase=-4.0, t_erase=5e-6, t_hold=100e-6)
-    assert "@" not in c and "substrate_contact" in c and "Areafactor= 1.0" in c
+    assert "@" not in c and "substrate_contact" not in c and "Areafactor= 1.0" in c
     train = c.split("baseline_pre_")[1]
     ts = [float(x) for x in re.findall(r"(?:Initial|Final)Time=([0-9.e+-]+)", train)]
     assert all(b >= a for a, b in zip(ts, ts[1:])), "non-monotone time"
     m = mw_gen("m.tdr", "p.par", "y", 4.35)
-    assert "@" not in m and m.count("NewCurrentPrefix") == 41 and "substrate_contact" in m
+    assert "@" not in m and m.count("NewCurrentPrefix") == 41 and "substrate_contact" not in m
     iv = iv_gen("m.tdr", "p.par", "z")
-    assert "@" not in iv and iv.count("NewCurrentPrefix") == 9 and "substrate_contact" in iv
+    assert "@" not in iv and iv.count("NewCurrentPrefix") == 9 and "substrate_contact" not in iv
     print("gen_planar self-check OK:", len(c), "LIF /", len(m), "MW /", len(iv), "IV chars")

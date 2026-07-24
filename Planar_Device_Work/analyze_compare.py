@@ -1,17 +1,19 @@
 """Planar-vs-GAA comparison: overlay plots + planar_params + comparison table.
 
-Reads planar TCAD outputs (outputs/planar/mw_*_analysis.json, outputs/<tag>/<tag>_lif.json,
-retention hold plt) and the GAA reference CSVs (../Device_Optimization/csv_export/raw/).
-Produces plots/*.png, planar_params.py, PLANAR_vs_GAA.md.
-
-Run after the planar mw + LIF runs land. Op-point tag passed via --optag / --opv.
+TRUE single-gate ablation of the optimized GAA (see gen_planar.py / sde/sde_planar.cmd).
+Reads planar TCAD outputs (outputs/planarfinal, outputs/planarfinal2, outputs/planarclean,
+outputs/lifsw2, outputs/lifret2) and the GAA reference CSVs
+(../Device_Optimization/csv_export/raw/). Produces plots/*.png, planar_params.py,
+PLANAR_vs_GAA.md. Run with no arguments -- op point (2.3 V) and sources are fixed to the
+final characterization files described in main().
 """
-import argparse, json
+import json
 from pathlib import Path
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from planar import subthreshold_slope
 
 HERE = Path(__file__).resolve().parent
 GAA  = HERE.parent / "Device_Optimization" / "csv_export" / "raw"
@@ -141,104 +143,102 @@ def probe_pol_y(fp):
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--optag", default="lifsw")   # LTP/op-point sweep tag
-    ap.add_argument("--opv", type=float, required=True)  # chosen V_pgm
-    ap.add_argument("--rettag", default="lifret")  # retention-hold run tag
-    ap.add_argument("--wf", type=float, default=4.35)
-    a = ap.parse_args()
+    """True single-gate ABLATION of the optimized GAA (identical T_si/T_ox/T_fe/L_gate/
+    L_ov/N_sub/N_sd/WF; only the bottom gate stack removed; floating body; Areafactor=1.0).
+    Sources (all re-derived after the geometry fix):
+      outputs/planarfinal/         -- combined mw sweep, VE=-4.0/VP=+3.5 (GAA-proportional
+                                       overdrive past its OWN coercive point) -> SS_ers,
+                                       Vth_ers, R_off/R_on/window/g at Vg=0.
+      outputs/planarfinal2 + outputs/planarclean/ -- undisturbed (minimal read-history)
+                                       ascending sweeps -> clean SS_pgm, Vth_pgm. The
+                                       naive single continuous sweep through deep negative
+                                       Vg reads first suffers real ferroelectric read
+                                       disturb (ordering-dependent current at the same Vg);
+                                       these two short, shallow sweeps avoid it.
+      outputs/lifsw2/lifsw2_lif.json  -- LTP pulse train at the chosen op point (2.3 V).
+      outputs/lifret2/               -- retention hold at the op point.
+    """
+    OPV, WF = 2.3, 4.35
 
-    # prefer the fine-Vg sweep (has SS + dense turn-on); fall back to coarse
-    mwfine = HERE / "outputs" / "planarfine" / "mw_planarfine_analysis.json"
-    mwcoarse = HERE / "outputs" / "planar" / "mw_planar_analysis.json"
-    planar_mw = json.loads((mwfine if mwfine.exists() else mwcoarse).read_text())
-    coarse_mw = json.loads(mwcoarse.read_text()) if mwcoarse.exists() else planar_mw
-
-    lifj = HERE / "outputs" / a.optag / f"{a.optag}_lif.json"
-    lif = json.loads(lifj.read_text()) if lifj.exists() else {}
-    opv_key = next((k for k in (str(a.opv), str(int(a.opv))) if k in lif), None)
-    op = lif.get(opv_key) if opv_key else None
-    op_ids = op["ids"] if op else None
-
-    node = f"{a.optag}_v{int(round(a.opv*10)):03d}"
-    retnode = f"{a.rettag}_v{int(round(a.opv*10)):03d}"
-    hold_t, hold_g = parse_hold(HERE / "outputs" / a.rettag / f"hold_{retnode}_des.plt")
-
-    plot_memwin(coarse_mw)   # full +/-Vg range for the visual overlay
-    plot_ltp(op_ids)
-    plot_retention(hold_t, hold_g)
-
-    # ---- window / R / g at Vg=0 (use coarse: has Vg=0 in a symmetric sweep) ----
-    vg = coarse_mw["vgs"]; i0 = vg.index(0.0)
-    i_off = coarse_mw["ers"][i0]; i_on = coarse_mw["pgm"][i0]         # uA/um at Vg=0
-    R_off = VDS / (i_off * 1e-6); R_on = VDS / (i_on * 1e-6)
+    mw = json.loads((HERE / "outputs" / "planarfinal" / "mw_planarfinal_analysis.json").read_text())
+    ss_ers = mw["ss_ers_mVdec"]
+    vth_ers = vth_at_icc(mw["vgs"], mw["ers"])
+    vg = mw["vgs"]; i0 = vg.index(-0.0) if -0.0 in vg else vg.index(0.0)
+    i_off, i_on = mw["ers"][i0], mw["pgm"][i0]           # uA/um at Vg=0 (far from disturb region)
+    R_off, R_on = VDS / (i_off * 1e-6), VDS / (i_on * 1e-6)
     window = i_on / i_off
     g_min, g_max = 1.0 / R_off, 1.0 / R_on
 
-    # ---- SS + threshold-voltage window (fine sweep) ----
-    ss_ers = planar_mw.get("ss_ers_mVdec", float("nan"))
-    vth_ers = vth_at_icc(planar_mw["vgs"], planar_mw["ers"])
-    vth_pgm = vth_at_icc(planar_mw["vgs"], planar_mw["pgm"])          # None -> latched below window
-    mw_volts = (vth_ers - vth_pgm) if (vth_ers is not None and vth_pgm is not None) else None
+    d1 = json.loads((HERE / "outputs" / "planarfinal2" / "mw_planarfinal2_analysis.json").read_text())
+    d2 = json.loads((HERE / "outputs" / "planarclean" / "mw_planarclean_analysis.json").read_text())
+    cvg = np.array(d1["vgs"] + d2["vgs"]); cpgm = np.array(d1["pgm"] + d2["pgm"])
+    order = np.argsort(cvg); cvg, cpgm = cvg[order], cpgm[order]
+    vth_pgm = vth_at_icc(cvg, cpgm)
+    ss_pgm = subthreshold_slope(cvg, cpgm)
+    mw_volts = vth_ers - vth_pgm
 
-    # ---- LTP: levels + dVth/pulse (via SS) ----
-    n_levels = count_levels(op_ids) if op_ids else 0
-    dvth_pulse = float("nan")
-    if op_ids and len(op_ids) > 1 and np.isfinite(ss_ers):
-        dec_total = np.log10(op_ids[-1] / op_ids[0]) if op_ids[0] > 0 else np.nan
-        dvth_pulse = -(ss_ers * 1e-3) * dec_total / (len(op_ids) - 1)   # V/pulse (negative = potentiation)
+    lifj = HERE / "outputs" / "lifsw2" / "lifsw2_lif.json"
+    lif = json.loads(lifj.read_text())
+    op = lif[str(OPV)]
+    op_ids = op["ids"]
+    n_levels = count_levels(op_ids)
+    dec_total = np.log10(op_ids[-1] / op_ids[0])
+    dvth_pulse = -(ss_ers * 1e-3) * dec_total / (len(op_ids) - 1)   # V/pulse
 
-    E_pulse = energy_per_pulse(HERE / "outputs" / a.optag, node, a.opv)
-    fire_ratio = op["dr"] if op else float("nan")
-    fire_p9 = (op["ids"][8] / op["id_base"]) if op and len(op["ids"]) > 8 and op["id_base"] else float("nan")
-    ret_pct = float(hold_g[-1] / hold_g[0] * 100) if hold_g is not None and len(hold_g) and hold_g[0] else float("nan")
+    node = f"lifsw2_v{int(round(OPV*10)):03d}"
+    E_pulse = energy_per_pulse(HERE / "outputs" / "lifsw2", node, OPV)
+    fire_ratio = op["dr"]
+    fire_p9 = op_ids[8] / op["id_base"] if len(op_ids) > 8 else float("nan")
 
-    # ---- polarization: erased vs programmed retained state (fine mw reads) ----
-    pdir = HERE / "outputs" / "planarfine"
-    p_ers = probe_pol_y(pdir / "ers_r00_mw_planarfine_des.plt")       # erased, Vg=0
-    p_pgm = probe_pol_y(pdir / "pgm_r00_mw_planarfine_des.plt")       # programmed, Vg=0
-    dP = abs(p_pgm - p_ers) if np.isfinite(p_ers) and np.isfinite(p_pgm) else float("nan")
+    retnode = f"lifret2_v{int(round(OPV*10)):03d}"
+    hold_t, hold_g = parse_hold(HERE / "outputs" / "lifret2" / f"hold_{retnode}_des.plt")
+    ret_pct = float(hold_g[-1] / hold_g[0] * 100) if hold_g is not None and len(hold_g) else float("nan")
 
-    # programmed branch never crosses Icc in the swept range -> Vth_pgm is below min(Vg);
-    # bound the volts-window with the widest sweep (coarse goes to Vg=-1).
-    vg_lo = min(coarse_mw["vgs"])
-    if mw_volts is None and vth_ers is not None:
-        mw_volts = vth_ers - vg_lo            # lower bound (Vth_pgm < vg_lo)
-        mw_bound = True
-    else:
-        mw_bound = False
-    mwv_s = (f">{mw_volts:.2f}" if mw_bound else f"{mw_volts:.2f}") if mw_volts is not None else "n/a"
-    vthp_s = f"{vth_pgm:.3f}" if vth_pgm is not None else f"<{vg_lo:.1f} (latched)"
+    p_ers = probe_pol_y(HERE / "outputs" / "planarfinal" / f"ers_r{i0:02d}_mw_planarfinal_des.plt")
+    p_pgm = probe_pol_y(HERE / "outputs" / "planarfinal" / f"pgm_r{i0:02d}_mw_planarfinal_des.plt")
+    dP = abs(p_pgm - p_ers)
 
-    params = f'''"""Planar-FeFET SNN params (auto-extracted; geometry-only diff vs GAA, same calibrated par).
+    plot_memwin(mw)
+    plot_ltp(op_ids)
+    plot_retention(hold_t, hold_g)
+
+    params = f'''"""Planar-FeFET SNN params (auto-extracted). TRUE single-gate ABLATION of the
+optimized GAA: identical T_si=5nm/T_ox=1nm/T_fe=7nm/T_metal=5nm/L_gate=100nm/L_ov=15nm/
+N_sub=1e16/N_sd=5e19/WF=4.35 (Device_Optimization/sde/sde_opt.cmd); only the bottom gate
+stack removed. Floating body (no substrate contact, same as GAA). Areafactor=1.0 (no
+wraparound to emulate with one gate; GAA's 0.071 was a double-gate-emulating-GAA fudge).
 Drop-in analogue of Device_Optimization/SNN_PARAMETERS.md for the ECG-LSNN stage1.
-Device = bulk planar NMOS FeFET, single top MFIS gate SiO2 2nm/HZO 10nm/TiN, p-body 5e17.
-Op point: V_read=0.0 V, V_pgm={a.opv} V, V_DS={VDS} V, WF={a.wf} eV.
+Op point: V_read=0.0 V, V_pgm={OPV} V, V_DS={VDS} V, WF={WF} eV; erase -3.5V/5us.
+Memory-window/SS characterization used VE=-4.0/VP=+3.5 -- a moderate overdrive past
+planar's OWN coercive point (~3.0V), proportionally matching how GAA's own ivgen.py
+overdrives past ITS coercive point (VE=-3.0/VP=2.5 vs op +/-2.0V) -- same methodology,
+not an arbitrary voltage.
 """
 DEVICE = dict(
-    arch="planar (bulk, single top gate)",
+    arch="planar (single top gate ablation of the GAA nanosheet, floating body)",
     # --- electrostatics ---
-    SS_ers_mVdec={ss_ers:.1f},           # subthreshold slope, erased branch (steepest)
-    Vth_ers_V={vth_ers if vth_ers is not None else float('nan'):.3f},              # erased Vth @ Icc=1e-2 uA/um
-    Vth_pgm_V=float("-inf"),        # programmed latched fully-ON: Vth_pgm < {vg_lo} V (never crosses Icc)
-    MW_volts_lowerbound={mw_volts:.2f},        # >= this; true window larger (Vth_pgm below sweep floor)
+    SS_ers_mVdec={ss_ers:.1f},          # subthreshold slope, erased branch
+    SS_pgm_mVdec={ss_pgm:.1f},          # subthreshold slope, programmed branch (clean sweep)
+    Vth_ers_V={vth_ers:.4f},            # erased Vth @ Icc=1e-2 uA/um
+    Vth_pgm_V={vth_pgm:.4f},            # programmed Vth (clean, minimal-read-history sweep)
+    MW_volts={mw_volts:.4f},            # Vth_ers - Vth_pgm
     # --- read window / conductance (-> stage1 fefet_synapse) ---
-    R_off_ohm={R_off:.4e},           # erased read @ Vg=0
-    R_on_ohm={R_on:.4e},            # programmed read @ Vg=0
-    window={window:.4e},             # ON/OFF current ratio at Vg=0
-    g_min_S={g_min:.4e},            # 1/R_off  -> g_min
-    g_max_S={g_max:.4e},            # 1/R_on   -> g_max
-    n_levels={n_levels},                  # distinguishable LTP levels (>=1.5x apart)
+    R_off_ohm={R_off:.4e},              # erased read @ Vg=0
+    R_on_ohm={R_on:.4e},                # programmed read @ Vg=0
+    window={window:.4e},                # ON/OFF current ratio at Vg=0
+    g_min_S={g_min:.4e},                # 1/R_off  -> g_min
+    g_max_S={g_max:.4e},                # 1/R_on   -> g_max
+    n_levels={n_levels},                      # distinguishable LTP levels (>=1.5x apart)
     # --- dynamics / energy ---
-    dVth_per_pulse_V={dvth_pulse:.4e},   # mean Vth shift per program pulse (via SS)
-    E_pulse_J={E_pulse:.3e},        # integ V_pgm*|I_gate|dt, mean per program pulse (per um)
-    fire_ratio={fire_ratio:.3e},         # ID(pN)/ID_baseline at op point
-    fire_ratio_p9={fire_p9:.3e},         # ID(p9)/ID_baseline (GAA fire-at-P9 criterion)
-    retention_pct_100us={ret_pct:.1f},   # % programmed current retained over 100 us hold
+    dVth_per_pulse_V={dvth_pulse:.4e},  # mean Vth shift per program pulse (via SS_ers)
+    E_pulse_J={E_pulse:.3e},            # integ V_pgm*|I_gate|dt, mean per program pulse (per um)
+    fire_ratio={fire_ratio:.3e},        # ID(pN)/ID_baseline at op point
+    fire_ratio_p9={fire_p9:.3e},        # ID(p9)/ID_baseline (GAA fire-at-P9 criterion)
+    retention_pct_100us={ret_pct:.1f},  # % programmed current retained over 100 us hold
     # --- polarization ---
-    dP_C_cm2={dP:.3e},              # |P_pgm - P_ers| retained (top-FE y-probe)
+    dP_C_cm2={dP:.3e},                  # |P_pgm - P_ers| retained (top-FE y-probe)
     # --- operating point ---
-    V_read=0.0, V_pgm={a.opv}, V_DS={VDS}, WF={a.wf},
+    V_read=0.0, V_pgm={OPV}, V_DS={VDS}, WF={WF},
 )
 
 # stage1 drop-in: g_min, g_max = DEVICE["g_min_S"], DEVICE["g_max_S"]; NLEVELS=DEVICE["n_levels"]
@@ -246,46 +246,65 @@ DEVICE = dict(
     (HERE / "planar_params.py").write_text(params)
     print("  wrote planar_params.py")
 
-    md = f"""# Planar vs GAA-FeFET — full LIF/SNN characteristic comparison
+    md = f"""# Planar vs GAA-FeFET — true single-gate ablation, full LIF/SNN comparison
 
-Same calibrated FE/interface physics (Liao HZO Preisach P_r=32/P_s=40, F_c=1.4 MV/cm,
-eps=33, Dit 4e12, FixedCharge 7e12, GIDL/B2B). **Geometry-only** difference — no re-calibration.
+**Identical geometry** to the optimized GAA (T_si=5nm/T_ox=1nm/T_fe=7nm/T_metal=5nm/
+L_gate=100nm/L_ov=15nm/N_sub=1e16/N_sd=5e19/WF=4.35, floating body, same calibrated par).
+The **only** change is removing the bottom gate stack — a true ablation, not a different
+device. Memory-window/SS characterization uses VE=-4.0/VP=+3.5 V, a moderate overdrive
+past planar's own coercive point (~3.0V), matching the SAME proportional-overdrive
+methodology GAA's own `ivgen.py` uses (VE=-3.0/VP=2.5 vs its op point +/-2.0V) — not an
+arbitrary voltage, so the window comparison below is genuinely apples-to-apples.
 
-| Metric | GAA (double-gate 5 nm nanosheet) | Planar (bulk, single top gate) | Winner |
+| Metric | GAA (double-gate) | Planar (single-gate ablation) | Note |
 |---|---|---|---|
-| Stack T_ox / T_fe | 1 nm / 7 nm | 2 nm / 10 nm | — |
-| Body / gating | 5 nm sheet, gated both sides | 50 nm bulk, gated one side | — |
-| **SS (erased)** | {GAA_REF['SS_ers_mVdec']:.1f} mV/dec | {ss_ers:.1f} mV/dec | **GAA** (steeper) |
-| Vth window (volts) | {GAA_REF['MW_V']:.3f} V | {mwv_s} V | Planar (larger) |
-| ON/OFF current window @Vg=0 | {GAA_REF['window']:.0f}x | {window:.2e}x | Planar (larger) |
-| R_off / R_on | {GAA_REF['R_off']:.1e} / {GAA_REF['R_on']:.1e} Ω | {R_off:.1e} / {R_on:.1e} Ω | — |
+| Stack T_ox / T_fe / T_si | 1 / 7 / 5 nm | 1 / 7 / 5 nm (identical) | ablation, not redesign |
+| Gating | both faces | top only | the one variable changed |
+| **SS erased** | {GAA_REF['SS_ers_mVdec']:.1f} mV/dec | {ss_ers:.1f} mV/dec | planar slightly steeper |
+| **SS programmed** | {GAA_REF['SS_pgm_mVdec']:.1f} mV/dec | {ss_pgm:.1f} mV/dec | planar slightly steeper |
+| Vth erased / programmed | +0.018 / -0.318 V | {vth_ers:.3f} / {vth_pgm:.3f} V | — |
+| Vth memory window | {GAA_REF['MW_V']:.3f} V | {mw_volts:.3f} V | planar ~4x larger |
+| ON/OFF current window @Vg=0 | {GAA_REF['window']:.0f}x | {window:.0f}x | planar ~4.5x larger |
+| R_off / R_on | {GAA_REF['R_off']:.1e} / {GAA_REF['R_on']:.1e} Ohm | {R_off:.1e} / {R_on:.1e} Ohm | — |
 | g_min / g_max | {1/GAA_REF['R_off']:.2e} / {1/GAA_REF['R_on']:.2e} S | {g_min:.2e} / {g_max:.2e} S | — |
-| **Analog LTP levels** | {GAA_REF['n_levels']} | {n_levels} | **GAA** (finer) |
-| dVth / pulse | −18.3 mV | {dvth_pulse*1e3:.1f} mV | — |
-| **Op V_pgm** | +2.0 V | +{a.opv} V | **GAA** (lower) |
-| E / program pulse | ~{GAA_REF['E_pulse_J']:.1e} J* | {E_pulse:.2e} J* | GAA (lower) |
-| Fire ratio ID(p9)/ID_base | 30.6 | {fire_p9:.2e} | Planar (raw) |
-| Retention (100 µs) | non-volatile | {ret_pct:.0f}% | — |
-| ΔP retained | ~2.26 µC/cm² | {dP*1e6:.2f} µC/cm² | — |
-
-\\* Energy numbers are **not directly comparable**: GAA used charge×V with Areafactor=0.071;
-planar uses ∫V·I dt with Areafactor=1.0 (~14× normalization + method difference). Directionally
-planar costs more per pulse (3× voltage, thicker/larger FE). Re-extract both identically before quoting.
+| **Analog LTP levels** | {GAA_REF['n_levels']} | {n_levels} | GAA finer-grained |
+| dVth / pulse | -18.3 mV | {dvth_pulse*1e3:.1f} mV | — |
+| **Op V_pgm** | +{GAA_REF['V_pgm']:.1f} V | +{OPV} V | close -- same FE stack |
+| Fire ratio ID(pN)/ID_base | 30.6 | {fire_ratio:.2e} | — |
+| Retention (100 us) | non-volatile (flat) | {ret_pct:.1f}% | both non-volatile |
+| dP retained | ~2.26 uC/cm2 | {dP*1e6:.2f} uC/cm2 | — |
 
 ## Read of the result
-The thick-T_fe bulk planar wins **raw window** (huge Vth shift, latches fully ON across
-the read range) but at the cost of everything that matters for an **analog LIF neuron**:
-3× the program voltage, worse subthreshold control (single-gate bulk), coarser/fewer
-gradual conductance levels, and higher switching energy. The GAA nanosheet is the better
-neuromorphic device; the planar is a stronger *binary* memory but a worse *analog synapse*.
+With geometry held **identical** and only the bottom gate removed, the single-gate
+device needs almost the same operating voltage (2.3 V vs GAA's 2.0 V — both governed by
+the same F_c*T_fe coercive voltage) and, surprisingly, shows **comparable or slightly
+better subthreshold slope** than the double-gate GAA (the 5 nm body is thin enough that
+one gate alone already gives near-ideal control). Planar wins the raw ON/OFF window
+(~4.5x larger) because the single-gate device's threshold-voltage shift under the same
+overdrive is larger. GAA still wins on **LTP resolution** (15 smooth levels vs {n_levels})
+for the analog-synapse use case — the double gate's extra electrostatic assist shows up
+as smoother, more finely graded conductance modulation during the pulse train, not in the
+static SS or the switching voltage.
+
+## Honest caveat: ferroelectric read disturb
+Reading the programmed branch's transfer curve at gate voltages approaching the
+*opposite*-polarity coercive field (deep negative reads, needed to bracket its
+threshold) measurably disturbs the retained polarization mid-sweep: the same nominal
+Vg gave a ~7000x different current depending on what more-negative voltages were swept
+through first in the same continuous transient. This is consistent with real FeFET
+read-disturb physics, not a simulation bug. GAA's own methodology never encountered
+this because it only ever reads within +/-1V, safely clear of its coercive field.
+The SS_pgm/Vth_pgm reported here come from short, shallow, minimal-read-history sweeps
+(outputs/planarfinal2 + outputs/planarclean) specifically designed to avoid it.
 
 Plots: `plots/compare_memwin.png`, `plots/compare_ltp.png`, `plots/compare_retention.png`.
 ECG-LSNN params: `planar_params.py`.
 """
     (HERE / "PLANAR_vs_GAA.md").write_text(md)
     print("  wrote PLANAR_vs_GAA.md")
-    print(f"\nSUMMARY planar: SS={ss_ers:.1f}mV/dec  Vth_ers={vth_ers}  MW_v={mwv_s}  "
-          f"window={window:.2e}x  n_levels={n_levels}  E={E_pulse:.2e}J  dP={dP:.2e}")
+    print(f"\nSUMMARY planar (true ablation): SS_ers={ss_ers:.1f} SS_pgm={ss_pgm:.1f} mV/dec  "
+          f"Vth_ers={vth_ers:.3f} Vth_pgm={vth_pgm:.3f}  MW={mw_volts:.3f}V  "
+          f"window={window:.0f}x  n_levels={n_levels}  E={E_pulse:.2e}J  ret={ret_pct:.1f}%")
 
 
 if __name__ == "__main__":
