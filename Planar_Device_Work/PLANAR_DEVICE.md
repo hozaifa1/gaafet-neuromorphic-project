@@ -94,9 +94,13 @@ which sits far from the disturb-sensitive region.
 - **`plots/fig_analog_resolution.png`** — KEY: GAA vs planar analog conductance-level
   resolution. GAA spreads its 15 pulses smoothly over ~4 decades (finer, even log-steps);
   planar is flat-then-abrupt (coarser). This is the load-bearing reason to prefer GAA.
-- **`plots/fig_lif_neuron.png`** — the planar device operating as a LIF integrate-and-fire
-  neuron: read current = membrane potential, program pulses = input spikes, fire = crossing
-  2x the erased baseline.
+- **`plots/fig_spike_train_planar.png` / `_gaa.png` / `_compare.png`** — the actual temporal
+  waveform: the input spike train (program-pulse gate voltage vs time) and the non-volatile
+  synaptic-weight potentiation it drives. **The device is a non-volatile analog synapse, not
+  a self-resetting LIF neuron:** the conductance (= SNN weight) climbs with each spike, holds
+  between and after spikes (no self-leak), saturates when the FE fully switches, and only
+  resets under an explicit erase pulse (−3.5 V planar / −2.0 V GAA). The leaky-integrate-and-
+  fire dynamics of the SNN live in the neuron circuit; the FeFET supplies the analog weight.
 - **`plots/fig_step_granularity.png`** — per-pulse conductance step; the mechanism behind
   the resolution difference (GAA small uniform steps, planar few large jumps).
 - **`plots/fig_transfer.png`** — planar retained-state transfer (SS extraction).

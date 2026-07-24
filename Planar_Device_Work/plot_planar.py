@@ -116,40 +116,6 @@ def fig_analog_resolution():
     return len(lg), len(lp)
 
 
-# --------------------------------- 4a. PLANAR AS A LIF NEURON (integrate-and-fire)
-def fig_lif_neuron():
-    """The planar device operating as a leaky-integrate-and-fire neuron: the read current at
-    V_G=0 is the membrane potential; each program pulse is an input spike that integrates it;
-    'fire' = current crossing the detection threshold (2x the erased baseline, the project's
-    fire criterion). Shows the device works as a spiking element."""
-    p = json.loads((HERE / "outputs" / "lifsw2" / "lifsw2_lif.json").read_text())[str(OPV)]
-    ids = np.array(p["ids"]); base = p["id_base"]
-    npul = np.arange(1, 16)
-    fire = 2.0 * base                       # detection threshold = 2x baseline (fire criterion)
-    kfire = next((i for i, v in enumerate(ids) if v >= fire), None)
-
-    fig, ax = plt.subplots(figsize=(7.0, 5.1))
-    ax.semilogy(npul, ids, "-s", color=PLN_C, label="membrane state ($I_{read}$ @ $V_G$=0)")
-    ax.axhline(base, color="0.45", ls=":", lw=1.5, label=f"erased baseline (rest)")
-    ax.axhline(fire, color="0.2", ls="--", lw=1.6, label="fire threshold (2$\\times$ rest)")
-    if kfire is not None:
-        ax.plot(kfire + 1, ids[kfire], "*", color="#f0a500", ms=22, mec="k", mew=0.8, zorder=5)
-        ax.annotate(f"fires at pulse {kfire+1}", xy=(kfire + 1, ids[kfire]),
-                    xytext=(kfire + 1.6, ids[kfire] * 0.08), fontsize=10,
-                    arrowprops=dict(arrowstyle="->", color="0.3"))
-    ax.set_xlabel("Input spike (program pulse) number")
-    ax.set_ylabel("Membrane state  $I_{read}$ ($\\mu$A/$\\mu$m)")
-    ax.set_title("Planar FeFET as a LIF neuron — integrate-and-fire (@ $V_{pgm}$=+2.3 V)")
-    ax.legend(loc="lower right")
-    ax.text(0.03, 0.97,
-            f"On/off fire contrast: {ids[-1]/base:.0f}$\\times$\n"
-            f"Retained (non-volatile) between spikes",
-            transform=ax.transAxes, va="top", ha="left", fontsize=10,
-            bbox=dict(boxstyle="round", fc="#fdeaea", ec="0.6"))
-    fig.tight_layout(); fig.savefig(PLOTS / "fig_lif_neuron.png"); plt.close(fig)
-    print("  fig_lif_neuron.png")
-
-
 # ---------------------- 4b. STEP GRANULARITY (why GAA has finer resolution)
 def fig_step_granularity():
     """Per-pulse conductance step. Fine, uniform steps (GAA) = high analog weight resolution;
@@ -180,6 +146,100 @@ def fig_step_granularity():
             bbox=dict(boxstyle="round", fc="#eef4ff", ec="0.6"))
     fig.tight_layout(); fig.savefig(PLOTS / "fig_step_granularity.png"); plt.close(fig)
     print("  fig_step_granularity.png")
+
+
+# --------------------------------- 4c. ACTUAL SPIKE-TRAIN WAVEFORM (vs time)
+def _lif_waveform(base, node, W, corr):
+    """Extract the temporal LIF waveform from a run's transient legs:
+       spikes[(t_start,t_end) us], mem_t[us], mem_i[uA/um], rest, Vhi. Times shifted to t0."""
+    from planar import parse_plt, col
+
+    def leg(tag):
+        names, a = parse_plt(Path(base) / f"{tag}_{node}_des.plt")
+        return (a[:, 0], a[:, col(names, "gate_contact OuterVoltage")],
+                np.abs(a[:, col(names, "drain_contact TotalCurrent")]) * 1e6 / W * corr)
+    tb, _, idb = leg("baseline_pre")
+    t0 = tb[0]; rest = idb[-1]
+    spikes, mem_t, mem_i = [], [(tb[-1] - t0) * 1e6], [rest]
+    Vhi = 0.0
+    for k in range(1, 16):
+        tw, vw, _ = leg(f"p{k:02d}_write")
+        spikes.append(((tw[0] - t0) * 1e6, (tw[-1] - t0) * 1e6)); Vhi = max(Vhi, float(np.max(vw)))
+        tr, _, ir = leg(f"p{k:02d}_read")
+        mem_t.append((tr[-1] - t0) * 1e6); mem_i.append(ir[-1])
+    return spikes, mem_t, mem_i, rest, Vhi
+
+
+# W_um and CORR per device (native per-um convention): planar Areafactor=1 already per-um;
+# GAA csv used /0.090 so match that, then CORR to the consistent convention.
+_PLN = dict(base=HERE / "outputs" / "lifret2", node="lifret2_v023", W=1.0, corr=1.0, vpgm=2.3)
+_GAA = dict(base=HERE.parent / "Device_Optimization" / "outputs" / "t8_ltp",
+            node="t8_ltp_v020", W=0.090, corr=CORR, vpgm=2.0)
+
+
+def _spike_panel(dev, color, title, fname):
+    """The device is a NON-VOLATILE ANALOG SYNAPSE, not a self-resetting neuron: each spike
+    potentiates the retained conductance (= SNN weight); the state holds between and after
+    spikes (no leak); reset needs an explicit erase pulse. Finer conductance resolution ->
+    better LIF-SNN weight fidelity (the load-bearing GAA advantage)."""
+    sp, mt, mi, rest, Vhi = _lif_waveform(dev["base"], dev["node"], dev["W"], dev["corr"])
+    fig, (axv, axm) = plt.subplots(2, 1, figsize=(8.2, 6.4), sharex=True,
+                                   gridspec_kw={"height_ratios": [1, 1.6]})
+    for (ts, te) in sp:
+        axv.plot([ts, ts, te, te], [0, Vhi, Vhi, 0], color=color, lw=1.8)
+    axv.axhline(0, color="0.6", lw=0.8)
+    axv.set_ylabel("Input spike\n$V_G$ (V)"); axv.set_ylim(-0.3, Vhi * 1.3)
+    axv.set_title(title)
+    axv.text(0.01, 0.9, f"15 potentiating spikes  (+{dev['vpgm']} V, 0.3 µs each)",
+             transform=axv.transAxes, va="top", fontsize=10, color=color)
+    axm.semilogy(mt, mi, "-s", color=color, ms=6, label="synaptic weight ($I_{read}$ @ $V_G$=0)")
+    axm.axhline(rest, color="0.45", ls=":", lw=1.5, label="erased (reset) level")
+    axm.set_xlabel("Time (µs)"); axm.set_ylabel("Synaptic weight  $I_{read}$ ($\\mu$A/$\\mu$m)")
+    axm.set_xlim(-0.2, mt[-1] * 1.02); axm.legend(loc="lower right", fontsize=9.5)
+    axm.text(0.015, 0.97,
+             "Non-volatile: weight holds between & after spikes (no leak).\n"
+             "Saturates when the FE fully switches. Reset = explicit erase\n"
+             f"pulse (−{3.5 if dev is _PLN else 2.0} V), not automatic.",
+             transform=axm.transAxes, va="top", ha="left", fontsize=9,
+             bbox=dict(boxstyle="round", fc="#f4f4f4", ec="0.6"))
+    fig.tight_layout(); fig.savefig(PLOTS / fname); plt.close(fig)
+    print(f"  {fname}")
+
+
+def fig_spike_train():
+    _spike_panel(_PLN, PLN_C, "Planar FeFET — non-volatile analog synapse potentiation",
+                 "fig_spike_train_planar.png")
+    _spike_panel(_GAA, GAA_C, "GAA FeFET — non-volatile analog synapse potentiation",
+                 "fig_spike_train_gaa.png")
+    _fig_spike_compare()
+
+
+def _fig_spike_compare():
+    """Both devices' conductance (synaptic weight) trajectories on one time axis under the
+    15-spike potentiating train. GAA climbs in finer, more graded steps; planar is flatter
+    then leaps -- the analog-resolution difference that sets the SNN weight fidelity."""
+    spg, mtg, mig, restg, Vhg = _lif_waveform(_GAA["base"], _GAA["node"], _GAA["W"], _GAA["corr"])
+    spp, mtp, mip, restp, Vhp = _lif_waveform(_PLN["base"], _PLN["node"], _PLN["W"], _PLN["corr"])
+    fig, (axv, axm) = plt.subplots(2, 1, figsize=(8.4, 6.4), sharex=True,
+                                   gridspec_kw={"height_ratios": [0.7, 2.0]})
+    for (ts, te) in spp:
+        axv.plot([ts, ts, te, te], [0, 1, 1, 0], color="0.35", lw=1.6)
+    axv.set_ylabel("Input\nspikes"); axv.set_yticks([]); axv.set_ylim(-0.2, 1.35)
+    axv.set_title("Analog synapse potentiation under a spike train — GAA vs Planar")
+    axv.text(0.01, 0.92, "15 potentiating spikes (0.3 µs each)", transform=axv.transAxes,
+             va="top", fontsize=9.5, color="0.3")
+    axm.semilogy(mtg, mig, "-o", color=GAA_C, label="GAA weight (finer, graded climb)")
+    axm.semilogy(mtp, mip, "-s", color=PLN_C, label="Planar weight (flat then leaps)")
+    axm.set_xlabel("Time (µs)"); axm.set_ylabel("Synaptic weight  $I_{read}$ ($\\mu$A/$\\mu$m)")
+    axm.legend(loc="lower right", fontsize=9.5)
+    axm.text(0.015, 0.97,
+             "GAA passes through more resolvable conductance states\n"
+             "$\\Rightarrow$ finer synaptic-weight resolution for the LIF-SNN.\n"
+             "Both non-volatile (hold after the train); reset = erase.",
+             transform=axm.transAxes, va="top", ha="left", fontsize=9.5,
+             bbox=dict(boxstyle="round", fc="#eef4ff", ec="0.6"))
+    fig.tight_layout(); fig.savefig(PLOTS / "fig_spike_train_compare.png"); plt.close(fig)
+    print("  fig_spike_train_compare.png")
 
 
 # ------------------------------------------------------------------ 5. RETENTION
@@ -224,7 +284,7 @@ if __name__ == "__main__":
     fig_transfer()
     fig_memory_window()
     ng, npl = fig_analog_resolution()
-    fig_lif_neuron()
     fig_step_granularity()
+    fig_spike_train()
     fig_retention()
     print(f"done. analog levels: GAA={ng}, planar={npl}")
