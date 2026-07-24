@@ -20,12 +20,28 @@ GAA  = HERE.parent / "Device_Optimization" / "csv_export" / "raw"
 PLOTS = HERE / "plots"; PLOTS.mkdir(exist_ok=True)
 VDS = 0.05
 
-# GAA locked reference numbers (SNN_PARAMETERS.md / OPTIMIZED_DEVICE.md)
-# SS_ers/SS_pgm re-extracted from transfer_curves.csv with the SAME extractor as planar.
-GAA_REF = dict(R_off=7.14e7, R_on=2.34e6, window=3137.0, n_levels=15,
-               E_pulse_J=1.4e-17, MW_V=0.336, SS_ers_mVdec=79.6, SS_pgm_mVdec=63.0,
-               V_pgm=2.0, arch="GAA (double-gate 5nm nanosheet)")
-
+# GAA reference numbers -- RE-DERIVED, not copied from SNN_PARAMETERS.md/OPTIMIZED_DEVICE.md.
+#
+# Found and fixed a real inconsistency in Device_Optimization's own GAA pipeline: every
+# .cmd (lifgen.py/memwingen.py) sets Areafactor=0.071 inside Sentaurus, but every analysis
+# script (opt.py/plot_memwin.py/plot_iv.py) divides the result by W_um=0.090 -- two
+# different width conventions for the SAME normalization step, never reconciled. All
+# csv_export/raw/*.csv current values therefore carry a uniform (0.090/0.071)=1.2676x
+# scale error relative to a properly Areafactor=1 (native per-um-width) reading -- the
+# SAME convention this whole planar study uses. Ratio-based numbers (window, SS, n_levels,
+# fire_ratio) are UNAFFECTED (the constant cancels); absolute-current-derived numbers
+# (R_off/R_on/g_min/g_max) are NOT -- corrected here via CORR=0.090/0.071 below.
+#
+# NOTE: SNN_PARAMETERS.md's own R_off=7.14e7/R_on=2.34e6 (-> the Python stage1 synapse's
+# g_min/g_max) come from a THIRD, separately-derived conversion (ID_baseline/ID_fire back-
+# multiplied by 0.071 on already-/0.090-divided csv data) that does not even undo the first
+# inconsistency -- deliberately NOT reused or "corrected" here; that fix is scoped to
+# Device_Optimization/the Python model, out of scope for this planar comparison. Flagging
+# only. TESW = 2*(W+T_si), W=40nm (literature: nanosheet width "saturated at ~40-50nm"),
+# T_si=5nm (locked) -> TESW=90nm, which is exactly the existing W_um=0.090 -- i.e. the
+# analysis-script divisor was already the right literature-consistent width; only the
+# in-.cmd Areafactor=0.071 was the wrong number.
+CORR = 0.090 / 0.071  # = 1.2676; converts existing GAA csv (Areafactor=0.071, /0.090) -> native per-um-width
 ICC_UA_UM = 1e-2   # constant-current threshold criterion (GAA: erased Vth @Icc=1e-2 uA/um)
 
 
@@ -37,6 +53,24 @@ def vth_at_icc(vgs, ids, icc=ICC_UA_UM):
             f = (np.log10(icc) - np.log10(ids[i - 1])) / (np.log10(ids[i]) - np.log10(ids[i - 1]))
             return float(vgs[i - 1] + f * (vgs[i] - vgs[i - 1]))
     return None
+
+
+_g = np.genfromtxt(GAA / "transfer_curves.csv", delimiter=",", names=True)
+_vg = _g["Vg_V"]; _ers = _g["Id_erased_uA_um"] * CORR; _pgm = _g["Id_programmed_uA_um"] * CORR
+_ss_ers = float(subthreshold_slope(_vg, _ers)); _ss_pgm = float(subthreshold_slope(_vg, _pgm))
+_vth_ers = vth_at_icc(_vg, _ers); _vth_pgm = vth_at_icc(_vg, _pgm)
+
+_mw = np.genfromtxt(GAA / "memwin_fe07.csv", delimiter=",", names=True)
+_mvg = _mw["Vg_V"]; _i0 = int(np.argmin(np.abs(_mvg)))
+_i_off = _mw["Id_erased_uA_um"][_i0] * CORR; _i_on = _mw["Id_programmed_uA_um"][_i0] * CORR
+_R_off, _R_on = VDS / (_i_off * 1e-6), VDS / (_i_on * 1e-6)
+
+GAA_REF = dict(R_off=_R_off, R_on=_R_on, window=_i_on / _i_off, n_levels=15,
+               E_pulse_J=1.4e-17, MW_V=_vth_ers - _vth_pgm, Vth_ers=_vth_ers, Vth_pgm=_vth_pgm,
+               SS_ers_mVdec=_ss_ers, SS_pgm_mVdec=_ss_pgm,
+               V_pgm=2.0, arch="GAA (double-gate 5nm nanosheet)")
+# E_pulse_J kept as the original locked (uncorrected) quote -- SNN_PARAMETERS.md gives no
+# raw-current source for it that this script can independently re-derive/correct the same way.
 
 
 def _loadcsv(name):
@@ -262,7 +296,7 @@ arbitrary voltage, so the window comparison below is genuinely apples-to-apples.
 | Gating | both faces | top only | the one variable changed |
 | **SS erased** | {GAA_REF['SS_ers_mVdec']:.1f} mV/dec | {ss_ers:.1f} mV/dec | planar slightly steeper |
 | **SS programmed** | {GAA_REF['SS_pgm_mVdec']:.1f} mV/dec | {ss_pgm:.1f} mV/dec | planar slightly steeper |
-| Vth erased / programmed | +0.018 / -0.318 V | {vth_ers:.3f} / {vth_pgm:.3f} V | — |
+| Vth erased / programmed | {GAA_REF['Vth_ers']:+.3f} / {GAA_REF['Vth_pgm']:+.3f} V | {vth_ers:+.3f} / {vth_pgm:+.3f} V | — |
 | Vth memory window | {GAA_REF['MW_V']:.3f} V | {mw_volts:.3f} V | planar ~4x larger |
 | ON/OFF current window @Vg=0 | {GAA_REF['window']:.0f}x | {window:.0f}x | planar ~4.5x larger |
 | R_off / R_on | {GAA_REF['R_off']:.1e} / {GAA_REF['R_on']:.1e} Ohm | {R_off:.1e} / {R_on:.1e} Ohm | — |
@@ -273,6 +307,24 @@ arbitrary voltage, so the window comparison below is genuinely apples-to-apples.
 | Fire ratio ID(pN)/ID_base | 30.6 | {fire_ratio:.2e} | — |
 | Retention (100 us) | non-volatile (flat) | {ret_pct:.1f}% | both non-volatile |
 | dP retained | ~2.26 uC/cm2 | {dP*1e6:.2f} uC/cm2 | — |
+
+**GAA numbers above are corrected, not copied from SNN_PARAMETERS.md/OPTIMIZED_DEVICE.md.**
+Found a real inconsistency in the GAA pipeline: every `.cmd` sets Areafactor=0.071 inside
+Sentaurus, but every analysis script (`opt.py`/`plot_memwin.py`/`plot_iv.py`) divides by
+W_um=0.090 for the SAME normalization step -- never reconciled. Ratio-based numbers (SS,
+window, n_levels, fire_ratio, dVth/pulse) are unaffected (the constant cancels); R_off/R_on/
+g_min/g_max/Vth above are corrected by (0.090/0.071)=1.2676x, re-derived directly from
+`transfer_curves.csv`/`memwin_fe07.csv` under one consistent, Areafactor=1-equivalent
+convention (same as this whole planar study uses) rather than reusing the inconsistent
+numbers. W=40nm (literature: nanosheet width "saturated at ~40-50nm") + T_si=5nm gives
+TESW=2*(W+T_si)=90nm -- which is exactly the pipeline's existing W_um=0.090, meaning the
+analysis-script divisor was already the right literature-consistent value; only the
+in-`.cmd` Areafactor=0.071 was wrong. GAA's `E_pulse_J` is left as the original locked
+quote (no independently re-derivable raw-current source available for it). SNN_PARAMETERS.md
+itself uses a THIRD, separate conversion for its own R_off/R_on (feeding the Python stage1
+synapse's g_min/g_max) that doesn't even undo the first inconsistency -- intentionally
+NOT reused or silently fixed here; that correction is scoped to Device_Optimization/the
+Python model, out of scope for this planar-only comparison.
 
 ## Read of the result
 With geometry held **identical** and only the bottom gate removed, the single-gate

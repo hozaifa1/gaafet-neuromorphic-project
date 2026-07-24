@@ -14,17 +14,35 @@ arbitrary voltage, so the window comparison below is genuinely apples-to-apples.
 | Gating | both faces | top only | the one variable changed |
 | **SS erased** | 79.6 mV/dec | 75.1 mV/dec | planar slightly steeper |
 | **SS programmed** | 63.0 mV/dec | 51.9 mV/dec | planar slightly steeper |
-| Vth erased / programmed | +0.018 / -0.318 V | 0.020 / -1.405 V | — |
-| Vth memory window | 0.336 V | 1.424 V | planar ~4x larger |
+| Vth erased / programmed | +0.001 / -0.325 V | +0.020 / -1.405 V | — |
+| Vth memory window | 0.326 V | 1.424 V | planar ~4x larger |
 | ON/OFF current window @Vg=0 | 3137x | 14227x | planar ~4.5x larger |
-| R_off / R_on | 7.1e+07 / 2.3e+06 Ohm | 6.1e+06 / 4.3e+02 Ohm | — |
-| g_min / g_max | 1.40e-08 / 4.27e-07 S | 1.65e-07 / 2.35e-03 S | — |
+| R_off / R_on | 4.2e+06 / 1.3e+03 Ohm | 6.1e+06 / 4.3e+02 Ohm | — |
+| g_min / g_max | 2.38e-07 / 7.48e-04 S | 1.65e-07 / 2.35e-03 S | — |
 | **Analog LTP levels** | 15 | 10 | GAA finer-grained |
 | dVth / pulse | -18.3 mV | -27.1 mV | — |
 | **Op V_pgm** | +2.0 V | +2.3 V | close -- same FE stack |
 | Fire ratio ID(pN)/ID_base | 30.6 | 8.18e+03 | — |
 | Retention (100 us) | non-volatile (flat) | 98.5% | both non-volatile |
 | dP retained | ~2.26 uC/cm2 | 5.13 uC/cm2 | — |
+
+**GAA numbers above are corrected, not copied from SNN_PARAMETERS.md/OPTIMIZED_DEVICE.md.**
+Found a real inconsistency in the GAA pipeline: every `.cmd` sets Areafactor=0.071 inside
+Sentaurus, but every analysis script (`opt.py`/`plot_memwin.py`/`plot_iv.py`) divides by
+W_um=0.090 for the SAME normalization step -- never reconciled. Ratio-based numbers (SS,
+window, n_levels, fire_ratio, dVth/pulse) are unaffected (the constant cancels); R_off/R_on/
+g_min/g_max/Vth above are corrected by (0.090/0.071)=1.2676x, re-derived directly from
+`transfer_curves.csv`/`memwin_fe07.csv` under one consistent, Areafactor=1-equivalent
+convention (same as this whole planar study uses) rather than reusing the inconsistent
+numbers. W=40nm (literature: nanosheet width "saturated at ~40-50nm") + T_si=5nm gives
+TESW=2*(W+T_si)=90nm -- which is exactly the pipeline's existing W_um=0.090, meaning the
+analysis-script divisor was already the right literature-consistent value; only the
+in-`.cmd` Areafactor=0.071 was wrong. GAA's `E_pulse_J` is left as the original locked
+quote (no independently re-derivable raw-current source available for it). SNN_PARAMETERS.md
+itself uses a THIRD, separate conversion for its own R_off/R_on (feeding the Python stage1
+synapse's g_min/g_max) that doesn't even undo the first inconsistency -- intentionally
+NOT reused or silently fixed here; that correction is scoped to Device_Optimization/the
+Python model, out of scope for this planar-only comparison.
 
 ## Read of the result
 With geometry held **identical** and only the bottom gate removed, the single-gate
