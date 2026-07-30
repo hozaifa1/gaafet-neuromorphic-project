@@ -1,0 +1,9 @@
+condition,post-proc_G-mean
+Nominal,0.914
+250 K,0.935
+350 K,0.839
+D2D,0.983
+C2C,0.837
+D2D+C2C,0.874
+Ret −2.9%,0.923
+Ret −10%,0.731

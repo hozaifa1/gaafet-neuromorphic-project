@@ -1,0 +1,10 @@
+{
+  "model": "eeg_lastread", "best_epoch": 14, "readout": "last", "window": 21, "threshold": 0.5,
+  "fp_raw": 0.725, "fp_pp": 0.988,
+  "dev15_raw": 0.696, "dev15_pp": 0.914,
+  "dev2_raw": 0.446, "dev2_pp": 0.446,
+  "fp_pp_sens": 1.0, "fp_pp_spec": 0.976, "fp_pp_FP": 67,
+  "dev15_pp_sens": 1.0, "dev15_pp_spec": 0.836, "dev15_pp_FP": 467,
+  "raw_faithfulness_gap": -0.029,
+  "note": "thr=0.5 (natural, untuned) for consistency + graceful robustness. Best-achievable (fragile): thr 0.525 -> 0.947/296FP; w=51 -> 0.965/107FP."
+}

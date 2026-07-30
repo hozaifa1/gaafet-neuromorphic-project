@@ -1,0 +1,4 @@
+config,raw_gmean,postproc_gmean
+Software,0.725,0.988
+On-device 15 levels,0.696,0.914
+Ablation 2 levels,0.446,0.446
