@@ -32,12 +32,23 @@ def _goal(prefix, t0, t1, electrode, v, extra=""):
 
 
 def _hold(prefix, t0, t1, intervals=0, maxstep=None):
+    """Fixed-bias hold.
+
+    MinStep is a FLOOR at MaxStep/1e4, not an absolute 1e-16.  With
+    RelErrControl the solver will happily walk the step size down to whatever
+    floor it is given and never come back up -- the first MFM attempt burned
+    217,080 steps covering 3.2 us of a 425 us ramp that way, and the first RR-0
+    read sweep did the same.  A floor proportional to MaxStep means a 10 ms
+    retention hold cannot end up taking 1e-16 s steps; if it genuinely cannot
+    converge at that floor it fails loudly instead of crawling for two hours.
+    """
     ms = maxstep if maxstep is not None else max((t1 - t0) / 10, 1e-12)
     plot = (f'\n      CurrentPlot( Time = (Range=({t0:.6e} {t1:.6e}) Intervals={intervals}) )'
             if intervals else "")
     return (f'  NewCurrentPrefix="{prefix}"\n'
             f'  Transient ( InitialTime={t0:.6e} FinalTime={t1:.6e}'
-            f' InitialStep=1e-12 MaxStep={ms:.3e} MinStep=1e-16 Increment=1.4 ) {{'
+            f' InitialStep={ms / 100:.3e} MaxStep={ms:.3e} MinStep={ms / 1e4:.3e}'
+            f' Increment=2.0 ) {{'
             f' Coupled (Iterations=100) {{Poisson Electron Hole}}{plot} }}\n')
 
 
