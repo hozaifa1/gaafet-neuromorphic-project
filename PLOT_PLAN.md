@@ -14,6 +14,65 @@ Device: optimized GAA-FeFET, mesh `fe07` — T_ox=1 nm / T_fe=7 nm HZO / T_si=5 
 T_metal=5 nm / L_gate=100 nm / L_ov=15 nm / N_sub=1e16 / N_sd=5e19 / WF=4.35 eV.
 2D double-gate nanosheet cross-section (`Device_Optimization/sde/sde_opt.cmd`).
 
+
+---
+
+# ERRATA — corrections found while executing Phases 1–5 (2026-08-01)
+
+Three claims in Parts I–II were checked against the data and did not survive.
+They are corrected here; the body below is left as written so the audit trail is
+intact.
+
+**E1 — C1 is wrong about `transfer_curves.csv`.** It does NOT come from the
+`iv_fe07` node and therefore never inherited `app_frozen.par`. It is reproduced
+bit-for-bit from the **`mwfine`** node (19 fixed-V_G point reads, −0.4…+0.5 V),
+and `runs/mwfine_fe07_des.cmd` uses `app_opt.par` like everything else. So there
+is **no τ protocol split** behind `Vth_virgin`, `Vth_fire`, `SS` or `MW`, and the
+21 % "erased at V_G=0" gap in C2 is not a par difference — it is two runs of the
+same protocol with different read-point schedules (`mwfine` walks 19 read points,
+`mw_fe07` walks 9), so the retained state creeps by a different amount between
+them. Verified in `csv_export/rebuild_raw.py`, which regenerates every raw CSV
+from its source `.plt`.
+
+**E2 — the `iv_fe07` node is not merely "run under a different par", it is dead.**
+`app_frozen.par` sets τ_E = τ_P = 1e-4, so `ivgen.py`'s 500 µs write hold is *five
+depolarization time constants*: whatever the field switches, the model relaxes
+back inside the same hold. The probe reads
+
+```
+Pos(0,0.007) Polarization/y = +2.3267e-07 C/cm²  (erased)
+                            = +2.3238e-07 C/cm²  (programmed)
+```
+
+— 0.1 % apart, against a P_r of 3.2e-5 — and the two I–V branches coincide above
+V_G = +0.2 V. `raw/memory_window_iv.csv` (figure **D1**) descends entirely from
+that node and was meaningless. RR-0 is therefore not a tidy-up, it is a repair.
+The replacement (`ivgen.py`, rewritten; node `iv_fe07b`) keeps `memwingen`'s
+proven ±2 V / 5 µs write and reads with one continuous 500 ns ramp, analysed on
+the **conduction** current (eCurrent + hCurrent) so the fast ramp's displacement
+term through the 15 nm overlap is removed exactly rather than argued away.
+`par/app_frozen.par` is renamed `app_frozen.CALIBRATION_PROTOCOL_ONLY.par` with
+the reason on its first line.
+
+**E3 — RR-5 cannot measure endurance, and the caption must say so.** The
+Sentaurus Preisach model has no fatigue, no wake-up and no imprint term. Cycling
+it 10⁴ times cannot close the window: a flat curve is a property of the model,
+not evidence about the device. What the run legitimately demonstrates is
+numerical cycle-stability and a reproducible switched charge per cycle. It is run
+at 10 / 10² / 10³ cycles; 10⁴ was dropped because it costs hours of a contended
+single-license host to produce an analytically flat line.
+
+**E4 — normalization side-effects.** ΔV_t is only invariant if the constant-current
+criterion tracks the axis. At the unchanged *physical* criterion (I_cc = 6.34e-3
+µA/µm on the corrected axis) MW = 0.336 V exactly, as Part I predicts. At a round
+I_cc = 1e-2 µA/µm read on the *new* axis it is 0.355 V, because the erased branch
+crosses inside its ambipolar recovery where its local slope is ~159 mV/dec. That
+is a criterion choice, not a physics change, and the paper should state which one
+it uses. SS (62.3 mV/dec, programmed branch) is exactly invariant either way.
+
+**E5 — data-audit counts.** C6 said the 12 unexported nodes hold ~580 files; the
+actual count is **483**, and the CSV total went 894 → **1377**, not ~1450.
+
 ---
 ---
 
