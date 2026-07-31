@@ -1,0 +1,32 @@
+MFIS P-V / P-E loops -- corrected sign, and what they actually measure
+========================================================================
+sweep range              +-4.0 V on the gate
+max |E| reaching the HZO  0.773 MV/cm
+                          = 55.2 % of F_c = 1.4 MV/cm
+max |P| reached           3.91 uC/cm2
+                          = 12.2 % of P_r = 32.0 uC/cm2
+apparent P at V_G = 0     up-branch +0.084, down-branch +1.088 uC/cm2
+                          (loop opening 1.004 uC/cm2)
+
+The ferroelectric is never driven past coercion anywhere in this sweep, so
+this is an unsaturated MINOR loop.  It is a measurement of the MFIS voltage
+divider -- how little of the applied gate voltage reaches the HZO once the
+7 nm ferroelectric is in series with the 1 nm SiO2 and the depleted
+silicon body -- not of the HZO material.  The material loop requires an MFM
+capacitor with no semiconductor in the stack: see RR-1 / mfmgen.py.
+
+CAPTION TO USE:
+  Retained polarization of the MFIS gate stack versus gate voltage (a) and
+  versus the field actually developed across the ferroelectric (b), probed
+  at the mid-HZO point.  Over the full +-4 V sweep the HZO sees at most
+  0.77 MV/cm, 55 % of the coercive field, so the layer
+  operates entirely in the sub-coercive regime and the loop is a minor loop.
+  This is the origin of the device's gradual, multi-level potentiation: each
+  programming pulse switches only a small fraction of the available dipoles.
+  The saturated material loop of the same HZO is Fig. C1 (MFM capacitor).
+
+Sign convention: the current-plot probe lies in the top gate stack, whose
+local +y points away from the channel.  Both P and E are negated here so
+that positive gate bias corresponds to positive polarization, i.e. the
+channel-directed convention.  The raw probe values are unchanged in
+pe_loop_{up,down}.csv; the corrected ones are in *_signed.csv.

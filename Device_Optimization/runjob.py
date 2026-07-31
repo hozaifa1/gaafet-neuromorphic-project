@@ -142,10 +142,57 @@ def wait(node, timeout=7200, interval=60):
     return 1
 
 
+def worker_up():
+    """Upload and start the sequential worker (idempotent)."""
+    out, _, _ = sh('pgrep -f queue_worker.sh | grep -v $$ || true', timeout=120)
+    if out.strip():
+        print(f"[worker] already running (pid {out.split()[0]})")
+        return
+    up(HERE / "queue_worker.sh")
+    sh(f"chmod +x ~/{REMOTE}/queue_worker.sh && mkdir -p ~/{REMOTE}/{OUTDIR} && "
+       f"rm -f ~/{REMOTE}/{OUTDIR}/QUEUE.stop", timeout=120)
+    try:
+        subprocess.run([PLINK, "-batch", "-ssh", "-pw", PW, HOST,
+                        f"cd ~/{REMOTE} && setsid sh queue_worker.sh > /dev/null 2>&1 < /dev/null &"],
+                       capture_output=True, text=True, timeout=40)
+    except subprocess.TimeoutExpired:
+        pass
+    time.sleep(5)
+    out, _, _ = sh('pgrep -f queue_worker.sh || true', timeout=120)
+    print(f"[worker] {'running pid ' + out.split()[0] if out.strip() else 'NOT SEEN'}")
+
+
+def enqueue(nodes, uploads=()):
+    """Upload each <node>_des.cmd (plus extras) and append the node to QUEUE.txt."""
+    for f in uploads:
+        up(f)
+    for node in nodes:
+        cmdfile = HERE / "runs" / f"{node}_des.cmd"
+        if not cmdfile.exists():
+            raise SystemExit(f"missing {cmdfile}")
+        check_no_at(cmdfile)
+        up(cmdfile)
+    sh(f'cd ~/{REMOTE} && printf "%s\\n" {" ".join(nodes)} >> {OUTDIR}/QUEUE.txt && '
+       f'echo "queue is now:" && cat {OUTDIR}/QUEUE.txt', timeout=180)
+    print(f"[enqueue] +{len(nodes)}: {' '.join(nodes)}")
+
+
+def queue_status(tail=25):
+    out, _, _ = sh(f'cd ~/{REMOTE} && echo "--- pending:" && cat {OUTDIR}/QUEUE.txt 2>/dev/null; '
+                   f'echo "--- log:"; tail -{tail} {OUTDIR}/QUEUE.log 2>/dev/null; '
+                   f'echo "--- worker:"; pgrep -f queue_worker.sh || echo none; '
+                   f'echo "--- sdevice:"; pgrep -a sdevice | grep -v pgrep || echo none', timeout=300)
+    print(out)
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("submit"); s.add_argument("node"); s.add_argument("--upload", nargs="*", default=[])
+    sub.add_parser("worker")
+    e = sub.add_parser("enqueue"); e.add_argument("node", nargs="+")
+    e.add_argument("--upload", nargs="*", default=[])
+    q = sub.add_parser("queue"); q.add_argument("--tail", type=int, default=25)
     t = sub.add_parser("status"); t.add_argument("node", nargs="+"); t.add_argument("--tail", type=int, default=6)
     w = sub.add_parser("wait"); w.add_argument("node"); w.add_argument("--timeout", type=int, default=7200)
     f = sub.add_parser("fetch"); f.add_argument("node"); f.add_argument("--out", required=True)
@@ -156,6 +203,12 @@ def main():
 
     if a.cmd == "submit":
         submit(a.node, a.upload)
+    elif a.cmd == "worker":
+        worker_up()
+    elif a.cmd == "enqueue":
+        enqueue(a.node, a.upload)
+    elif a.cmd == "queue":
+        queue_status(a.tail)
     elif a.cmd == "status":
         status(a.node, a.tail)
     elif a.cmd == "wait":
