@@ -11,6 +11,11 @@ Two sub-commands:
 
 Outputs: runs/ (rendered cmds), outputs/<tag>/ (downloaded plts), results.tsv.
 Remote: du@103.28.121.70 : ~/Sentaurus-files/Sami_Hozaifa/GAAFet  (single sdevice license).
+
+Currents (IDrest/IDon, uA/um) and Qg (C) are emitted under the single width
+convention defined in norm.py (W_eff = 90 nm gate perimeter).  Rows written
+before 2026-07-31 predate norm.py and are 1/0.6338 = 1.578x too large in every
+absolute column; ratio columns (WIN, DR, igain) are unaffected.
 """
 import argparse, subprocess, sys, re, json
 from pathlib import Path
@@ -19,7 +24,7 @@ import lifgen
 
 HERE   = Path(__file__).resolve().parent
 ROOT   = HERE.parent
-PW     = (ROOT / "New_cal" / "autocal" / ".pw").read_text().strip()
+PW     = (ROOT / "Calibration" / "autocal" / ".pw").read_text().strip()  # New_cal was renamed
 HOST   = "du@103.28.121.70"
 REMOTE = "Sentaurus-files/Sami_Hozaifa/GAAFet"
 PLINK  = r"C:\Program Files\PuTTY\plink.exe"
@@ -27,7 +32,9 @@ PSCP   = r"C:\Program Files\PuTTY\pscp.exe"
 
 # plt parsing (lif_eval.cmd: 3 electrodes + Pol/E probes -> 29 cols, like h1app)
 NCOLS, COL_ID, COL_QG, COL_POLY, COL_EY = 29, 7, 24, 26, 28
-W_um, F_c = 0.090, 1.4e6
+F_c = 1.4e6
+# Width normalization lives in exactly one place -- see norm.py.
+import norm
 
 DEF_GEOM = dict(T_SI=0.015, T_OX=0.002, T_FE=0.010, T_METAL=0.005,
                 L_GATE=0.100, L_SD=0.050, L_OV=0.015, N_SUB=1e16, N_SD=5e19)
@@ -142,15 +149,16 @@ def run_lif(tag, meshtag, elec, vpgm_list, N=9, t_p=100e-9, t_read=100e-9, t_hol
 def analyze_vp(outdir, node):
     base = endrow(Path(outdir) / f"baseline_pre_{node}_des.plt")
     if base is None: return None
-    id_base = abs(base[COL_ID]) * 1e6 / W_um
+    id_base = norm.to_uA_per_um(abs(base[COL_ID]))
     reads = sorted(Path(outdir).glob(f"p*_read_{node}_des.plt"))
-    ids = [abs(endrow(fp)[COL_ID]) * 1e6 / W_um for fp in reads]
+    ids = [norm.to_uA_per_um(abs(endrow(fp)[COL_ID])) for fp in reads]
     if not ids: return None
     lastk = max(int(fp.name[1:3]) for fp in reads)
     w9 = Path(outdir) / f"p{lastk:02d}_write_{node}_des.plt"
     ew = endrow(w9)
     ey = abs(ew[COL_EY]) / F_c if ew is not None else np.nan
-    qg = abs(ew[COL_QG]) if ew is not None else np.nan
+    # Contact charge carries the same Areafactor as the currents -> same fix.
+    qg = norm.to_device_amps(abs(ew[COL_QG])) if ew is not None else np.nan
     igain = ids[-1] / ids[0] if ids[0] else float("nan")  # integration fidelity p9/p1
     id_on = float(np.nanmax(ids))                          # saturated programmed state
     return dict(id_base=id_base, ids=ids, id_p1=ids[0], id_p9=ids[-1], id_on=id_on,

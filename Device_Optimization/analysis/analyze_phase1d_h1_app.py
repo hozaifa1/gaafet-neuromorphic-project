@@ -20,16 +20,19 @@ Output:
   Simulations/phase1d_h1/h1_fire_ratio.png
   Simulations/phase1d_h1/h1_metrics.txt
 """
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 import csv
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+import norm  # the one width convention -- see Device_Optimization/norm.py
+
 H1   = ROOT / "Simulations" / "simH_optimize" / "H1sweep_app_outputs"
 OUT  = ROOT / "Simulations" / "phase1d_h1_app"
 OUT.mkdir(exist_ok=True)
-W_eff_um = 0.090   # same effective width used in H0a v5
 
 # SWB node -> V_pgm mapping (H1 v2, Goal-driven gate, 2026-05-11)
 NODES = {
@@ -81,7 +84,7 @@ def collect_node(node):
     if not base_fp.exists():
         out["ok"] = False
         return out
-    out["ID_baseline"] = abs(end_row(base_fp)[COL_ID]) * 1e6 / W_eff_um  # uA/um
+    out["ID_baseline"] = norm.to_uA_per_um(abs(end_row(base_fp)[COL_ID]))  # uA/um
 
     # ID at end of each post-pulse read
     id_per_pulse = []
@@ -99,7 +102,7 @@ def collect_node(node):
             continue
         er = end_row(rfp)
         ew = end_row(wfp)
-        id_per_pulse.append(abs(er[COL_ID]) * 1e6 / W_eff_um)
+        id_per_pulse.append(norm.to_uA_per_um(abs(er[COL_ID])))
         pol_at_write_end.append(ew[COL_POLY])
         ey_at_write_end.append(ew[COL_EY])
         qg_at_write_end.append(ew[COL_QG])
@@ -132,7 +135,8 @@ def main():
 
     # ---- Print + write text report ----
     lines = ["=== Phase 1D H1 v3 — V_pgm sweep summary (sub-V_t read) ===\n",
-             f"Effective W = {W_eff_um} um. Read level V_GS = -0.5 V (sub-V_t). Pulse train: 9 x 100 ns @ V_pgm.",
+             f"Effective W = {norm.W_EFF_UM} um (gate perimeter, norm.py). "
+             f"Read level V_GS = -0.5 V (sub-V_t). Pulse train: 9 x 100 ns @ V_pgm.",
              ""]
     lines.append(f"{'Node':5s} {'V_pgm':>6s} {'ID_base':>10s} {'ID_p09':>10s} {'fire_ratio':>11s} {'dVth_eff':>10s} {'Pol_p09':>10s} {'|E|_p09':>11s} {'|E|/F_c':>9s} {'mono':>5s}")
     lines.append(f"{'':5s} {'(V)':>6s} {'(uA/um)':>10s} {'(uA/um)':>10s} {'':>11s} {'(mV)':>10s} {'(uC/cm2)':>10s} {'(MV/cm)':>11s} {'(F_c=1.4)':>9s} {'':>5s}")

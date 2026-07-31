@@ -12,10 +12,10 @@ Source for each value is the optimized-device characterization (mesh fe07).
 |Vth\_virgin (V)|0.263|**+0.018**|fine I-V, erased Vth @Icc=1e-2 µA/µm|
 |Vth\_fire (V)|0.203|**−0.318**|fine I-V, programmed Vth|
 |SS (V/dec)|60.8e-3|**62.3e-3**|fine I-V subthreshold (near-ideal, 5 nm body)|
-|ID\_baseline (A)|9.525e-6|**7.0e-10**|erased read @ V\_G=0|
-|ID\_fire (A)|1.938e-5|**2.14e-8**|after 9 pulses (LTP)|
+|ID\_baseline (A)|9.525e-6|**4.43e-10**|erased read @ V\_G=0 (fine I-V)|
+|ID\_fire (A)|1.938e-5|**1.359e-8**|after 9 pulses (LTP)|
 |MW (V)|0.681|**0.336**|Vth\_virgin − Vth\_fire (T\_fe=7 nm)|
-|AreaFactor|0.071|0.071|unchanged|
+|W\_eff (µm)|—|**0.090**|gate perimeter 2(W+T\_si); Areafactor 0.045 — see `norm.py`|
 
 ## OPERATING
 
@@ -37,8 +37,8 @@ Source for each value is the optimized-device characterization (mesh fe07).
 |dVth\_per\_pulse (V)|−6.7e-3|**−18.3e-3**|−SS·0.294 dec/pulse (0.3 µs pulse)|
 |leak\_drop\_ratio|0.20|**0.0**|NON-VOLATILE; no self-leak at V\_G=0|
 |reset\_completeness (%)|77.2|\~100|clean erase (endurance drift = optional follow-up)|
-|R\_on\_estimate (Ω)|2.58e3|**2.34e6**|VDS/ID\_fire|
-|R\_off\_estimate (Ω)|5.25e3|**7.14e7**|VDS/ID\_baseline|
+|R\_on\_estimate (Ω)|2.58e3|**3.68e6**|VDS/ID\_fire|
+|R\_off\_estimate (Ω)|5.25e3|**1.129e8**|VDS/ID\_baseline|
 
 **Important (R re-scaling):** R values are \~10⁴× higher (optimized device draws far
 less current → higher R, \~3140× full ON/OFF vs the prior 2×). The model's
@@ -62,8 +62,8 @@ input\_scaling s**, exactly as the PDF §4 describes. For τ=11.11 ms keep:
 |key|prior|**optimized**|
 |-|-|-|
 |tau\_leak|None|non-volatile (no decay/100 µs; leak = refresh/circuit)|
-|E\_spike (J)|97e-15 (read est.)|**1.4e-17** (program/gate switching)|
-|E\_per\_pulse (J)|None|**1.4e-17** (\~0.21 fJ for 15-pulse LTP)|
+|E\_spike (J)|97e-15 (read est.)|**8.87e-18** (program/gate switching)|
+|E\_per\_pulse (J)|None|**8.87e-18** (\~0.13 fJ for 15-pulse LTP)|
 
 ## CMOS adaptation peripheral (UNCHANGED — process-fixed, not the FeFET)
 
@@ -77,3 +77,32 @@ of the FeFET device — carry over verbatim.)
 `plots/ltp\\\_potentiation.png` (15-level LTP), `plots/retention\\\_hold.png`,
 `plots/ltp\\\_vs\\\_temperature.png`; raw CSVs in `csv\\\_export/raw/`.
 
+## Normalization (read this before using any absolute number)
+
+Every absolute current / charge / resistance / energy above is for **one
+nanosheet**, under the single convention defined in
+`Device_Optimization/norm.py`: **W\_eff = 2(W + T\_si) = 90 nm** of gate
+perimeter, i.e. `Areafactor = 0.045 µm` for the double-gate 2D slab. The runs
+executed with `Areafactor = 0.071` (a leftover from the superseded first
+calibration campaign), so every absolute value here is the simulated one times
+**0.6338**; resistances are divided by it. `Areafactor` is a pure post-multiplier
+on contact quantities, so this is an exact rescale — nothing was re-simulated.
+
+Unchanged by the fix: V\_t, MW, SS, every ratio (window, fire\_ratio, igain), and
+every polarization / field quantity.
+
+**Honest caveat for the manuscript:** the absolute current level was never
+calibrated. The Liao-2022 overlay fits a free width scalar that absorbs any
+constant normalization error (the fitted gap is 141×). Calibrated claims are
+limited to memory window, V\_t, SS, on/off ratio, and turn-on shape.
+
+Regression check: `python Device_Optimization/verify_norm.py`.
+
+## The two ON/OFF numbers are different measurements
+
+- **3137×** — retained memory window: full ±2.0 V write, read at V\_G=0
+  (`memwin_fe07.csv`).
+- **30.7×** — 9-pulse LIF fire contrast: `fire_ratio` = I(P9)/I\_baseline
+  (`ltp_potentiation.csv` vs `transfer_curves.csv`).
+
+They differ by 100× and must never appear in the same sentence.

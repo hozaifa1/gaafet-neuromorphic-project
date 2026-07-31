@@ -29,11 +29,14 @@ PLOTS = ROOT / "plots"
 CSVS = ROOT / "csvs"
 
 # device scaling --------------------------------------------------------------
-# .plt drain current is total contact current for the 2D simulation slice scaled
-# internally by AreaFactor=0.071.  To convert to A/um for overlay vs Liao's
-# per-width current we divide by the effective channel width.
-W_EFF_UM = 0.090
-LEAK_FLOOR_A_PER_UM = 3e-9   # log-clip floor to keep log axis sensible
+# Single source of truth for the width convention: Device_Optimization/norm.py.
+# (.plt current carries Areafactor=0.071; norm converts it to per-um-of-gate-
+# perimeter with W_eff = 2*(W+T_si) = 90 nm.)
+import sys
+sys.path.insert(0, str(ROOT.parent / "Device_Optimization"))
+import norm
+
+LEAK_FLOOR_A_PER_UM = norm.rescale_legacy(3e-9)   # log-clip floor, same convention
 OVERDRIVE_V = 0.4            # I_on anchor (V_G - V_t)
 
 # digitised CSV split: rows 1..57 = post-ERS branch, rows 58..75 = post-PGM
@@ -76,7 +79,7 @@ def extract_id_vg(plt_data: dict[str, np.ndarray]) -> tuple[np.ndarray, np.ndarr
     """Pull V_G and |I_D| in A/um from a parsed plt."""
     vg = plt_data["gate_contact OuterVoltage"]
     id_a = np.abs(plt_data["drain_contact TotalCurrent"])
-    return vg, id_a / W_EFF_UM
+    return vg, norm.to_uA_per_um(id_a) * 1e-6   # A/um
 
 
 # ----------------------------------------------------------------------------- digitised parsing

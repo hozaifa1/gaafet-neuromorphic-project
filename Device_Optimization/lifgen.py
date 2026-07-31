@@ -6,7 +6,12 @@ All-transient; time stamps %.6e. Physics/Math identical to the calibrated app
 device (FixedCharge 7e12 + Dit acceptor 4e12).
 
 gen(...) -> cmd string (tokens resolved).
+
+Areafactor comes from norm.AREAFACTOR_USED so that no .cmd generator carries its
+own width number; the correction to the geometric value is applied in analysis
+(norm.to_uA_per_um) -- Areafactor is a pure post-multiplier, so this is exact.
 """
+import norm
 
 HEAD = """*== PARAMETRIC LIF cmd (Device_Optimization/lifgen.py)
 File {{
@@ -23,7 +28,7 @@ Electrode {{
 }}
 Physics {{
   Temperature= {TEMP}
-  Areafactor= 0.071
+  Areafactor= {AREA}
   Fermi
   EffectiveIntrinsicDensity( OldSlotboom )
   Mobility( PhuMob Enormal )
@@ -113,7 +118,8 @@ def gen(tdr, par, node, WF, VREAD, VPGM, PROBEY, N=9, t_p=100e-9, t_read=100e-9,
         t_rise=1e-9, VDS=0.05, TEMP=300, t_hold=0.0, hold_int=40,
         V_erase=0.0, t_erase=0.0, DIGITS=5, TOL=1e-5):
     s = HEAD.format(tdr=tdr, par=par, node=node, WF=WF, VREAD=VREAD, PROBEY=PROBEY,
-                    VDS=VDS, TEMP=TEMP, DIGITS=DIGITS, TOL=TOL)
+                    VDS=VDS, TEMP=TEMP, DIGITS=DIGITS, TOL=TOL,
+                    AREA=norm.AREAFACTOR_USED)
     t = 0.0
     if t_erase > 0:  # ERASE/RESET: drive gate to V_erase, hold, return -> deep off
         t0 = t; t1 = t0 + t_rise; t2 = t1 + t_erase; t3 = t2 + t_rise

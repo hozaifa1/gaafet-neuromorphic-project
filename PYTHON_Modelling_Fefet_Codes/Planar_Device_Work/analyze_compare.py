@@ -22,26 +22,23 @@ VDS = 0.05
 
 # GAA reference numbers -- RE-DERIVED, not copied from SNN_PARAMETERS.md/OPTIMIZED_DEVICE.md.
 #
-# Found and fixed a real inconsistency in Device_Optimization's own GAA pipeline: every
-# .cmd (lifgen.py/memwingen.py) sets Areafactor=0.071 inside Sentaurus, but every analysis
-# script (opt.py/plot_memwin.py/plot_iv.py) divides the result by W_um=0.090 -- two
-# different width conventions for the SAME normalization step, never reconciled. All
-# csv_export/raw/*.csv current values therefore carry a uniform (0.090/0.071)=1.2676x
-# scale error relative to a properly Areafactor=1 (native per-um-width) reading -- the
-# SAME convention this whole planar study uses. Ratio-based numbers (window, SS, n_levels,
-# fire_ratio) are UNAFFECTED (the constant cancels); absolute-current-derived numbers
-# (R_off/R_on/g_min/g_max) are NOT -- corrected here via CORR=0.090/0.071 below.
+# The GAA csv_export/raw/*.csv files are now written under the single width convention
+# defined in Device_Optimization/norm.py: current per micron of gate perimeter,
+# W_eff = TESW = 2*(W+T_si) = 2*(40+5) nm = 90 nm.  The planar deck runs Areafactor=1.0,
+# so its .plt current is already per micron of its single gate.  Both sides are therefore
+# "current per micron of gate width" and NO further factor is applied here
+# (norm.CORR_PLANAR_COMPARE = 1.0).
 #
-# NOTE: SNN_PARAMETERS.md's own R_off=7.14e7/R_on=2.34e6 (-> the Python stage1 synapse's
-# g_min/g_max) come from a THIRD, separately-derived conversion (ID_baseline/ID_fire back-
-# multiplied by 0.071 on already-/0.090-divided csv data) that does not even undo the first
-# inconsistency -- deliberately NOT reused or "corrected" here; that fix is scoped to
-# Device_Optimization/the Python model, out of scope for this planar comparison. Flagging
-# only. TESW = 2*(W+T_si), W=40nm (literature: nanosheet width "saturated at ~40-50nm"),
-# T_si=5nm (locked) -> TESW=90nm, which is exactly the existing W_um=0.090 -- i.e. the
-# analysis-script divisor was already the right literature-consistent width; only the
-# in-.cmd Areafactor=0.071 was the wrong number.
-CORR = 0.090 / 0.071  # = 1.2676; converts existing GAA csv (Areafactor=0.071, /0.090) -> native per-um-width
+# Historical note: before norm.py this file multiplied the GAA CSVs by 0.090/0.071 = 1.2676
+# to undo the mismatch between the in-.cmd Areafactor=0.071 and the in-Python /0.090.  That
+# reached convention (b) (per um of z-depth, i.e. the raw 2D solution), which double-counts
+# the double-gate slab.  norm.py's convention (a) is the geometrically correct one.
+#
+# Ratio-based numbers (window, SS, n_levels, fire_ratio) are unaffected by any of this.
+import sys
+sys.path.insert(0, str(HERE.parent / "Device_Optimization"))
+import norm                      # the one width convention
+CORR = norm.CORR_PLANAR_COMPARE  # = 1.0; GAA CSVs are already per-um-of-gate-width
 ICC_UA_UM = 1e-2   # constant-current threshold criterion (GAA: erased Vth @Icc=1e-2 uA/um)
 
 

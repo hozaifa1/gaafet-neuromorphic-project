@@ -9,14 +9,14 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 NCOLS, COL_ID, COL_VG = 29, 7, 17
-W_um = 0.090
+import norm  # the one width convention
 
 
 def curve(fp):
     t = Path(fp).read_text().split("Data {")[1].split("}")[0].strip()
     a = np.array([float(x) for x in t.split()]).reshape(-1, NCOLS)
     vg = a[:, COL_VG]
-    idd = np.abs(a[:, COL_ID]) * 1e6 / W_um  # uA/um
+    idd = norm.to_uA_per_um(np.abs(a[:, COL_ID]))  # uA/um of gate perimeter
     return vg, idd
 
 

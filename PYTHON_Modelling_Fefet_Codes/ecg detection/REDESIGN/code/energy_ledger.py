@@ -11,8 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 # ---- device + circuit constants (from SNN_PARAMETERS.md / Device_Optimization) ----
-R_ON = 2.34e6          # ohm, programmed
-R_OFF = 7.14e7         # ohm, erased
+# Corrected 2026-07-31 for the single width convention (Device_Optimization/norm.py,
+# W_eff = 90 nm gate perimeter).  R scales as 1/CORR = 1.578x vs the old numbers.
+R_ON = 3.68e6          # ohm, programmed (V_DS / I_fire, I_fire = 1.359e-8 A)
+R_OFF = 1.129e8        # ohm, erased     (V_DS / I_baseline, I = 4.43e-10 A)
 V_READ = 0.05          # V, drain read bias
 T_READ = 100e-9        # s, per-read integration window (assumption)
 G_REPR = (1.0 / R_ON * 1.0 / R_OFF) ** 0.5   # geometric-mean conductance (representative read)

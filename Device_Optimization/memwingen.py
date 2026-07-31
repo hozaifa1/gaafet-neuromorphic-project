@@ -5,7 +5,10 @@ CONVERGENCE (critical): gate-ramp legs use instant steps (InitialStep=1e-3
 MaxStep=5e-2 MinStep=1e-7 -> 1-2 steps); fine-stepped ramps crawl to MinStep at
 negative bias. Digits=5/Tol=1e-5. Writes 5 us = 5*tau_E (full switch), reads 50 ns
 << tau_E (frozen).  gen(mesh, py) -> cmd string.
+
+Areafactor comes from norm.AREAFACTOR_USED (single source of truth).
 """
+import norm
 VGS = [-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0]
 RAMP = "InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7"   # instant gate transition
 
@@ -13,7 +16,7 @@ HEAD = """*== Memory-window I-V (memwingen.py): +/-write 5us, fixed-Vg 50ns read
 File {{ Grid="{mesh}_msh.tdr" Parameter="app_opt.par"
   Plot="opt_outputs/mw_{mesh}_des.tdr" Current="opt_outputs/mw_{mesh}_des.plt" Output="opt_outputs/mw_{mesh}_des.log" }}
 Electrode {{ {{Name="source_contact" Voltage=0.0}} {{Name="drain_contact" Voltage=0.0}} {{Name="gate_contact" Voltage=0.0 Workfunction={WF}}} }}
-Physics {{ Temperature=300 Areafactor=0.071 Fermi EffectiveIntrinsicDensity(OldSlotboom)
+Physics {{ Temperature=300 Areafactor={AREA} Fermi EffectiveIntrinsicDensity(OldSlotboom)
   Mobility(PhuMob Enormal) Recombination(SRH(DopingDependence TempDependence) Auger Band2Band(Model=Hurkx)) }}
 Physics(Material="HZO") {{ Polarization }}
 Physics(MaterialInterface="Silicon/SiO2") {{ Traps(
@@ -52,7 +55,7 @@ def _block(state, vwrite, t0, vgs=VGS):
 
 def gen(mesh, py, WF=4.35, VE=-2.0, VP=2.0, VDS=0.05, vgs=None):
     vgs = VGS if vgs is None else vgs
-    s = HEAD.format(mesh=mesh, py=py, WF=WF, VDS=VDS)
+    s = HEAD.format(mesh=mesh, py=py, WF=WF, VDS=VDS, AREA=norm.AREAFACTOR_USED)
     b1, t = _block("ers", VE, 0.0, vgs)
     b2, _ = _block("pgm", VP, t, vgs)
     return s + b1 + b2 + "}\n"

@@ -3,8 +3,16 @@
 Reads docs/turn*.tsv (full precision) + curated baselines from OPT_LOG.md,
 writes one tidy CSV per sweep + an optimization trajectory + a README.
 Local-only. Creates files under csv_export/sweeps/. Does not modify inputs.
+
+NORMALIZATION: docs/turn*.tsv and OPT_LOG.md were written by opt.py *before*
+norm.py existed, so every absolute column in them (id_off_uA_um, id_on_uA_um,
+qg_C) is in the legacy 0.071-cmd / 0.090-py convention.  They are rescaled to the
+single convention here, in one pass, on the way out -- see ABS_COLS below.
+Ratio columns (window, dr, igain) are convention-independent and untouched.
 """
 import os
+import sys
+
 import pandas as pd
 
 ROOT = r"F:\RESEARCH\FeFET x ML\TCAD Files\GAAFet\Device_Optimization"
@@ -12,8 +20,14 @@ DOCS = os.path.join(ROOT, "docs")
 OUT = os.path.join(ROOT, "csv_export", "sweeps")
 os.makedirs(OUT, exist_ok=True)
 
+sys.path.insert(0, ROOT)
+import norm  # noqa: E402  the one width convention
+
 # Convert uA/um current strings; values already in uA/um.
 A2 = "id_off_uA_um"
+
+# Absolute (width-dependent) columns: currents in uA/um, gate charge in C.
+ABS_COLS = {A2, "id_on_uA_um", "qg_C"}
 
 
 def load_tsv(name):
@@ -34,8 +48,17 @@ def fnum(series):
 written = []
 
 
+def to_one_convention(df):
+    """Rescale every absolute column from the legacy convention to norm.py's."""
+    df = df.copy()
+    for c in df.columns:
+        if c in ABS_COLS:
+            df[c] = norm.rescale_legacy(pd.to_numeric(df[c], errors="coerce"))
+    return df
+
+
 def save(df, fname, sort_col):
-    df = df.sort_values(sort_col).reset_index(drop=True)
+    df = to_one_convention(df).sort_values(sort_col).reset_index(drop=True)
     path = os.path.join(OUT, fname)
     df.to_csv(path, index=False)
     written.append((fname, df, sort_col))
@@ -97,6 +120,14 @@ rows.append({  # baseline T_si=15 nm (OPT_LOG: WINDOW=5800, IDoff=2.85e-8, IDon=
     "id_on_uA_um": 1.66e-4, "v_op_V": 4.0, "igain": float("nan"), "qg_C": float("nan"),
 })
 tsi = pd.DataFrame(rows)
+# Second-order width effect: Areafactor was held at 0.071 across the whole T_si
+# sweep, but TESW = 2*(W+T_si) runs 90 -> 110 nm over it.  The columns above use
+# the nominal W_eff = 90 nm (norm.py); these two use each device's own perimeter.
+tsi["w_eff_tesw_um"] = tsi["t_si_nm"].map(norm.w_eff_um)
+tsi["id_on_uA_um_tesw"] = (norm.rescale_legacy(tsi["id_on_uA_um"])
+                           * norm.W_EFF_UM / tsi["w_eff_tesw_um"])
+tsi["id_off_uA_um_tesw"] = (norm.rescale_legacy(tsi[A2])
+                            * norm.W_EFF_UM / tsi["w_eff_tesw_um"])
 save(tsi, "tsi_sweep.csv", "t_si_nm")
 
 # ---- Turn 4: N_sub sweep. Map tags -> cm^-3; add baseline N_sub=1e16 ----
@@ -174,6 +205,7 @@ traj = pd.DataFrame([
     {"turn": 5, "parameter": "T_fe", "chosen_value": "7 nm", "window": 96240.0, "id_off_uA_um": 1.9e-9, "v_op_V": 2.5},
     {"turn": 6, "parameter": "L_gate / L_ov", "chosen_value": "100 nm / 15 nm", "window": 96240.0, "id_off_uA_um": 1.9e-9, "v_op_V": 2.5},
 ])
+traj = to_one_convention(traj)
 traj_path = os.path.join(OUT, "optimization_trajectory.csv")
 traj.to_csv(traj_path, index=False)
 written.append(("optimization_trajectory.csv", traj, "turn"))

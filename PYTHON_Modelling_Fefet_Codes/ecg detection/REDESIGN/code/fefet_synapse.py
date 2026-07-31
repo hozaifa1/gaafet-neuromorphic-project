@@ -96,7 +96,7 @@ class FeFETSynapse(nn.Module):
 def _selfcheck():
     torch.manual_seed(0)
     # device numbers from SNN_PARAMETERS.md: G_off=1/71.4MΩ, G_on=1/2.34MΩ
-    g_min, g_max = 1.0 / 71.4e6, 1.0 / 2.34e6
+    g_min, g_max = 1.0 / 1.129e8, 1.0 / 3.68e6   # norm.py convention (2026-07-31)
     syn = FeFETSynapse(8, 4, g_min, g_max, n_levels=15, differential=True)
 
     # 1) forward conductances must land exactly on the 15 device levels

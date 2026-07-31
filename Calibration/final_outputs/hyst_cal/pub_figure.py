@@ -19,7 +19,7 @@ YTOP = 3e-5
 def branch(br):
     d = M.parse_plt(Path(f"runs/{br}_{TAG}_des.plt"))
     vg = d["gate_contact OuterVoltage"]
-    i = np.abs(d["drain_contact TotalCurrent"]) / M.W_EFF_UM
+    i = M.norm.to_uA_per_um(np.abs(d["drain_contact TotalCurrent"])) * 1e-6   # A/um
     o = np.argsort(vg)
     return vg[o], i[o]
 

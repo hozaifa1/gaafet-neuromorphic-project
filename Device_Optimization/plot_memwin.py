@@ -8,7 +8,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 NCOLS, COL_ID, COL_VG = 29, 7, 17
-W_um = 0.090
+import norm  # the one width convention
 VGS = [-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0]
 
 
@@ -25,7 +25,7 @@ def state_curve(d, mesh, state):
         if not fp.exists():
             continue
         r = last(fp)
-        vg.append(r[COL_VG]); idd.append(abs(r[COL_ID]) * 1e6 / W_um)
+        vg.append(r[COL_VG]); idd.append(norm.to_uA_per_um(abs(r[COL_ID])))
     return np.array(vg), np.array(idd)
 
 
