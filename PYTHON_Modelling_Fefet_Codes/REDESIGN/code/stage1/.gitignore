@@ -1,0 +1,5 @@
+outputs/
+__pycache__/
+results.tsv
+*.ckpt
+*.log

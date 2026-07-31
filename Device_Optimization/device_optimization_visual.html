@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GAA-FeFET Device Optimization — Visual Story</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #060607;
+  --bg-2: #0f0f11;
+  --surface: #0c0b0a;
+  --border: rgba(255, 255, 255, 0.05);
+  --text-light: #f5ede4;
+  --text-secondary-light: #9a8c80;
+  --text-muted-light: #63574d;
+  --text-secondary-dark: #a89a8c;
+  --accent: #D97757;
+  --accent-light: #e8956e;
+  --accent-dark: #c4613f;
+  --accent-glow: rgba(217, 119, 87, 0.15);
+  --warm-gold: #c4a265;
+  --teal: #4ecdc4;
+  --blue: #5b9bd5;
+  --violet: #9b72cf;
+  --ease-out-expo: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-light);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  line-height: 1.65;
+}
+
+/* ─── Ambient orbs ─── */
+.orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.orb { position: absolute; border-radius: 50%; filter: blur(160px); opacity: 0.04; }
+.orb.one   { width: 600px; height: 600px; background: var(--accent); top: -200px; left: -150px; animation: drift 28s ease-in-out infinite; }
+.orb.two   { width: 500px; height: 500px; background: var(--teal); bottom: -100px; right: -150px; animation: drift 32s ease-in-out infinite reverse; }
+.orb.three { width: 450px; height: 450px; background: var(--warm-gold); top: 45%; left: 50%; animation: drift 24s ease-in-out infinite; animation-delay: -10s; }
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(50px, -40px) scale(1.06); }
+  66%      { transform: translate(-40px, 50px) scale(0.94); }
+}
+
+/* ─── Noise overlay ─── */
+.noise {
+  position: fixed; inset: 0; z-index: 2; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.25;
+}
+
+/* ─── Progress bar ─── */
+.progress-bar {
+  position: fixed; top: 0; left: 0; height: 2px; z-index: 100;
+  background: linear-gradient(90deg, var(--accent), var(--warm-gold), var(--teal));
+  width: 0%; transition: width 50ms linear;
+}
+
+/* ─── Container ─── */
+.container {
+  position: relative; z-index: 3;
+  max-width: 1200px; margin: 0 auto; padding: 0 40px;
+}
+
+/* ─── Typography ─── */
+h1, h2, h3 { font-family: 'Instrument Serif', Georgia, serif; font-weight: 300; }
+h1 { font-size: clamp(52px, 8vw, 96px); line-height: 0.95; letter-spacing: -0.03em; }
+h2 { font-size: clamp(36px, 5vw, 64px); line-height: 1.05; letter-spacing: -0.02em; margin-bottom: 20px; }
+h3 { font-size: 26px; margin-bottom: 12px; letter-spacing: -0.01em; }
+em, h1 em, h2 em, h3 em { font-style: italic; color: var(--accent); }
+
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--accent); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.25em; text-transform: uppercase;
+  margin-bottom: 24px; opacity: 0.85;
+}
+.eyebrow-dot {
+  width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+}
+
+.subtitle {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px; color: var(--text-secondary-light);
+  max-width: 800px; line-height: 1.7;
+}
+
+/* ─── Sections ─── */
+section { padding: 140px 0; }
+.section-reveal {
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 900ms var(--ease-out-expo), transform 900ms var(--ease-out-expo);
+}
+.section-reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ─── Hero ─── */
+.hero {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  padding: 180px 40px 120px; position: relative;
+}
+.hero h1 { max-width: 1000px; margin-bottom: 32px; }
+.hero .subtitle { margin-bottom: 64px; text-align: center; margin-left: auto; margin-right: auto; }
+
+/* ─── Stats bar ─── */
+.stats-bar {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px; margin: 64px 0; width: 100%;
+}
+.stat-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 32px 28px;
+  transition: transform 600ms var(--ease-out-expo), border-color 600ms var(--ease-out-expo), box-shadow 600ms var(--ease-out-expo);
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  left: 8px; right: 8px; top: 8px; bottom: 8px;
+  background: #0d0c0b;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  z-index: 1;
+}
+.stat-card > * {
+  position: relative;
+  z-index: 2;
+}
+.stat-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+}
+.stat-num {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 52px; line-height: 1; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.stat-label {
+  margin-top: 12px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-secondary-light);
+}
+.stat-sub { font-size: 13px; color: var(--text-muted-light); margin-top: 4px; }
+
+/* ─── Divider ─── */
+.divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); margin: 24px 0; }
+
+/* ─── Device SVG ─── */
+.device-section { padding: 120px 0; }
+.device-wrapper {
+  display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 56px; align-items: start;
+}
+.device-svg-container {
+  position: relative;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 32px;
+  padding: 12px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+.device-svg-inner {
+  background: radial-gradient(ellipse at 50% 40%, #151412, #0c0b0a);
+  border: 1px solid rgba(255,255,255,0.03);
+  border-radius: 20px;
+  padding: 32px;
+  position: relative;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.03);
+}
+/* Layer highlight on hover */
+.device-svg-container svg .layer-group { transition: opacity 400ms var(--ease-out-expo), filter 400ms var(--ease-out-expo); }
+.device-svg-container svg:hover .layer-group { opacity: 0.3; filter: saturate(0.3); }
+.device-svg-container svg .layer-group:hover { opacity: 1 !important; filter: saturate(1) brightness(1.15) !important; }
+.device-svg-container svg .dim-group { transition: opacity 400ms var(--ease-out-expo); }
+
+.device-annotations { display: flex; flex-direction: column; gap: 16px; }
+.annotation-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  padding: 20px 24px;
+  transition: all 500ms var(--ease-out-expo);
+  cursor: default;
+}
+.annotation-card:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(217, 119, 87, 0.2);
+  transform: translateX(6px);
+}
+.annotation-card::before {
+  content:''; position:absolute; left:0; top:20px; bottom:20px; width:3px;
+  border-radius:3px; background: var(--accent); opacity:0;
+  transition: opacity 400ms var(--ease-out-expo);
+}
+.annotation-card:hover::before { opacity:1; }
+
+.annotation-card h4 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 20px; font-weight: 400; color: var(--text-light); margin-bottom: 6px;
+}
+.annotation-card .value {
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 26px; font-weight: 700;
+  color: var(--accent); line-height: 1.1;
+}
+.annotation-card .from {
+  font-size: 13px; color: var(--text-secondary-light); margin-top: 4px;
+}
+.annotation-card .change-pill {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  color: var(--teal); margin-left: 8px;
+  border-bottom: 1px dashed var(--teal);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.annotation-card p {
+  font-size: 14px; color: var(--text-secondary-light); margin-top: 10px; line-height: 1.6;
+}
+
+/* ─── Chart cards ─── */
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 28px; }
+.chart-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 36px 36px 28px;
+  overflow: hidden;
+  transition: transform 600ms var(--ease-out-expo), border-color 600ms var(--ease-out-expo), box-shadow 600ms var(--ease-out-expo);
+}
+.chart-card::before {
+  content: '';
+  position: absolute;
+  left: 8px; right: 8px; top: 8px; bottom: 8px;
+  background: #0d0c0b;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  z-index: 1;
+}
+.chart-card > * {
+  position: relative;
+  z-index: 2;
+}
+.chart-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+}
+.chart-card h3 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400; font-size: 24px; margin-bottom: 4px;
+}
+.chart-card .chart-sub { font-size: 13px; color: var(--text-secondary-light); margin-bottom: 20px; }
+.chart-card canvas { width: 100% !important; height: 280px !important; }
+
+/* ─── Turn timeline ─── */
+.timeline { position: relative; padding-left: 40px; }
+.timeline::before {
+  content: ''; position: absolute; left: 15px; top: 0; bottom: 0;
+  width: 2px; background: linear-gradient(180deg, var(--accent), var(--teal), var(--warm-gold));
+  border-radius: 2px;
+}
+.timeline-item {
+  position: relative; margin-bottom: 64px;
+  opacity: 0; transform: translateY(24px);
+  transition: all 700ms var(--ease-out-expo);
+}
+.timeline-item.visible { opacity: 1; transform: translateY(0); }
+.timeline-dot {
+  position: absolute; left: -33px; top: 6px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); border: 3px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--accent);
+  transition: all 400ms var(--ease-out-expo);
+}
+.timeline-item.keep .timeline-dot { background: var(--teal); box-shadow: 0 0 0 2px var(--teal); }
+.timeline-item.null .timeline-dot { background: var(--text-muted-light); box-shadow: 0 0 0 2px var(--text-muted-light); }
+.timeline-turn {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 8px;
+}
+.timeline-item.keep .timeline-turn { color: var(--teal); }
+.timeline-item.null .timeline-turn { color: var(--text-muted-light); }
+.timeline-title {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 28px; font-weight: 400; color: var(--text-light); margin-bottom: 10px;
+}
+.timeline-body { font-size: 15px; color: var(--text-secondary-light); line-height: 1.65; max-width: 750px; }
+.timeline-result {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 14px; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.timeline-result.kept { color: var(--teal); }
+.timeline-result.locked { color: var(--accent); }
+.timeline-result.unchanged { color: var(--text-secondary-light); }
+
+/* ─── Comparison table ─── */
+.compare-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  background: rgba(255,255,255,0.01); border-radius: 12px; overflow: hidden;
+  margin: 24px 0;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.compare-table th {
+  background: rgba(255,255,255,0.03);
+  color: var(--text-light);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.compare-table td {
+  color: var(--text-secondary-light); font-size: 13.5px;
+  padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.compare-table tbody tr:last-child td { border-bottom: none; }
+.compare-table .highlight { color: var(--accent); font-weight: 700; }
+.compare-table .arrow { color: var(--teal); font-weight: 700; }
+
+/* ─── Final device card ─── */
+.final-device {
+  position: relative;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 32px;
+  padding: 12px;
+  margin: 64px 0;
+  overflow: hidden;
+}
+.final-device::before {
+  content: '';
+  position: absolute;
+  left: 12px; right: 12px; top: 12px; bottom: 12px;
+  background: radial-gradient(circle at 100% 0%, rgba(217, 119, 87, 0.08) 0%, #0d0c0b 70%);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  z-index: 1;
+}
+.final-device > * {
+  position: relative;
+  z-index: 2;
+}
+.final-device h2 { margin-bottom: 24px; }
+.final-specs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+.spec-item { text-align: center; }
+.spec-value {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 40px; color: var(--accent); line-height: 1;
+}
+.spec-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-secondary-light); margin-top: 8px;
+}
+.spec-detail { font-size: 13px; color: var(--text-muted-light); margin-top: 2px; }
+
+/* ─── Footer ─── */
+footer {
+  text-align: center; padding: 100px 40px 60px;
+  font-size: 11px; color: var(--text-muted-light);
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+footer em { color: var(--accent); font-style: italic; }
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .container { padding: 0 24px; }
+  .hero { padding: 120px 24px 80px; }
+  section { padding: 100px 0; }
+  .device-wrapper { grid-template-columns: 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
+  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .final-specs { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .orb { animation: none; }
+  .section-reveal { transition: opacity 300ms ease; transform: none; }
+  .timeline-item { transform: none; }
+}
+
+/* ─── Animations ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.stagger-1 { animation: fadeUp 800ms var(--ease-out-expo) both; animation-delay: 100ms; }
+.stagger-2 { animation: fadeUp 800ms var(--ease-out-expo) both; animation-delay: 200ms; }
+.stagger-3 { animation: fadeUp 800ms var(--ease-out-expo) both; animation-delay: 350ms; }
+.stagger-4 { animation: fadeUp 800ms var(--ease-out-expo) both; animation-delay: 500ms; }
+.stagger-5 { animation: fadeUp 800ms var(--ease-out-expo) both; animation-delay: 650ms; }
+</style>
+</head>
+<body>
+
+<!-- Ambient -->
+<div class="orbs" aria-hidden="true">
+  <div class="orb one"></div><div class="orb two"></div><div class="orb three"></div>
+</div>
+<div class="noise" aria-hidden="true"></div>
+<div class="progress-bar" id="progressBar"></div>
+
+
+
+<!-- ═══════════════════════════════════ HERO ═══════════════════════════════════ -->
+<section class="hero" id="hero">
+  <div class="stagger-1">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> Device Optimization Campaign</div>
+  </div>
+  <h1 class="stagger-2">GAA-FeFET<br><em>Optimization</em> Story</h1>
+  <p class="subtitle stagger-3">A coordinate-descent optimization across 9 turns, 41 simulation runs, and 6 geometry knobs — engineering a Gate-All-Around Ferroelectric FET from a 2.6× memory window to <strong style="color:var(--accent)">96,240×</strong> at half the voltage.</p>
+
+  <div class="stats-bar container stagger-4">
+    <div class="stat-card">
+      <div class="stat-num" data-count="96240">0</div>
+      <div class="stat-label">Peak Window</div>
+      <div class="stat-sub">ID_on / ID_off ratio</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" data-count="37000" data-suffix="×">0</div>
+      <div class="stat-label">Window Gain</div>
+      <div class="stat-sub">vs. original baseline</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" data-count="2.5" data-decimal="1" data-suffix=" V">0</div>
+      <div class="stat-label">V_op</div>
+      <div class="stat-sub">down from 4.0 V</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" data-count="15">0</div>
+      <div class="stat-label">Analog Levels</div>
+      <div class="stat-sub">LTP potentiation</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" data-count="0.014" data-decimal="3" data-suffix=" fJ">0</div>
+      <div class="stat-label">Energy/Spike</div>
+      <div class="stat-sub">per program pulse</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ DEVICE CROSS-SECTION ═══════════════════════ -->
+<section class="device-section container" id="device">
+  <div class="section-reveal">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> Optimized Structure</div>
+    <h2>The <em>Engineered</em> Nanosheet</h2>
+    <p class="subtitle" style="margin-bottom:48px;">Each layer was independently optimized. Hover on the device cross-section to see what changed and why.</p>
+
+    <div class="device-wrapper">
+      <div class="device-svg-container">
+        <div class="device-svg-inner">
+          <svg viewBox="0 0 620 520" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;" id="deviceSVG">
+            <defs>
+            <!-- Gradients -->
+            <linearGradient id="metalGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#9a9aaa"/><stop offset="40%" stop-color="#73738a"/>
+              <stop offset="100%" stop-color="#55556a"/>
+            </linearGradient>
+            <linearGradient id="metalGradH" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#73738a"/><stop offset="50%" stop-color="#8888a0"/>
+              <stop offset="100%" stop-color="#73738a"/>
+            </linearGradient>
+            <linearGradient id="feGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#E8956E"/><stop offset="50%" stop-color="#D97757"/>
+              <stop offset="100%" stop-color="#c4613f"/>
+            </linearGradient>
+            <linearGradient id="feGradH" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#c4613f"/><stop offset="50%" stop-color="#D97757"/>
+              <stop offset="100%" stop-color="#c4613f"/>
+            </linearGradient>
+            <linearGradient id="oxGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#5CE0D6"/><stop offset="100%" stop-color="#36a89f"/>
+            </linearGradient>
+            <linearGradient id="oxGradH" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#36a89f"/><stop offset="50%" stop-color="#4ecdc4"/>
+              <stop offset="100%" stop-color="#36a89f"/>
+            </linearGradient>
+            <linearGradient id="siGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7AB8E8"/><stop offset="50%" stop-color="#5b9bd5"/>
+              <stop offset="100%" stop-color="#4080b8"/>
+            </linearGradient>
+            <linearGradient id="sdGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#D4B87A"/><stop offset="40%" stop-color="#c4a265"/>
+              <stop offset="100%" stop-color="#9a7d40"/>
+            </linearGradient>
+            <linearGradient id="subGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#2a2520"/><stop offset="100%" stop-color="#1a1714"/>
+            </linearGradient>
+            <!-- Filters -->
+            <filter id="layerShadow" x="-4%" y="-4%" width="108%" height="112%">
+              <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.4"/>
+            </filter>
+            <filter id="glowFE" x="-10%" y="-20%" width="120%" height="140%">
+              <feGaussianBlur stdDeviation="5" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="innerShadow">
+              <feComponentTransfer in="SourceAlpha"><feFuncA type="table" tableValues="1 0"/></feComponentTransfer>
+              <feGaussianBlur stdDeviation="2"/>
+              <feOffset dx="0" dy="1" result="offsetblur"/>
+              <feFlood flood-color="#000" flood-opacity="0.3" result="color"/>
+              <feComposite in2="offsetblur" operator="in"/>
+              <feComposite in2="SourceGraphic" operator="over"/>
+            </filter>
+            <!-- Arrow markers -->
+            <marker id="dimArrowL" viewBox="0 0 8 8" refX="0" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M8,0 L0,4 L8,8" fill="none" stroke="#8a7f72" stroke-width="1.2"/></marker>
+            <marker id="dimArrowR" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8" fill="none" stroke="#8a7f72" stroke-width="1.2"/></marker>
+            <marker id="dimArrowU" viewBox="0 0 8 8" refX="4" refY="0" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,8 L4,0 L8,8" fill="none" stroke="#8a7f72" stroke-width="1.2"/></marker>
+            <marker id="dimArrowD" viewBox="0 0 8 8" refX="4" refY="8" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L4,8 L8,0" fill="none" stroke="#8a7f72" stroke-width="1.2"/></marker>
+          </defs>
+
+          <!-- Title -->
+          <text x="310" y="28" text-anchor="middle" fill="#6b5f53" font-size="10" font-weight="600" letter-spacing="0.16em" font-family="Inter, sans-serif" text-transform="uppercase">GAA-FeFET NANOSHEET CROSS-SECTION · OPTIMIZED</text>
+
+          <!-- ═══ SUBSTRATE ═══ -->
+          <g class="layer-group" data-name="substrate">
+            <rect x="40" y="380" width="540" height="60" rx="6" fill="url(#subGrad)" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="310" y="415" text-anchor="middle" fill="#4a4038" font-size="11" font-weight="600" letter-spacing="0.1em" font-family="Inter, sans-serif">P-SUBSTRATE</text>
+          </g>
+
+          <!-- ═══ SOURCE ═══ -->
+          <g class="layer-group" data-name="source" filter="url(#layerShadow)">
+            <rect x="60" y="180" width="100" height="200" rx="6" fill="url(#sdGrad)"/>
+            <rect x="60" y="180" width="100" height="200" rx="6" fill="url(#sdGrad)" filter="url(#innerShadow)"/>
+            <!-- Doping hatching -->
+            <g opacity="0.15" clip-path="inset(0)">
+              <line x1="70" y1="180" x2="70" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="85" y1="180" x2="85" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="100" y1="180" x2="100" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="115" y1="180" x2="115" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="130" y1="180" x2="130" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="145" y1="180" x2="145" y2="380" stroke="#fff" stroke-width="0.5"/>
+            </g>
+            <text x="110" y="278" text-anchor="middle" fill="#1a1714" font-size="13" font-weight="800" font-family="Inter, sans-serif">S</text>
+            <text x="110" y="296" text-anchor="middle" fill="#1a1714" font-size="9" font-weight="600" font-family="Inter, sans-serif" opacity="0.7">N⁺ 5×10¹⁹</text>
+          </g>
+
+          <!-- ═══ DRAIN ═══ -->
+          <g class="layer-group" data-name="drain" filter="url(#layerShadow)">
+            <rect x="460" y="180" width="100" height="200" rx="6" fill="url(#sdGrad)"/>
+            <rect x="460" y="180" width="100" height="200" rx="6" fill="url(#sdGrad)" filter="url(#innerShadow)"/>
+            <g opacity="0.15" clip-path="inset(0)">
+              <line x1="470" y1="180" x2="470" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="485" y1="180" x2="485" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="500" y1="180" x2="500" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="515" y1="180" x2="515" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="530" y1="180" x2="530" y2="380" stroke="#fff" stroke-width="0.5"/>
+              <line x1="545" y1="180" x2="545" y2="380" stroke="#fff" stroke-width="0.5"/>
+            </g>
+            <text x="510" y="278" text-anchor="middle" fill="#1a1714" font-size="13" font-weight="800" font-family="Inter, sans-serif">D</text>
+            <text x="510" y="296" text-anchor="middle" fill="#1a1714" font-size="9" font-weight="600" font-family="Inter, sans-serif" opacity="0.7">N⁺ 5×10¹⁹</text>
+          </g>
+
+          <!-- ═══ GATE METAL (U-shaped wrap) ═══ -->
+          <g class="layer-group" data-name="gate" filter="url(#layerShadow)">
+            <!-- Top bar -->
+            <rect x="150" y="105" width="320" height="40" rx="5" fill="url(#metalGrad)"/>
+            <!-- Left wall -->
+            <rect x="150" y="105" width="32" height="270" rx="0" fill="url(#metalGradH)"/>
+            <rect x="150" y="105" width="32" height="40" fill="url(#metalGrad)"/>
+            <!-- Right wall -->
+            <rect x="438" y="105" width="32" height="270" rx="0" fill="url(#metalGradH)"/>
+            <rect x="438" y="105" width="32" height="40" fill="url(#metalGrad)"/>
+            <!-- Bottom bar -->
+            <rect x="150" y="340" width="320" height="40" rx="5" fill="url(#metalGrad)"/>
+            <!-- Corner smoothing overlays -->
+            <rect x="150" y="340" width="32" height="40" fill="url(#metalGradH)"/>
+            <rect x="438" y="340" width="32" height="40" fill="url(#metalGradH)"/>
+            <!-- Label -->
+            <text x="310" y="130" text-anchor="middle" fill="#e8e0d8" font-size="10" font-weight="700" letter-spacing="0.08em" font-family="Inter, sans-serif">GATE METAL</text>
+            <text x="310" y="143" text-anchor="middle" fill="#a8a0a0" font-size="8.5" font-family="Inter, sans-serif">WF = 4.35 eV</text>
+            <text x="310" y="370" text-anchor="middle" fill="#e8e0d8" font-size="10" font-weight="700" letter-spacing="0.08em" font-family="Inter, sans-serif">GATE METAL</text>
+          </g>
+
+          <!-- ═══ FERROELECTRIC HZO (U-shaped wrap inside gate) ═══ -->
+          <g class="layer-group" data-name="fe" filter="url(#glowFE)">
+            <!-- Top bar -->
+            <rect x="182" y="148" width="256" height="28" rx="4" fill="url(#feGrad)"/>
+            <!-- Left wall -->
+            <rect x="182" y="148" width="22" height="202" fill="url(#feGradH)"/>
+            <rect x="182" y="148" width="22" height="28" fill="url(#feGrad)"/>
+            <!-- Right wall -->
+            <rect x="416" y="148" width="22" height="202" fill="url(#feGradH)"/>
+            <rect x="416" y="148" width="22" height="28" fill="url(#feGrad)"/>
+            <!-- Bottom bar -->
+            <rect x="182" y="322" width="256" height="28" rx="4" fill="url(#feGrad)"/>
+            <rect x="182" y="322" width="22" height="28" fill="url(#feGradH)"/>
+            <rect x="416" y="322" width="22" height="28" fill="url(#feGradH)"/>
+            <!-- Labels -->
+            <text x="310" y="167" text-anchor="middle" fill="#fff" font-size="9.5" font-weight="700" font-family="Inter, sans-serif">HZO  ·  7 nm</text>
+            <text x="310" y="341" text-anchor="middle" fill="#fff" font-size="9.5" font-weight="700" font-family="Inter, sans-serif">HZO  ·  7 nm</text>
+            <!-- Polarization dipoles (top FE) -->
+            <g class="fe-dipoles" opacity="0.85">
+              <g><circle cx="230" cy="158" r="2" fill="#fff" opacity="0.8"><animate attributeName="opacity" values="0.3;0.9;0.3" dur="2.4s" repeatCount="indefinite"/></circle><line x1="230" y1="162" x2="230" y2="170" stroke="#fff" stroke-width="1" opacity="0.5"><animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.4s" repeatCount="indefinite"/></line></g>
+              <g><circle cx="270" cy="158" r="2" fill="#fff" opacity="0.8"><animate attributeName="opacity" values="0.3;0.9;0.3" dur="2.4s" repeatCount="indefinite" begin="0.4s"/></circle><line x1="270" y1="162" x2="270" y2="170" stroke="#fff" stroke-width="1" opacity="0.5"><animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.4s" repeatCount="indefinite" begin="0.4s"/></line></g>
+              <g><circle cx="310" cy="158" r="2" fill="#fff" opacity="0.8"><animate attributeName="opacity" values="0.3;0.9;0.3" dur="2.4s" repeatCount="indefinite" begin="0.8s"/></circle><line x1="310" y1="162" x2="310" y2="170" stroke="#fff" stroke-width="1" opacity="0.5"><animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.4s" repeatCount="indefinite" begin="0.8s"/></line></g>
+              <g><circle cx="350" cy="158" r="2" fill="#fff" opacity="0.8"><animate attributeName="opacity" values="0.3;0.9;0.3" dur="2.4s" repeatCount="indefinite" begin="1.2s"/></circle><line x1="350" y1="162" x2="350" y2="170" stroke="#fff" stroke-width="1" opacity="0.5"><animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.4s" repeatCount="indefinite" begin="1.2s"/></line></g>
+              <g><circle cx="390" cy="158" r="2" fill="#fff" opacity="0.8"><animate attributeName="opacity" values="0.3;0.9;0.3" dur="2.4s" repeatCount="indefinite" begin="1.6s"/></circle><line x1="390" y1="162" x2="390" y2="170" stroke="#fff" stroke-width="1" opacity="0.5"><animate attributeName="opacity" values="0.2;0.6;0.2" dur="2.4s" repeatCount="indefinite" begin="1.6s"/></line></g>
+            </g>
+          </g>
+
+          <!-- ═══ INTERFACIAL OXIDE (U-shaped wrap inside FE) ═══ -->
+          <g class="layer-group" data-name="oxide">
+            <!-- Top bar -->
+            <rect x="204" y="179" width="212" height="10" rx="2" fill="url(#oxGrad)"/>
+            <!-- Left wall -->
+            <rect x="204" y="179" width="12" height="140" fill="url(#oxGradH)"/>
+            <rect x="204" y="179" width="12" height="10" fill="url(#oxGrad)"/>
+            <!-- Right wall -->
+            <rect x="404" y="179" width="12" height="140" fill="url(#oxGradH)"/>
+            <rect x="404" y="179" width="12" height="10" fill="url(#oxGrad)"/>
+            <!-- Bottom bar -->
+            <rect x="204" y="309" width="212" height="10" rx="2" fill="url(#oxGrad)"/>
+            <rect x="204" y="309" width="12" height="10" fill="url(#oxGradH)"/>
+            <rect x="404" y="309" width="12" height="10" fill="url(#oxGradH)"/>
+            <!-- Labels -->
+            <text x="310" y="187" text-anchor="middle" fill="#1a1714" font-size="7.5" font-weight="700" font-family="Inter, sans-serif">IL · 1 nm</text>
+          </g>
+
+          <!-- ═══ SILICON CHANNEL (center) ═══ -->
+          <g class="layer-group" data-name="channel" filter="url(#layerShadow)">
+            <rect x="216" y="192" width="188" height="114" rx="8" fill="url(#siGrad)"/>
+            <!-- Subtle carrier animation -->
+            <g opacity="0.12">
+              <circle cx="250" cy="250" r="3" fill="#fff">
+                <animate attributeName="cx" values="230;390;230" dur="6s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0;0.4;0" dur="6s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="300" cy="240" r="2.5" fill="#fff">
+                <animate attributeName="cx" values="240;380;240" dur="5s" repeatCount="indefinite" begin="1.5s"/>
+                <animate attributeName="opacity" values="0;0.35;0" dur="5s" repeatCount="indefinite" begin="1.5s"/>
+              </circle>
+              <circle cx="350" cy="260" r="2" fill="#fff">
+                <animate attributeName="cx" values="250;370;250" dur="7s" repeatCount="indefinite" begin="3s"/>
+                <animate attributeName="opacity" values="0;0.3;0" dur="7s" repeatCount="indefinite" begin="3s"/>
+              </circle>
+            </g>
+            <text x="310" y="244" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" letter-spacing="0.04em" font-family="Inter, sans-serif">Si CHANNEL</text>
+            <text x="310" y="260" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="9" font-family="Inter, sans-serif">5 nm  ·  N_sub = 10¹⁶ cm⁻³</text>
+          </g>
+
+          <!-- ═══ DIMENSION ANNOTATIONS ═══ -->
+          <g class="dim-group">
+            <!-- L_gate: horizontal dimension below device -->
+            <line x1="160" y1="402" x2="160" y2="435" stroke="#5a5048" stroke-width="0.5" stroke-dasharray="2,2"/>
+            <line x1="460" y1="402" x2="460" y2="435" stroke="#5a5048" stroke-width="0.5" stroke-dasharray="2,2"/>
+            <line x1="164" y1="428" x2="456" y2="428" stroke="#8a7f72" stroke-width="1" marker-start="url(#dimArrowL)" marker-end="url(#dimArrowR)"/>
+            <text x="310" y="447" text-anchor="middle" fill="#a89a8c" font-size="10.5" font-weight="600" font-family="Inter, sans-serif">L<tspan font-size="8" dy="2">gate</tspan><tspan dy="-2"> = 100 nm</tspan></text>
+
+            <!-- L_ov: Source side -->
+            <line x1="150" y1="460" x2="182" y2="460" stroke="#c4a265" stroke-width="1.2" marker-start="url(#dimArrowL)" marker-end="url(#dimArrowR)"/>
+            <text x="166" y="475" text-anchor="middle" fill="#c4a265" font-size="8.5" font-weight="600" font-family="Inter, sans-serif">L<tspan font-size="7" dy="1.5">ov</tspan><tspan dy="-1.5">=15</tspan></text>
+            <!-- L_ov: Drain side -->
+            <line x1="438" y1="460" x2="470" y2="460" stroke="#c4a265" stroke-width="1.2" marker-start="url(#dimArrowL)" marker-end="url(#dimArrowR)"/>
+            <text x="454" y="475" text-anchor="middle" fill="#c4a265" font-size="8.5" font-weight="600" font-family="Inter, sans-serif">L<tspan font-size="7" dy="1.5">ov</tspan><tspan dy="-1.5">=15</tspan></text>
+
+            <!-- T_fe: right side vertical -->
+            <line x1="478" y1="148" x2="478" y2="176" stroke="#D97757" stroke-width="1" marker-start="url(#dimArrowU)" marker-end="url(#dimArrowD)"/>
+            <text x="498" y="165" fill="#D97757" font-size="8.5" font-weight="600" font-family="Inter, sans-serif">T<tspan font-size="7" dy="1.5">fe</tspan><tspan dy="-1.5">=7</tspan></text>
+
+            <!-- T_ox: right side vertical -->
+            <line x1="492" y1="179" x2="492" y2="189" stroke="#4ecdc4" stroke-width="1" marker-start="url(#dimArrowU)" marker-end="url(#dimArrowD)"/>
+            <text x="512" y="188" fill="#4ecdc4" font-size="8.5" font-weight="600" font-family="Inter, sans-serif">T<tspan font-size="7" dy="1.5">ox</tspan><tspan dy="-1.5">=1</tspan></text>
+
+            <!-- T_si: right side vertical -->
+            <line x1="478" y1="192" x2="478" y2="306" stroke="#5b9bd5" stroke-width="1" marker-start="url(#dimArrowU)" marker-end="url(#dimArrowD)"/>
+            <text x="498" y="253" fill="#5b9bd5" font-size="8.5" font-weight="600" font-family="Inter, sans-serif">T<tspan font-size="7" dy="1.5">si</tspan><tspan dy="-1.5">=5</tspan></text>
+          </g>
+
+          <!-- Caption -->
+          <text x="310" y="502" text-anchor="middle" fill="#4a4038" font-size="9" font-family="Inter, sans-serif" letter-spacing="0.04em">Double-gate 2D cross-section · GAA cylindrical via AreaFactor = 0.071</text>
+        </svg>
+      </div></div>
+
+      <div class="device-annotations">
+        <div class="annotation-card">
+          <h4>Interfacial Oxide T<sub>ox</sub></h4>
+          <div class="value">1.0 nm <span class="change-pill">−50%</span></div>
+          <div class="from">from 2.0 nm → 2,200× window gain</div>
+          <p>Stronger FE→channel coupling. The central FeFET lever — thinner IL lets more ferroelectric polarization reach the channel surface potential.</p>
+        </div>
+        <div class="annotation-card">
+          <h4>Silicon Channel T<sub>si</sub></h4>
+          <div class="value">5 nm <span class="change-pill">−67%</span></div>
+          <div class="from">from 15 nm → 8× additional gain</div>
+          <p>Ultra-thin fully-depleted body gives the gate complete electrostatic control → steep SS → off-state crushed to 3.7×10⁻⁹ µA/µm.</p>
+        </div>
+        <div class="annotation-card">
+          <h4>Ferroelectric HZO T<sub>fe</sub></h4>
+          <div class="value">7 nm <span class="change-pill">−30%</span></div>
+          <div class="from">from 10 nm → 2× window, V_op ↓ to 2.5 V</div>
+          <p>Coupling/charge sweet spot — thinner FE strengthens coupling and lowers coercive voltage. Below 7 nm the off-state rises past the optimum.</p>
+        </div>
+        <div class="annotation-card">
+          <h4>Gate Length L<sub>gate</sub></h4>
+          <div class="value">100 nm</div>
+          <div class="from">locked — L_g=50 nm → 6× worse (SCE)</div>
+          <p>Long channel avoids short-channel effects. S/D overlap = 15 nm depletes the junction edge, suppressing lateral leakage.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ PARAMETER SWEEPS ═══════════════════════════ -->
+<section class="container" id="sweeps">
+  <div class="section-reveal">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> Parameter Sweeps</div>
+    <h2>How Each <em>Knob</em> Moved the Curves</h2>
+    <p class="subtitle" style="margin-bottom:48px;">Real TCAD simulation data from 41 Sentaurus runs. Each chart shows how the memory window responded to a single parameter sweep.</p>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>T<sub>ox</sub> <em>Sweep</em></h3>
+        <div class="chart-sub">Interfacial oxide thickness vs. off-state current — Turn 2</div>
+        <canvas id="chartTox"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>T<sub>si</sub> <em>Sweep</em></h3>
+        <div class="chart-sub">Nanosheet thickness vs. memory window — Turn 3</div>
+        <canvas id="chartTsi"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>T<sub>fe</sub> <em>Sweep</em></h3>
+        <div class="chart-sub">Ferroelectric thickness vs. window & V_op — Turn 5</div>
+        <canvas id="chartTfe"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>V<sub>read</sub> <em>Sweep</em></h3>
+        <div class="chart-sub">Read voltage vs. dynamic range — Turn 1</div>
+        <canvas id="chartVread"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>N<sub>sub</sub> <em>Sweep</em></h3>
+        <div class="chart-sub">Body doping — null result (floor-limited) — Turn 4</div>
+        <canvas id="chartNsub"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>L Scaling <em>Comparison</em></h3>
+        <div class="chart-sub">Gate length / overlap variants — Turn 6</div>
+        <canvas id="chartLscaling"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ OPTIMIZATION JOURNEY ═══════════════════════ -->
+<section class="container" id="journey">
+  <div class="section-reveal">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> Turn-by-Turn</div>
+    <h2>The <em>Optimization</em> Journey</h2>
+    <p class="subtitle" style="margin-bottom:48px;">Each turn probed one design knob. Changes were kept only if the figure-of-merit improved — coordinate descent with Pareto gating.</p>
+
+    <!-- Trajectory chart -->
+    <div class="chart-card" style="margin-bottom:56px;">
+      <h3>Window <em>Trajectory</em></h3>
+      <div class="chart-sub">Memory window (ID_on/ID_off) after each optimization turn</div>
+      <canvas id="chartTrajectory" style="height:320px !important;"></canvas>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline">
+      <div class="timeline-item keep">
+        <div class="timeline-dot"></div>
+        <div class="timeline-turn">Turn 1 — V_read</div>
+        <div class="timeline-title">Finding the Integration-Preserving Read Point</div>
+        <div class="timeline-body">Deep reads (−0.9 V) inflate DR to 49,000× but destroy integration — read-disturb depolarises the staircase. Only V_read = −0.5 V preserves graded integration (igain = 1.43). <strong>High DR must be engineered, not biased.</strong></div>
+        <div class="timeline-result locked">V_READ = −0.5 V LOCKED</div>
+      </div>
+
+      <div class="timeline-item keep">
+        <div class="timeline-dot"></div>
+        <div class="timeline-turn">Turn 2 — T_ox</div>
+        <div class="timeline-title">The Central Lever: Interfacial Oxide</div>
+        <div class="timeline-body">Scaling T_ox from 2.0 → 1.0 nm: window explodes 2.6 → 5,800 (2,200×), off-state drops 3,000×, V_op roughly halves. Stronger FE→channel coupling is the dominant FeFET design freedom.</div>
+        <div class="timeline-result kept">T_OX = 1.0 nm KEPT</div>
+      </div>
+
+      <div class="timeline-item keep">
+        <div class="timeline-dot"></div>
+        <div class="timeline-turn">Turn 3 — T_si</div>
+        <div class="timeline-title">Thin Body for Gate Control</div>
+        <div class="timeline-body">Thinning the nanosheet from 15 → 5 nm: window climbs 5,800 → 47,309 (8×). The gate gains full electrostatic control over the fully-depleted body → steeper SS → off-state crushed to 3.7×10⁻⁹. On-state even rises slightly.</div>
+        <div class="timeline-result kept">T_SI = 5 nm KEPT</div>
+      </div>
+
+      <div class="timeline-item null">
+        <div class="timeline-dot"></div>
+        <div class="timeline-turn">Turn 4 — N_sub</div>
+        <div class="timeline-title">Doping: Null Result (Floor-Limited)</div>
+        <div class="timeline-body">In the 5 nm fully-depleted body, doping barely matters — the gate controls everything. ID_off is at the solver floor (~3.5×10⁻⁹). The 47k–50k spread is floor noise. ≥5×10¹⁷ collapses on-current.</div>
+        <div class="timeline-result unchanged">N_SUB = 10¹⁶ UNCHANGED</div>
+      </div>
+
+      <div class="timeline-item keep">
+        <div class="timeline-dot"></div>
+        <div class="timeline-turn">Turn 5 — T_fe</div>
+        <div class="timeline-title">FE Thickness: Energy-Optimal Sweet Spot</div>
+        <div class="timeline-body">T_fe = 7 nm peaks the window at 96,240 (2× over 10 nm), drops V_op to 2.5 V, and achieves lowest energy/spike. Below 7 nm the off-state rises — past the coupling/charge optimum.</div>
+        <div class="timeline-result kept">T_FE = 7 nm KEPT</div>
+      </div>
+
+      <div class="timeline-item keep">
+        <div class="timeline-dot"></div>
+        <div class="timeline-turn">Turn 6 — L_gate / L_ov</div>
+        <div class="timeline-title">Geometry Lock Confirmation</div>
+        <div class="timeline-body">L_gate = 50 nm → 6× worse (SCE). L_ov = 0 → 6× worse (S/D edge leakage). The overlap gate depletes the S/D edge — beneficial. <strong>Geometry fully locked.</strong></div>
+        <div class="timeline-result locked">GEOMETRY LOCKED</div>
+      </div>
+
+      <div class="timeline-item keep">
+        <div class="timeline-dot"></div>
+        <div class="timeline-turn">Turn 7 — Pulse/Read Protocol</div>
+        <div class="timeline-title">The Read-Point Correction & LIF Discovery</div>
+        <div class="timeline-body">Short 30 ns reads eliminate read-disturb (igain → 1.0), doubling the window to 224k. The true erase/program window opens at V_G = 0 V (not −0.5 V which sits in GIDL). True window ≈ 3,140× at V_G = 0 V read.</div>
+        <div class="timeline-result kept">V_READ = 0 V, TRUE WINDOW 3140×</div>
+      </div>
+
+      <div class="timeline-item keep">
+        <div class="timeline-dot"></div>
+        <div class="timeline-turn">Turns 8–9 — LTP & Robustness</div>
+        <div class="timeline-title">Analog Synaptic Weight & Retention</div>
+        <div class="timeline-body">Cumulative +2 V / 0.3 µs pulses produce 15 distinguishable conductance levels over ~4 decades (LTP). Retention holds flat over 100 µs — non-volatile. Energy: ~0.014 fJ/pulse.</div>
+        <div class="timeline-result kept">15-LEVEL LTP, NON-VOLATILE</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ DEVICE CHARACTERISTICS ═════════════════════════ -->
+<section class="container" id="characteristics">
+  <div class="section-reveal">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> Device Characteristics</div>
+    <h2>What the <em>Optimized</em> Device Does</h2>
+    <p class="subtitle" style="margin-bottom:48px;">Real simulation data: memory window I-V, LTP potentiation curve, retention hold, and temperature robustness.</p>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>Memory <em>Window</em> I-V</h3>
+        <div class="chart-sub">Erased vs. programmed drain current — the 3,140× window at V_G=0</div>
+        <canvas id="chartMemwin"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Transfer <em>Curves</em></h3>
+        <div class="chart-sub">Fine I-V showing ΔV_th = 0.336 V, SS ≈ 62 mV/dec</div>
+        <canvas id="chartTransfer"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>LTP <em>Potentiation</em></h3>
+        <div class="chart-sub">15 conductance levels over ~4 decades — analog synaptic weight</div>
+        <canvas id="chartLTP"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Retention <em>Hold</em></h3>
+        <div class="chart-sub">Conductance vs. time at V_G=0 — non-volatile, settles flat</div>
+        <canvas id="chartRetention"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>LTP vs. <em>Temperature</em></h3>
+        <div class="chart-sub">250 K / 300 K / 350 K — operating window ≈ 250–325 K</div>
+        <canvas id="chartTemp"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Full Memory Window <em>I-V</em></h3>
+        <div class="chart-sub">Dense I-V sweep: erased & programmed across −1.5 V to +1.5 V</div>
+        <canvas id="chartFullIV"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ FINAL RESULT ═══════════════════════════════ -->
+<section class="container" id="result">
+  <div class="section-reveal">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> Optimized Device</div>
+    <h2>The <em>Final</em> Device</h2>
+
+    <div class="final-device">
+      <h2 style="text-align:center;">Optimized GAA-FeFET <em>Datasheet</em></h2>
+      <div class="divider" style="margin:24px 0 32px;"></div>
+
+      <div class="final-specs">
+        <div class="spec-item">
+          <div class="spec-value">3,140×</div>
+          <div class="spec-label">Memory Window</div>
+          <div class="spec-detail">at V_read = 0 V</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-value">2.0 V</div>
+          <div class="spec-label">Program Voltage</div>
+          <div class="spec-detail">+2 V / 0.3 µs pulses</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-value">62 mV</div>
+          <div class="spec-label">Subthreshold Slope</div>
+          <div class="spec-detail">per decade, near-ideal</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-value">15</div>
+          <div class="spec-label">Analog Levels</div>
+          <div class="spec-detail">LTP over 4 decades</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-value">0.014 fJ</div>
+          <div class="spec-label">Energy / Spike</div>
+          <div class="spec-detail">per program pulse</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-value">∞</div>
+          <div class="spec-label">Retention</div>
+          <div class="spec-detail">non-volatile at V_G=0</div>
+        </div>
+      </div>
+
+      <div class="divider" style="margin:32px 0;"></div>
+
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Original</th>
+            <th></th>
+            <th>Optimized</th>
+            <th>Rationale</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>T_ox</td><td>2.0 nm</td><td class="arrow">→</td><td class="highlight">1.0 nm</td><td>FE→channel coupling ↑</td></tr>
+          <tr><td>T_si</td><td>15 nm</td><td class="arrow">→</td><td class="highlight">5 nm</td><td>Gate control ↑, off-state ↓</td></tr>
+          <tr><td>T_fe</td><td>10 nm</td><td class="arrow">→</td><td class="highlight">7 nm</td><td>Window/V_op/energy optimum</td></tr>
+          <tr><td>N_sub</td><td>10¹⁶</td><td class="arrow">→</td><td>10¹⁶</td><td>Fully depleted, gate-controlled</td></tr>
+          <tr><td>L_gate</td><td>100 nm</td><td class="arrow">→</td><td>100 nm</td><td>Long channel, no SCE</td></tr>
+          <tr><td>L_ov</td><td>15 nm</td><td class="arrow">→</td><td>15 nm</td><td>Edge depletion suppresses leak</td></tr>
+          <tr><td>V_read</td><td>−0.5 V</td><td class="arrow">→</td><td class="highlight">0.0 V</td><td>Electron channel, not GIDL</td></tr>
+          <tr><td>V_program</td><td>4.0 V</td><td class="arrow">→</td><td class="highlight">2.0 V</td><td>Sub-coercive, lower energy</td></tr>
+          <tr><td>Window</td><td>2.6×</td><td class="arrow">→</td><td class="highlight">3,140×</td><td style="color:var(--teal);font-weight:700;">1,208× improvement</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<footer>
+  GAA-FeFET LIF/SNN Device Optimization · Built with <em>TCAD Sentaurus</em> · 41 simulation runs
+</footer>
+
+<script>
+// ─── Progress bar ───
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  const p = (window.scrollY / h) * 100;
+  document.getElementById('progressBar').style.width = p + '%';
+});
+
+// ─── Intersection Observer for reveals ───
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1, rootMargin: '-50px' });
+document.querySelectorAll('.section-reveal, .timeline-item').forEach(el => observer.observe(el));
+
+
+
+// ─── Counter animation ───
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting && !e.target.dataset.done) {
+      e.target.dataset.done = '1';
+      const target = parseFloat(e.target.dataset.count);
+      const dec = parseInt(e.target.dataset.decimal || '0');
+      const suffix = e.target.dataset.suffix || '';
+      const duration = 2000;
+      const start = performance.now();
+      const step = (now) => {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 4);
+        const current = target * eased;
+        if (dec > 0) e.target.textContent = current.toFixed(dec) + suffix;
+        else e.target.textContent = Math.round(current).toLocaleString() + suffix;
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('[data-count]').forEach(el => counterObserver.observe(el));
+
+// ─── Chart.js global config ───
+Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#a89a8c';
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.padding = 16;
+Chart.defaults.elements.point.radius = 4;
+Chart.defaults.elements.point.hoverRadius = 6;
+Chart.defaults.elements.line.tension = 0.25;
+Chart.defaults.interaction.mode = 'index';
+Chart.defaults.interaction.intersect = false;
+Chart.defaults.scale.grid.color = 'rgba(255, 255, 255, 0.05)';
+Chart.defaults.scale.ticks.color = '#8a7f72';
+
+
+const accentRGB = 'rgb(217,119,87)';
+const tealRGB = 'rgb(78,205,196)';
+const goldRGB = 'rgb(196,162,101)';
+const blueRGB = 'rgb(91,155,213)';
+const violetRGB = 'rgb(155,114,207)';
+
+// ─── T_ox Sweep ───
+new Chart(document.getElementById('chartTox'), {
+  type: 'bar',
+  data: {
+    labels: ['0.5 nm', '1.0 nm', '1.5 nm', '2.0 nm'],
+    datasets: [{
+      label: 'ID_off (µA/µm)',
+      data: [1.039e-7, 2.85e-8, 2.083e-6, 8.75e-5],
+      backgroundColor: [accentRGB, tealRGB, accentRGB, accentRGB].map(c => c.replace('rgb','rgba').replace(')',',0.7)')),
+      borderColor: [accentRGB, tealRGB, accentRGB, accentRGB],
+      borderWidth: 2, borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'ID_off (µA/µm)' },
+           grid: { color: 'rgba(255,255,255,0.05)' }},
+      x: { title: { display: true, text: 'T_ox' }, grid: { display: false }}
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => `ID_off = ${ctx.raw.toExponential(2)} µA/µm` }}
+    }
+  }
+});
+
+// ─── T_si Sweep ───
+new Chart(document.getElementById('chartTsi'), {
+  type: 'line',
+  data: {
+    labels: ['5','8','10','12','15'],
+    datasets: [{
+      label: 'Window (ID_on/ID_off)',
+      data: [47309, 20239, 13339, 9178, 5800],
+      borderColor: accentRGB, backgroundColor: accentRGB.replace('rgb','rgba').replace(')',',0.1)'),
+      fill: true, pointBackgroundColor: '#fff', pointBorderColor: accentRGB, pointBorderWidth: 2,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { title: { display: true, text: 'Memory Window' }, grid: { color: 'rgba(255,255,255,0.05)' }},
+      x: { title: { display: true, text: 'T_si (nm)' }, grid: { display: false }}
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// ─── T_fe Sweep ───
+new Chart(document.getElementById('chartTfe'), {
+  type: 'line',
+  data: {
+    labels: ['5','7','10','12'],
+    datasets: [
+      { label: 'Window', data: [84656, 96240, 47504, 21139],
+        borderColor: accentRGB, backgroundColor: accentRGB.replace('rgb','rgba').replace(')',',0.08)'),
+        fill: true, pointBackgroundColor: '#fff', pointBorderColor: accentRGB, pointBorderWidth: 2, yAxisID: 'y'
+      },
+      { label: 'V_op (V)', data: [2.5, 2.5, 3.0, 3.0],
+        borderColor: tealRGB, borderDash: [6,3],
+        pointBackgroundColor: '#fff', pointBorderColor: tealRGB, pointBorderWidth: 2, yAxisID: 'y1'
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { title: { display: true, text: 'Window' }, grid: { color: 'rgba(255,255,255,0.05)' }, position: 'left' },
+      y1: { title: { display: true, text: 'V_op (V)' }, position: 'right', grid: { drawOnChartArea: false }, min: 2, max: 3.5 },
+      x: { title: { display: true, text: 'T_fe (nm)' }, grid: { display: false }}
+    }
+  }
+});
+
+// ─── V_read Sweep ───
+new Chart(document.getElementById('chartVread'), {
+  type: 'line',
+  data: {
+    labels: ['-1.3','-1.1','-0.9','-0.7','-0.5','-0.3'],
+    datasets: [{
+      label: 'Dynamic Range',
+      data: [795, 26798, 49163, 244, 2.6, 7.5],
+      borderColor: accentRGB, pointBackgroundColor: '#fff', pointBorderColor: accentRGB, pointBorderWidth: 2,
+      backgroundColor: accentRGB.replace('rgb','rgba').replace(')',',0.08)'), fill: true,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'DR (log scale)' }, grid: { color: 'rgba(255,255,255,0.05)' }},
+      x: { title: { display: true, text: 'V_read (V)' }, grid: { display: false }}
+    },
+    plugins: {
+      legend: { display: false },
+      annotation: {
+        annotations: { line1: { type: 'line', xMin: 4, xMax: 4, borderColor: tealRGB, borderWidth: 2, borderDash: [5,5],
+          label: { display: true, content: 'Integration-preserving', backgroundColor: tealRGB, color: '#fff', font:{size:10} }}}
+      }
+    }
+  }
+});
+
+// ─── N_sub Sweep ───
+new Chart(document.getElementById('chartNsub'), {
+  type: 'bar',
+  data: {
+    labels: ['10¹⁵', '10¹⁶', '10¹⁷', '5×10¹⁷'],
+    datasets: [
+      { label: 'Window', data: [49123, 47309, 50541, 20533],
+        backgroundColor: accentRGB.replace('rgb','rgba').replace(')',',0.6)'),
+        borderColor: accentRGB, borderWidth: 2, borderRadius: 6, yAxisID: 'y' },
+      { label: 'ID_on (µA/µm)', data: [1.76e-4, 1.76e-4, 1.76e-4, 6.83e-5],
+        type: 'line', borderColor: tealRGB, pointBackgroundColor: '#fff',
+        pointBorderColor: tealRGB, pointBorderWidth: 2, yAxisID: 'y1' }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { title: { display: true, text: 'Window' }, grid: { color: 'rgba(255,255,255,0.05)' }},
+      y1: { title: { display: true, text: 'ID_on (µA/µm)' }, position: 'right', grid: { drawOnChartArea: false }},
+      x: { title: { display: true, text: 'N_sub (cm⁻³)' }, grid: { display: false }}
+    }
+  }
+});
+
+// ─── L Scaling ───
+new Chart(document.getElementById('chartLscaling'), {
+  type: 'bar',
+  data: {
+    labels: ['L_g=50, L_ov=15', 'L_g=100, L_ov=15', 'L_g=100, L_ov=0'],
+    datasets: [{
+      label: 'Window',
+      data: [16081, 96240, 14798],
+      backgroundColor: [accentRGB, tealRGB, goldRGB].map(c => c.replace('rgb','rgba').replace(')',',0.65)')),
+      borderColor: [accentRGB, tealRGB, goldRGB],
+      borderWidth: 2, borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    indexAxis: 'y',
+    scales: {
+      x: { title: { display: true, text: 'Memory Window' }, grid: { color: 'rgba(255,255,255,0.05)' }},
+      y: { grid: { display: false }}
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// ─── Trajectory ───
+new Chart(document.getElementById('chartTrajectory'), {
+  type: 'line',
+  data: {
+    labels: ['Baseline','Turn 1\nV_read','Turn 2\nT_ox','Turn 3\nT_si','Turn 4\nN_sub','Turn 5\nT_fe','Turn 6\nL_gate'],
+    datasets: [{
+      label: 'Memory Window',
+      data: [2.6, 2.6, 5800, 47309, 47309, 96240, 96240],
+      borderColor: accentRGB, borderWidth: 3,
+      pointBackgroundColor: ['#6b5f53',accentRGB,tealRGB,tealRGB,'#6b5f53',tealRGB,accentRGB],
+      pointBorderColor: ['#6b5f53',accentRGB,tealRGB,tealRGB,'#6b5f53',tealRGB,accentRGB],
+      pointRadius: [6,6,8,8,6,8,8], pointBorderWidth: 3,
+      backgroundColor: accentRGB.replace('rgb','rgba').replace(')',',0.06)'), fill: true,
+      tension: 0.2,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'Window (log)' }, grid: { color: 'rgba(255,255,255,0.05)' }},
+      x: { grid: { display: false }}
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// ─── Memory Window I-V (zoomed) ───
+new Chart(document.getElementById('chartMemwin'), {
+  type: 'line',
+  data: {
+    labels: [-1.0,-0.75,-0.5,-0.25,0,0.25,0.5,0.75,1.0],
+    datasets: [
+      { label: 'Erased', data: [2.84e-4,6.44e-4,5.36e-4,8.15e-5,9.41e-3,2.56,58.84,84.21,96.50],
+        borderColor: blueRGB, pointBackgroundColor: '#fff', pointBorderColor: blueRGB, pointBorderWidth: 2 },
+      { label: 'Programmed', data: [2.97e-4,1.19e-4,4.99e-5,0.108,29.5,72.0,92.74,102.3,108.4],
+        borderColor: accentRGB, pointBackgroundColor: '#fff', pointBorderColor: accentRGB, pointBorderWidth: 2 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'ID (µA/µm)' }, grid: { color: 'rgba(255,255,255,0.05)' },
+           min: 1e-5 },
+      x: { title: { display: true, text: 'V_G (V)' }, grid: { display: false }}
+    }
+  }
+});
+
+// ─── Transfer Curves ───
+new Chart(document.getElementById('chartTransfer'), {
+  type: 'line',
+  data: {
+    labels: [-0.4,-0.35,-0.3,-0.25,-0.2,-0.15,-0.1,-0.05,0,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5],
+    datasets: [
+      { label: 'Erased', data: [3.85e-4,1.74e-4,9.61e-5,2.47e-5,1.26e-4,6.43e-4,1.85e-3,3.98e-3,7.77e-3,1.60e-2,4.00e-2,1.32e-1,5.61e-1,2.35,8.09,19.68,33.95,47.62,58.06],
+        borderColor: blueRGB, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: blueRGB },
+      { label: 'Programmed', data: [5.94e-4,3.10e-3,1.97e-2,1.23e-1,6.25e-1,2.77,9.68,21.19,33.06,43.54,52.62,60.57,67.72,74.63,80.29,84.56,87.93,91.16,94.19],
+        borderColor: accentRGB, borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: accentRGB }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'ID (µA/µm)' }, grid: { color: 'rgba(255,255,255,0.05)' }},
+      x: { title: { display: true, text: 'V_G (V)' }, grid: { display: false }}
+    }
+  }
+});
+
+// ─── LTP Potentiation ───
+new Chart(document.getElementById('chartLTP'), {
+  type: 'line',
+  data: {
+    labels: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+    datasets: [{
+      label: 'Conductance (µA/µm)',
+      data: [1.007e-3,1.113e-3,1.529e-3,2.690e-3,5.851e-3,1.441e-2,3.726e-2,9.644e-2,2.382e-1,5.526e-1,1.224,2.580,4.997,8.608,13.12],
+      borderColor: accentRGB, borderWidth: 3,
+      pointBackgroundColor: '#fff', pointBorderColor: accentRGB, pointBorderWidth: 2, pointRadius: 5,
+      backgroundColor: accentRGB.replace('rgb','rgba').replace(')',',0.08)'), fill: true,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'G (µA/µm)' }, grid: { color: 'rgba(255,255,255,0.05)' }},
+      x: { title: { display: true, text: 'Pulse Number' }, grid: { display: false }}
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// ─── Retention ───
+new Chart(document.getElementById('chartRetention'), {
+  type: 'line',
+  data: {
+    labels: [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100],
+    datasets: [{
+      label: 'Conductance (µA/µm)',
+      data: [0.0964,2.942,5.529,6.737,7.266,7.490,7.569,7.578,7.556,7.524,7.491,7.461,7.436,7.417,7.401,7.389,7.381,7.374,7.369,7.366,7.363],
+      borderColor: tealRGB, borderWidth: 2,
+      pointBackgroundColor: '#fff', pointBorderColor: tealRGB, pointBorderWidth: 1.5, pointRadius: 3,
+      backgroundColor: tealRGB.replace('rgb','rgba').replace(')',',0.06)'), fill: true,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { title: { display: true, text: 'G (µA/µm)' }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 0 },
+      x: { title: { display: true, text: 'Time (µs)' }, grid: { display: false }}
+    },
+    plugins: { legend: { display: false } }
+  }
+});
+
+// ─── LTP vs Temperature ───
+new Chart(document.getElementById('chartTemp'), {
+  type: 'line',
+  data: {
+    labels: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+    datasets: [
+      { label: '250 K', data: [1.039e-4,1.242e-4,2.075e-4,4.975e-4,1.486e-3,4.852e-3,1.571e-2,4.717e-2,1.303e-1,3.478e-1,9.161e-1,2.271,4.949,9.152,14.49],
+        borderColor: blueRGB, pointBackgroundColor: '#fff', pointBorderColor: blueRGB, pointBorderWidth: 2, pointRadius: 4 },
+      { label: '300 K', data: [1.007e-3,1.113e-3,1.529e-3,2.690e-3,5.851e-3,1.441e-2,3.726e-2,9.644e-2,2.382e-1,5.526e-1,1.224,2.580,4.997,8.608,13.12],
+        borderColor: accentRGB, pointBackgroundColor: '#fff', pointBorderColor: accentRGB, pointBorderWidth: 2, pointRadius: 4 },
+      { label: '350 K', data: [5.181e-4,5.044e-4,4.945e-4,5.044e-4,5.694e-4,8.062e-4,1.588e-3,3.985e-3,1.069e-2,2.862e-2,7.661e-2,1.982e-1,4.784e-1,1.073,2.230],
+        borderColor: goldRGB, borderDash: [5,3], pointBackgroundColor: '#fff', pointBorderColor: goldRGB, pointBorderWidth: 2, pointRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { type: 'logarithmic', title: { display: true, text: 'G (µA/µm)' }, grid: { color: 'rgba(255,255,255,0.05)' }},
+      x: { title: { display: true, text: 'Pulse Number' }, grid: { display: false }}
+    }
+  }
+});
+
+// ─── Full Memory Window I-V ───
+(() => {
+  const raw = [
+    [-1.5,0.1174,0.3433],[-1.3,0.001306,0.000376],[-1.1,0.001873,0.000995],
+    [-0.9,0.003377,0.001862],[-0.7,0.00547,0.00434],[-0.5,0.006587,0.005405],
+    [-0.3,0.01020,0.006374],[-0.1,0.001846,0.006757],[0.0,0.009408,0.009708],
+    [0.1,0.04004,0.4190],[0.2,0.5609,6.347],[0.3,8.091,30.30],
+    [0.5,58.06,72.88],[0.7,87.60,87.69],[1.0,96.50,108.4],[1.3,109.7,109.7],[1.5,112.2,112.2]
+  ];
+  const labels = raw.map(r => r[0]);
+  const erased = raw.map(r => r[1]);
+  const programmed = raw.map(r => r[2]);
+
+  new Chart(document.getElementById('chartFullIV'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Erased', data: erased, borderColor: blueRGB, borderWidth: 2,
+          pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: blueRGB },
+        { label: 'Programmed', data: programmed, borderColor: accentRGB, borderWidth: 2,
+          pointRadius: 3, pointBackgroundColor: '#fff', pointBorderColor: accentRGB }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { type: 'logarithmic', title: { display: true, text: 'ID (µA/µm)' },
+             grid: { color: 'rgba(255,255,255,0.05)' }, min: 1e-4 },
+        x: { title: { display: true, text: 'V_G (V)' }, grid: { display: false }}
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>

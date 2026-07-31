@@ -62,7 +62,7 @@ for _, r in t2.iterrows():
     rows.append({
         "t_ox_nm": tox_map[r["mesh"]],
         "eval": eval_kind,
-        "window": float("nan"),  # turn2 tsv has no WIN column
+        "window": float(r["DR"]),  # use DR (discrimination ratio) as memory window
         A2: float(r["IDrest"]),
         "id_on_uA_um": float(r["IDp9"]),  # IDp9 = retained on-state at p9
         "v_op_V": float(r["Vop"]),
