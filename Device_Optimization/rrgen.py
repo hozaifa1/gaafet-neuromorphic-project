@@ -41,14 +41,33 @@ def _hold(prefix, t0, t1, intervals=0, maxstep=None):
             f' Coupled (Iterations=100) {{Poisson Electron Hole}}{plot} }}\n')
 
 
-def _sweep(prefix, t0, t1, electrode, v, npts, maxstep=None):
-    ms = maxstep if maxstep is not None else (t1 - t0) / npts
-    return (f'  NewCurrentPrefix="{prefix}"\n'
-            f'  Transient ( InitialTime={t0:.6e} FinalTime={t1:.6e}'
-            f' InitialStep=1e-13 MaxStep={ms:.6e} MinStep=1e-17 Increment=1.2'
-            f' Goal {{ Name="{electrode}" Voltage= {v} }} ) {{'
-            f' Coupled (Iterations=100) {{Poisson Electron Hole}}\n'
-            f'      CurrentPlot( Time = (Range=({t0:.6e} {t1:.6e}) Intervals={npts}) ) }}\n')
+def _ptsweep(prefix, t0, electrode, values, t_hold=50e-9, hop=1e-8):
+    """A sweep built from INSTANT hops between short fixed-bias holds.
+
+    Not a continuous Transient+Goal ramp.  A finely stepped Goal ramp does not
+    converge on this device -- the first attempt at RR-0 collapsed to MinStep
+    100 ps into a 500 ns gate ramp and sat at 1e-15 s steps until its log hit
+    71 MB.  memwingen.py's docstring already records the rule ("fine-stepped
+    ramps crawl to MinStep at negative bias"); every node in this project that
+    actually completes uses instant hops.  Each hold is short compared with
+    tau_E so the ferroelectric state stays frozen across the point.
+
+    Returns (text, end_time).  One .plt per point: <prefix><i:03d>_.
+    """
+    s, t = "", t0
+    for i, v in enumerate(values):
+        s += (f'  NewCurrentPrefix="{prefix}s{i:03d}_"\n'
+              f'  Transient ( InitialTime={t:.6e} FinalTime={t + hop:.6e} {RAMP}'
+              f' Increment=1.4 Goal {{ Name="{electrode}" Voltage= {v} }} ) {{'
+              f' Coupled (Iterations=100) {{Poisson Electron Hole}} }}\n')
+        t += hop
+        s += (f'  NewCurrentPrefix="{prefix}{i:03d}_"\n'
+              f'  Transient ( InitialTime={t:.6e} FinalTime={t + t_hold:.6e}'
+              f' InitialStep=1e-11 MaxStep={t_hold / 10:.3e} MinStep=1e-15 Increment=1.4 ) {{'
+              f' Coupled (Iterations=100) {{Poisson Electron Hole}}\n'
+              f'      CurrentPlot( Time = (Range=({t:.6e} {t + t_hold:.6e}) Intervals=5) ) }}\n')
+        t += t_hold
+    return s, t
 
 
 def _write(prefix, t, v, t_hold, VREAD, t_rise=1e-9):
@@ -86,30 +105,35 @@ def tdr_states(node="t13_tdr", V_ers=-2.0, V_pgm=2.0, t_w=5e-6, VREAD=0.0, **kw)
 
 
 # ------------------------------------------------------- RR-2: output characteristics
-def idvd(node="t11_idvd", vg_list=(0.0, 0.2), vd_max=1.0, ltp_at=(3, 6, 9, 12, 15),
-         V_ers=-2.0, V_pgm=2.0, t_w=5e-6, t_p=1e-6, t_sweep=500e-9, npts=100,
+VDS_GRID = [round(0.05 * i, 3) for i in range(21)]      # 0 .. 1.0 V in 50 mV steps
+
+
+def idvd(node="t11_idvd", vg_list=(0.0, 0.2), ltp_at=(3, 6, 9, 12, 15),
+         V_ers=-2.0, V_pgm=2.0, t_w=5e-6, t_p=1e-6, vds_grid=None,
          VREAD=0.0, **kw):
     """I_D-V_DS families: erased, fully programmed, then 5 analog LTP states.
 
     Every device paper has an output characteristic and this project has none.
-    The V_DS ramp runs in 500 ns, far shorter than tau_P = 10 us, so the retained
-    state does not relax across a sweep; the analysis reads the conduction
-    current (eCurrent + hCurrent) so the dV_DS/dt displacement term is removed
-    exactly rather than assumed small.
+    The drain is stepped in instant hops between 50 ns holds (see _ptsweep) --
+    a continuous ramp does not converge here.  Holding 21 points costs ~1.3 us
+    per family, well under tau_P = 10 us, so the retained state survives a sweep.
+    The analysis reads the conduction current (eCurrent + hCurrent), so the
+    dV_DS/dt displacement term through the overlap is removed exactly.
     """
+    vds_grid = vds_grid or VDS_GRID
     s = head(node, VREAD=VREAD, **kw)
     t = 0.0
 
     def family(tag, t):
         out = ""
         for i, vg in enumerate(vg_list):
-            out += _goal(f"{tag}_vg{i}_", t, t + 1e-9, "gate_contact", vg)
+            out += _goal(f"{tag}_g{i}set_", t, t + 1e-9, "gate_contact", vg)
             t += 1e-9
-            out += _sweep(f"{tag}_vg{i}vd_", t, t + t_sweep, "drain_contact", vd_max, npts)
-            t += t_sweep
-            out += _goal(f"{tag}_vg{i}rst_", t, t + 1e-9, "drain_contact", 0.05)
+            blk, t = _ptsweep(f"{tag}_g{i}d", t, "drain_contact", vds_grid)
+            out += blk
+            out += _goal(f"{tag}_g{i}rst_", t, t + 1e-9, "drain_contact", 0.05)
             t += 1e-9
-            out += _goal(f"{tag}_vg{i}g0_", t, t + 1e-9, "gate_contact", VREAD)
+            out += _goal(f"{tag}_g{i}g0_", t, t + 1e-9, "gate_contact", VREAD)
             t += 1e-9
         return out, t
 
@@ -136,21 +160,27 @@ def idvd(node="t11_idvd", vg_list=(0.0, 0.2), vd_max=1.0, ltp_at=(3, 6, 9, 12, 1
     return s + "}\n"
 
 
-def dibl(node="t11_dibl", vds_list=(0.05, 0.5), vg_lo=-0.5, vg_hi=1.0,
-         V_ers=-2.0, V_pgm=2.0, t_w=5e-6, t_sweep=500e-9, npts=150, VREAD=0.0, **kw):
-    """Transfer curves at two V_DS, both retained states -> DIBL = -dV_t/dV_DS."""
+VG_GRID = [round(-0.5 + 0.05 * i, 3) for i in range(31)]   # -0.5 .. +1.0 V
+
+
+def dibl(node="t11_dibl", vds_list=(0.05, 0.5), vg_grid=None,
+         V_ers=-2.0, V_pgm=2.0, t_w=5e-6, VREAD=0.0, **kw):
+    """Transfer curves at two V_DS, both retained states -> DIBL = -dV_t/dV_DS.
+
+    The state is rewritten before each of the four sweeps, so no sweep inherits
+    the creep of the one before it.
+    """
+    vg_grid = vg_grid or VG_GRID
     s = head(node, VREAD=VREAD, **kw)
     t = 0.0
     for tag, vw in (("ers", V_ers), ("pgm", V_pgm)):
         for j, vds in enumerate(vds_list):
             a, t = _write(f"{tag}{j}_w_", t, vw, t_w, VREAD)
             s += a
-            s += _goal(f"{tag}{j}_vd_", t, t + 1e-9, "drain_contact", vds)
+            s += _goal(f"{tag}{j}_vdset_", t, t + 1e-9, "drain_contact", vds)
             t += 1e-9
-            s += _goal(f"{tag}{j}_vglo_", t, t + 1e-9, "gate_contact", vg_lo)
-            t += 1e-9
-            s += _sweep(f"{tag}{j}_", t, t + t_sweep, "gate_contact", vg_hi, npts)
-            t += t_sweep
+            blk, t = _ptsweep(f"{tag}{j}_g", t, "gate_contact", vg_grid)
+            s += blk
             s += _goal(f"{tag}{j}_rst_", t, t + 1e-9, "gate_contact", VREAD)
             t += 1e-9
             s += _goal(f"{tag}{j}_vdrst_", t, t + 1e-9, "drain_contact", 0.05)

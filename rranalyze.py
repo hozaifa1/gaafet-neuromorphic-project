@@ -194,17 +194,28 @@ def rr1(nodes=("mfm_pe196", "mfm_pe300")):
 
 # ------------------------------------------------------------------- RR-2
 def rr2(node="t11_idvd", dnode="t11_dibl"):
-    """I_D-V_DS output family and the DIBL pair."""
+    """I_D-V_DS output family and the DIBL pair.
+
+    Both are point sweeps (instant hop -> short hold -> one .plt per point), so
+    each file contributes its settled last row rather than a whole curve.
+    File names are <state>_g<i>d<NNN>_<node>_des.plt for the output family and
+    <state><j>_g<NNN>_<node>_des.plt for the DIBL transfer pair.
+    """
+    import re as _re
     rows = []
-    for f in sorted((OUTPUTS / node).glob(f"*vd_{node}_des.plt")) if (OUTPUTS / node).exists() else []:
-        tag = f.name.split(f"_{node}")[0]
-        d = parse_plt(f)
-        state, vg_idx = tag.rsplit("_vg", 1)[0], tag.rsplit("_vg", 1)[1][0]
-        rows.append(pd.DataFrame({"state": state, "vg_idx": int(vg_idx),
-                                  "Vg_V": d[VG].values, "Vds_V": d[VD].values,
-                                  "Id_uA_um": cond_uA(d)}))
+    pat = _re.compile(rf"^(?P<state>.+)_g(?P<gi>\d)d(?P<pt>\d{{3}})_{node}_des\.plt$")
+    if (OUTPUTS / node).exists():
+        for f in sorted((OUTPUTS / node).glob(f"*_{node}_des.plt")):
+            m = pat.match(f.name)
+            if not m:
+                continue
+            r = parse_plt(f).iloc[[-1]]
+            rows.append({"state": m["state"], "vg_idx": int(m["gi"]),
+                         "point": int(m["pt"]), "Vg_V": float(r[VG].iloc[0]),
+                         "Vds_V": float(r[VD].iloc[0]),
+                         "Id_uA_um": float(cond_uA(r)[0])})
     if rows:
-        out = pd.concat(rows, ignore_index=True)
+        out = pd.DataFrame(rows).sort_values(["state", "vg_idx", "point"])
         _emit(out, RAW / "output_char.csv", "RR-2 output characteristics")
         print("  ohmic check (I_D at low V_DS should be linear in V_DS):")
         for (st, vi), g in out.groupby(["state", "vg_idx"]):
@@ -218,19 +229,29 @@ def rr2(node="t11_idvd", dnode="t11_dibl"):
     dd = OUTPUTS / dnode
     if dd.exists():
         rows = []
+        dpat = _re.compile(rf"^(?P<state>ers|pgm)(?P<j>\d)_g(?P<pt>\d{{3}})_{dnode}_des\.plt$")
         for f in sorted(dd.glob(f"*_{dnode}_des.plt")):
-            tag = f.name.split(f"_{dnode}")[0]
-            if not (tag.startswith("ers") or tag.startswith("pgm")) or "_" in tag:
+            m = dpat.match(f.name)
+            if not m:
                 continue
-            d = parse_plt(f)
-            rows.append(pd.DataFrame({"tag": tag, "Vds_V": float(d[VD].values[0]),
-                                      "Vg_V": d[VG].values, "Id_uA_um": cond_uA(d)}))
+            r = parse_plt(f).iloc[[-1]]
+            rows.append({"state": m["state"], "vds_idx": int(m["j"]), "point": int(m["pt"]),
+                         "Vds_V": float(r[VD].iloc[0]), "Vg_V": float(r[VG].iloc[0]),
+                         "Id_uA_um": float(cond_uA(r)[0])})
         if rows:
-            out = pd.concat(rows, ignore_index=True)
+            out = pd.DataFrame(rows).sort_values(["state", "vds_idx", "point"])
             _emit(out, RAW / "dibl_transfer.csv", "RR-2 DIBL transfer pair")
             icc = 1e-2 * norm.CORR
-            vt = {t: vth_cc(g.Vg_V, g.Id_uA_um, icc) for t, g in out.groupby("tag")}
-            print(f"  V_t per (state, V_DS): { {k: round(v, 4) for k, v in vt.items()} }")
+            vt = {}
+            for (st, j), g in out.groupby(["state", "vds_idx"]):
+                vt[(st, round(float(g.Vds_V.iloc[0]), 3))] = vth_cc(g.Vg_V, g.Id_uA_um, icc)
+            for k, v in vt.items():
+                print(f"  V_t {k[0]} @ V_DS={k[1]} V : {v:+.4f} V")
+            for st in ("ers", "pgm"):
+                ks = sorted([k for k in vt if k[0] == st], key=lambda k: k[1])
+                if len(ks) == 2 and np.isfinite(vt[ks[0]]) and np.isfinite(vt[ks[1]]):
+                    dibl_mv = -(vt[ks[1]] - vt[ks[0]]) / (ks[1][1] - ks[0][1]) * 1000
+                    print(f"  DIBL ({st}) = {dibl_mv:.1f} mV/V")
 
 
 # ------------------------------------------------------------------- RR-3

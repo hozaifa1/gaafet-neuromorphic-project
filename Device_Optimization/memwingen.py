@@ -13,8 +13,8 @@ VGS = [-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0]
 RAMP = "InitialStep=1e-3 MaxStep=5e-2 MinStep=1e-7"   # instant gate transition
 
 HEAD = """*== Memory-window I-V (memwingen.py): +/-write 5us, fixed-Vg 50ns reads.
-File {{ Grid="{mesh}_msh.tdr" Parameter="app_opt.par"
-  Plot="opt_outputs/mw_{mesh}_des.tdr" Current="opt_outputs/mw_{mesh}_des.plt" Output="opt_outputs/mw_{mesh}_des.log" }}
+File {{ Grid="{mesh}_msh.tdr" Parameter="{par}"
+  Plot="opt_outputs/{node}_des.tdr" Current="opt_outputs/{node}_des.plt" Output="opt_outputs/{node}_des.log" }}
 Electrode {{ {{Name="source_contact" Voltage=0.0}} {{Name="drain_contact" Voltage=0.0}} {{Name="gate_contact" Voltage=0.0 Workfunction={WF}}} }}
 Physics {{ Temperature=300 Areafactor={AREA} Fermi EffectiveIntrinsicDensity(OldSlotboom)
   Mobility(PhuMob Enormal) Recombination(SRH(DopingDependence TempDependence) Auger Band2Band(Model=Hurkx)) }}
@@ -53,11 +53,23 @@ def _block(state, vwrite, t0, vgs=VGS):
     return s, t
 
 
-def gen(mesh, py, WF=4.35, VE=-2.0, VP=2.0, VDS=0.05, vgs=None):
+def gen(mesh, py, WF=4.35, VE=-2.0, VP=2.0, VDS=0.05, vgs=None,
+        par="app_opt.par", node=None, save_states=False):
+    """node defaults to mw_<mesh>; save_states also writes a .tdr per retained state."""
     vgs = VGS if vgs is None else vgs
-    s = HEAD.format(mesh=mesh, py=py, WF=WF, VDS=VDS, AREA=norm.AREAFACTOR_USED)
+    node = node or f"mw_{mesh}"
+    s = HEAD.format(mesh=mesh, py=py, WF=WF, VDS=VDS, par=par, node=node,
+                    AREA=norm.AREAFACTOR_USED)
     b1, t = _block("ers", VE, 0.0, vgs)
     b2, _ = _block("pgm", VP, t, vgs)
+    if save_states:
+        # snapshot each retained state right after its write hold, before the reads
+        b1 = b1.replace('  NewCurrentPrefix="ers_rset00_"',
+                        f'  Save ( FilePrefix="opt_outputs/state_erased_{node}" )\n'
+                        '  NewCurrentPrefix="ers_rset00_"', 1)
+        b2 = b2.replace('  NewCurrentPrefix="pgm_rset00_"',
+                        f'  Save ( FilePrefix="opt_outputs/state_programmed_{node}" )\n'
+                        '  NewCurrentPrefix="pgm_rset00_"', 1)
     return s + b1 + b2 + "}\n"
 
 

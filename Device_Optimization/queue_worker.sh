@@ -22,6 +22,7 @@ Q=opt_outputs/QUEUE.txt
 LOG=opt_outputs/QUEUE.log
 STOP=opt_outputs/QUEUE.stop
 MAX_IDLE=14400        # 4 h of an empty queue and the worker retires
+JOB_TIMEOUT=${JOB_TIMEOUT:-7200}   # 2 h hard cap per job (see below)
 IDLE=0
 
 touch "$Q"
@@ -56,7 +57,11 @@ while true; do
 
     echo "$(date '+%m-%d %H:%M:%S') START $NODE" >> "$LOG"
     START=$(date +%s)
-    csh -c "source ~/.cshrc && sdevice ${NODE}_des.cmd" > "opt_outputs/${NODE}_runlog.txt" 2>&1
+    # Hard wall-clock cap. A non-converging job does not fail, it crawls: the
+    # first RR-0 attempt collapsed to 1e-15 s steps and wrote a 71 MB log while
+    # holding the only license. timeout turns that into rc=124 and lets the
+    # queue move on instead of stalling the whole night on one bad deck.
+    timeout -s KILL "$JOB_TIMEOUT" csh -c "source ~/.cshrc && sdevice ${NODE}_des.cmd"         > "opt_outputs/${NODE}_runlog.txt" 2>&1
     RC=$?
     ELAPSED=$(( $(date +%s) - START ))
     NPLT=$(ls opt_outputs/*${NODE}_des.plt 2>/dev/null | wc -l)
