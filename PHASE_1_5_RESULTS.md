@@ -67,6 +67,8 @@ current, the eCurrent/hCurrent split, source-contact balance — are now availab
 | **RR-8** variability | all 14 level pairs overlap; **FixedCharge dominates, T_fe is negligible** |
 | **RR-9** read disturb | **0.0000 %** over 9.9e5 equivalent reads |
 | **RR-10** Areafactor sanity | rescale exact to **1.8e-16** (double-precision epsilon) |
+| **RR-8b** cycle-to-cycle | **8 of 15 levels separable at 3σ** — the headline number |
+| **RR-5** endurance | **not delivered** — see §6 |
 
 ### RR-1 validates the calibration
 ±1.96 V (= 2·F_c·T_fe, as the checklist specified) does **not** saturate a Preisach
@@ -78,6 +80,29 @@ loop is saturated rather than an assertion that it is.
 This also finally quantifies defect **C5**: the MFIS gate-stack loop reaches
 0.55·F_c and 12 % of P_r, so the deck's "HZO P–E loop" is a *deep* minor loop, and
 the voltage divider is the whole story.
+
+### RR-8b — the analog depth is 8 levels open-loop, not 15
+Nine completed repeats of the same 15-pulse train on ONE device (`t17_c2c`; the
+run hit the 2 h cap at 9 of 20 repeats, which is enough for a σ).
+
+Levels 1–8 are separable at 3σ. **Levels 9–15 are not.** The LTP curve
+saturates, so 9–15 sit inside 0.11 decades at the top of the range while the c2c
+σ stays ≈0.015 decades — at level 15 the spacing is 0.009 decades against a σ of
+0.014, i.e. the levels are closer together than the noise.
+
+Both of these are defensible, but only one is currently claimed:
+
+| protocol | levels | bits |
+|---|---|---|
+| open loop — n pulses, no verify (**what the LTP figure shows**) | **8** | 3.0 |
+| closed loop — write-verify to placed targets | ~16 | 4.0 |
+
+The 3.79-decade range does support ~16 levels, but reaching them needs verify
+circuitry and per-write iteration — a system cost the paper would have to own.
+**"15 levels" is defensible only as a write-verify claim.** This is the number
+Phase 6's K2/K3 must quantize to, and it is why c2c, not d2d, sets analog depth:
+d2d shifts a device's whole ladder and write-verify recovers it, c2c blurs the
+rungs of one device and nothing recovers it.
 
 ### RR-10 proves the Phase 1 rescale needed no re-simulation
 Re-running one node at the geometrically correct `Areafactor = 0.045` and dividing
@@ -169,6 +194,17 @@ and belong in the methods section:
 ---
 
 ## 6. Still open
+
+**RR-5 endurance — not delivered, and why**
+Three deck versions. Single 1 µs and single 5 µs pulses per polarity both failed
+because one pulse never erases a programmed device (erase is opposed by the
+depolarization field; RR-3 measures the first −2 V pulse moving the state 18 %).
+The 15-pulse-train version is correct but hit the 2 h cap at cycle ~6, and the
+previous run's cycle-10 files survived on the host and were silently combined
+into one CSV. That data is deleted. RR-5 remains structurally incapable of
+measuring fatigue anyway — the Preisach model has no fatigue, wake-up or imprint
+term — so the honest options are to caption it as write repeatability or to omit
+it. RR-3's 3-cycle run is the real cycling evidence.
 
 **Running or queued**
 - RR-5: `t14_end100` completed (2513 s). **`t14_end10` at the corrected protocol did NOT
