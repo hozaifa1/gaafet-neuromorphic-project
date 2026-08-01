@@ -290,6 +290,11 @@ published memory-window figure had been the pre-RR-0 one.
 Affected and now regenerated: `dev1`, `dev2`, `dev4`, `dev5`. `dev6` (the differential
 weight map) moved only in float rounding, as it must — it is normalized by `g_max`.
 
+`Combined Figures/eeg figures/dev1..dev6` hold the same stale copies and were **left
+alone**: EEG is dropped, and `build_defense_pdf.py` references only the ECG set, so no
+document shows two values for one measured ladder. They are dead artifacts — flagged here
+rather than edited, so a future session does not mistake them for current.
+
 **The `cal_n16` memory-window discrepancy is resolved, and it was not a fabrication.**
 `metrics.py` reported MW = 1.218 V where the calibration docs and the publication figure
 said 1.30 V. Both are correct constant-current extractions on the same data, one decade
