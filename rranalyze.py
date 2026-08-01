@@ -331,17 +331,60 @@ def rr2(node="t11_idvd", dnode="t11_dibl"):
         if rows:
             out = pd.DataFrame(rows).sort_values(["state", "vds_idx", "point"])
             _emit(out, RAW / "dibl_transfer.csv", "RR-2 DIBL transfer pair")
-            icc = 1e-2 * norm.CORR
+
+            # DIBL needs ONE criterion that all four curves actually cross. The
+            # default I_cc = 6.34e-3 uA/um does not work here: the programmed
+            # branch at V_DS = 0.5 V never falls below 2.7e-2 uA/um anywhere in
+            # the -0.5..+1.0 V window, so its V_t is simply not defined at that
+            # level and the extraction returns NaN. Pick the lowest decade that
+            # every curve crosses instead, and say which one was used.
+            groups = {k: g.sort_values("Vg_V") for k, g in out.groupby(["state", "vds_idx"])}
+            icc = None
+            for cand in (1e-2 * norm.CORR, 1e-2, 1e-1, 1e0):
+                if all(g.Id_uA_um.min() < cand < g.Id_uA_um.max() for g in groups.values()):
+                    icc = cand
+                    break
+            if icc is None:
+                print("  no common V_t criterion crosses all four curves -- widen the sweep")
+                return
+            print(f"  V_t criterion I_cc = {icc:.4g} uA/um "
+                  f"(lowest level crossed by all four curves)")
             vt = {}
-            for (st, j), g in out.groupby(["state", "vds_idx"]):
+            for (st, j), g in groups.items():
                 vt[(st, round(float(g.Vds_V.iloc[0]), 3))] = vth_cc(g.Vg_V, g.Id_uA_um, icc)
-            for k, v in vt.items():
-                print(f"  V_t {k[0]} @ V_DS={k[1]} V : {v:+.4f} V")
+            for k, v in sorted(vt.items()):
+                print(f"    V_t {k[0]} @ V_DS={k[1]} V : {v:+.4f} V")
+            # A fixed-current criterion is confounded across two V_DS values: in the
+            # linear region I_D itself scales with V_DS, so the crossing moves by
+            # about SS*log10(V_DS2/V_DS1) with no electrostatics involved at all
+            # (~64 mV here for SS = 63.5 mV/dec and a 10x V_DS ratio). Scaling the
+            # criterion with V_DS -- i.e. a constant-CONDUCTANCE criterion --
+            # removes that term. Both are reported; the scaled one is the DIBL.
+            vt_s = {}
+            for (st, j), g in groups.items():
+                vds = float(g.Vds_V.iloc[0])
+                vt_s[(st, round(vds, 3))] = vth_cc(g.Vg_V, g.Id_uA_um, icc * vds / 0.05)
             for st in ("ers", "pgm"):
                 ks = sorted([k for k in vt if k[0] == st], key=lambda k: k[1])
-                if len(ks) == 2 and np.isfinite(vt[ks[0]]) and np.isfinite(vt[ks[1]]):
-                    dibl_mv = -(vt[ks[1]] - vt[ks[0]]) / (ks[1][1] - ks[0][1]) * 1000
-                    print(f"  DIBL ({st}) = {dibl_mv:.1f} mV/V")
+                if len(ks) != 2:
+                    continue
+                raw = sc = float("nan")
+                if np.isfinite(vt[ks[0]]) and np.isfinite(vt[ks[1]]):
+                    raw = -(vt[ks[1]] - vt[ks[0]]) / (ks[1][1] - ks[0][1]) * 1000
+                if np.isfinite(vt_s[ks[0]]) and np.isfinite(vt_s[ks[1]]):
+                    sc = -(vt_s[ks[1]] - vt_s[ks[0]]) / (ks[1][1] - ks[0][1]) * 1000
+                print(f"  DIBL ({st}): {sc:7.1f} mV/V  [constant-conductance criterion]"
+                      f"   {raw:7.1f} mV/V  [fixed-current, drive-confounded]")
+                bad = (not np.isfinite(sc) or not np.isfinite(raw)
+                       or sc * raw < 0 or abs(sc - raw) > 0.5 * max(abs(sc), abs(raw)))
+                if bad:
+                    print(f"    ^ NOT TRUSTWORTHY. The two criteria disagree in sign or by")
+                    print(f"      more than 50 %, which means V_t is being read outside a")
+                    print(f"      clean subthreshold region on at least one curve. The sweep")
+                    print(f"      only reaches V_G = -0.5 V; at V_DS = 0.5 V neither state is")
+                    print(f"      properly off there (the programmed branch never drops below")
+                    print(f"      2.7e-2 uA/um at all). Do not quote a DIBL from this run --")
+                    print(f"      re-run t11_dibl with the sweep extended to V_G = -1.5 V.")
 
 
 # ------------------------------------------------------------------- RR-3
@@ -597,7 +640,22 @@ def rr8():
 
 
 # ------------------------------------------------------------------- RR-9
-def rr9(node="t15_disturb"):
+def rr9(node="t15_disturb", t_settled=1e-3):
+    """Read disturb: window before and after ~1e6 equivalent reads at V_G = 0.
+
+    MEASURED FROM THE SETTLED STATE, not from the immediate post-write value.
+    This is the third place in this audit where the same trap appeared, so it is
+    worth naming: the retained state relaxes with tau_P = 10 us after a write
+    (RR-4 measures a 9x fall for the saturated state), so any "before" reading
+    taken within a few tens of microseconds of the write is a transient value.
+    Comparing it against a "after" reading taken 100 ms later charges the whole
+    settling transient to read disturb.
+
+    Doing exactly that here reported ON 15.98 -> 2.45 uA/um, "-84.7 % disturb"
+    and a window collapsing 3702x -> 568x, which would have been a fabricated
+    reliability failure. Measured from t >= 1 ms, once tau_P has fully acted, the
+    answer is that there is no disturb at all.
+    """
     d = OUTPUTS / node
     if not d.exists():
         print(f"rr9: no data for {node} yet")
@@ -605,23 +663,33 @@ def rr9(node="t15_disturb"):
     parts = []
     for f in sorted(d.glob(f"read_d*_{node}_des.plt")):
         x = parse_plt(f)
-        parts.append(pd.DataFrame({"t_s": x["time"].values, "G_uA_um": cond_uA(x)}))
+        if len(x):
+            parts.append(pd.DataFrame({"t_s": x["time"].values, "G_uA_um": cond_uA(x)}))
     if not parts:
         return
     g = pd.concat(parts, ignore_index=True).sort_values("t_s")
     g["t_rel_s"] = g.t_s - g.t_s.iloc[0]
     g["equivalent_reads"] = g.t_rel_s / 100e-9
     _emit(g, RAW / "read_disturb.csv", "RR-9 read disturb")
-    pre, post = last(node, "pre_pgm_"), last(node, "post_pgm_")
+
     off = last(node, "pre_ers_")
-    if pre is not None and post is not None and off is not None:
-        i_pre = norm.to_uA_per_um(abs(pre[ID]))
-        i_post = norm.to_uA_per_um(abs(post[ID]))
-        i_off = norm.to_uA_per_um(abs(off[ID]))
-        print(f"  ON before {i_pre:.4g} -> after {i_post:.4g} uA/um "
-              f"({(i_post / i_pre - 1) * 100:+.2f} %)")
-        print(f"  window {i_pre / i_off:.0f}x -> {i_post / i_off:.0f}x after "
-              f"{g.equivalent_reads.max():.3g} equivalent reads")
+    i_off = norm.to_uA_per_um(abs(off[ID])) if off is not None else float("nan")
+    s = g[g.t_rel_s >= t_settled]
+    if len(s) < 2:
+        print("  not enough settled samples")
+        return
+    g0, g1 = float(s.G_uA_um.iloc[0]), float(s.G_uA_um.iloc[-1])
+    n0, n1 = float(s.equivalent_reads.iloc[0]), float(s.equivalent_reads.iloc[-1])
+    print(f"  settling transient (tau_P, NOT disturb -- see RR-4): peak "
+          f"{g.G_uA_um.max():.4g} -> settled {g0:.4g} uA/um")
+    print(f"  READ DISTURB, settled state only:")
+    print(f"    G {g0:.4f} uA/um at {n0:.3g} reads  ->  {g1:.4f} at {n1:.3g} reads")
+    print(f"    change {100 * (g1 / g0 - 1):+.4f} % over {n1 - n0:.3g} equivalent reads")
+    if np.isfinite(i_off):
+        print(f"    window {g0 / i_off:.0f}x -> {g1 / i_off:.0f}x  (erased floor "
+              f"{i_off:.4g} uA/um)")
+    print("    a 0 % change here is a real result: at V_G = 0 the read bias does no")
+    print("    work on the ferroelectric, so there is no mechanism for it to disturb.")
 
 
 # ------------------------------------------------------------------ RR-10
