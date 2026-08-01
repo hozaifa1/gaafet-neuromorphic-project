@@ -170,21 +170,33 @@ def idvd(node="t11_idvd", vg_list=(0.0, 0.2), ltp_at=(3, 6, 9, 12, 15),
     b, t = family("pgm", t)
     s += b
 
-    # analog family: re-erase, then walk the LTP train, sweeping at the chosen pulses
-    a, t = _write("re_ers_", t, V_ers, t_w, VREAD)
-    s += a
-    for k in range(1, max(ltp_at) + 1):
-        a, t = _write(f"l{k:02d}_", t, V_pgm, t_p, VREAD)
+    # Analog family: each state is written FRESH from an erase, rather than
+    # sweeping V_DS at intervals along one continuous LTP train.
+    #
+    # The continuous version does not measure the LTP levels. Driving the drain to
+    # 1.0 V between pulses perturbs the retained state through the drain-side gate
+    # overlap, so the "level 15" it reported was 3.39 uA/um against the canonical
+    # LTP curve's 8.32, and level 3 was 1.49 against 0.00097 -- three orders out.
+    # An output-characteristic figure whose analog states are not the analog states
+    # of the LTP figure is worse than no figure, which is the same lesson the
+    # 1 us / 0.3 us pulse-width mismatch already taught in this run.
+    for k in sorted(ltp_at):
+        a, t = _write(f"e{k:02d}_", t, V_ers, t_w, VREAD)
         s += a
+        for j in range(1, k + 1):
+            a, t = _write(f"l{k:02d}p{j:02d}_", t, V_pgm, t_p, VREAD)
+            s += a
         s += _hold(f"l{k:02d}_read_", t, t + 100e-9, intervals=10)
         t += 100e-9
-        if k in ltp_at:
-            b, t = family(f"ltp{k:02d}", t)
-            s += b
+        b, t = family(f"ltp{k:02d}", t)
+        s += b
     return s + "}\n"
 
 
-VG_GRID = [round(-0.5 + 0.05 * i, 3) for i in range(31)]   # -0.5 .. +1.0 V
+# -0.5 V is not deep enough: at V_DS = 0.5 V the programmed branch never falls
+# below 2.7e-2 uA/um there, so V_t is undefined and the DIBL extraction returns
+# nonsense (the two criteria disagreed in sign). The sweep starts at -1.5 V.
+VG_GRID = [round(-1.5 + 0.05 * i, 3) for i in range(51)]   # -1.5 .. +1.0 V
 
 
 def dibl(node="t11_dibl", vds_list=(0.05, 0.5), vg_grid=None,
@@ -251,7 +263,7 @@ def retention(node="t12_ret", t_max=1e-2, n_pulse=0, V_pgm=2.0, V_ers=-2.0,
     return s + "}\n"
 
 
-def ret_levels(node="t12_ret15", n_lvl=15, t_hold=1e-3, V_pgm=2.0, V_ers=-2.0,
+def ret_levels(node="t12_ret15", n_lvl=15, t_hold=200e-6, V_pgm=2.0, V_ers=-2.0,
                t_w=5e-6, t_p=1e-6, VREAD=0.0, **kw):
     """Multi-level retention: each LTP level is held t_hold before the next pulse.
 
@@ -268,7 +280,12 @@ def ret_levels(node="t12_ret15", n_lvl=15, t_hold=1e-3, V_pgm=2.0, V_ers=-2.0,
     for k in range(1, n_lvl + 1):
         a, t = _write(f"p{k:02d}_", t, V_pgm, t_p, VREAD)
         s += a
-        s += _hold(f"h{k:02d}_", t, t + t_hold, intervals=30, maxstep=t_hold / 40)
+        # 200 us = 20 tau_P, and RR-4 shows settling completes by ~5.5 tau_P, so
+        # this is comfortably past the transient. The first version used 1 ms with
+        # MaxStep = t_hold/40, and the solver walked down to its MinStep floor and
+        # aborted with "step-size is too small". MaxStep = t_hold/100 keeps at
+        # least 100 steps in the leg so CurrentPlot has something to sample.
+        s += _hold(f"h{k:02d}_", t, t + t_hold, intervals=20, maxstep=t_hold / 100)
         t += t_hold
     return s + "}\n"
 

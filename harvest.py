@@ -64,9 +64,18 @@ def main():
 
     want = sys.argv[sys.argv.index("--nodes") + 1:] if "--nodes" in sys.argv else \
         [n for n, _, _, _ in done]
+    explicit = "--nodes" in sys.argv
     got = set()
     for node in want:
         local = len(list((OUTPUTS / node).glob("*.plt"))) if (OUTPUTS / node).exists() else 0
+        # A node named explicitly is re-fetched even when local files exist. The
+        # usual reason to name one is that it has just been RE-RUN, and the old
+        # "skip if anything is local" rule silently re-analysed the stale copy --
+        # which is exactly how the t11_idvd 0.3 us redo appeared to change nothing.
+        if explicit and local:
+            for f in (OUTPUTS / node).glob("*.plt"):
+                f.unlink()
+            local = 0
         if local == 0:
             if fetch(node):
                 got.add(node)
