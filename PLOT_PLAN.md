@@ -74,6 +74,61 @@ it uses. SS (62.3 mV/dec, programmed branch) is exactly invariant either way.
 actual count is **483**, and the CSV total went 894 → **1377**, not ~1450.
 
 ---
+**E6 — C2 is resolved, and it was never an inconsistency.** The three nodes give
+three different "erased at V_G = 0" values because they read it after different
+post-write settling times, and the retained state relaxes on the τ_E = 1 µs
+scale after the write ends:
+
+| node | read points before V_G=0 | erased | programmed |
+|---|---|---|---|
+| `mw_fe07` (9 pts) | 4 (0.24 µs) | 5.96e-3 | 18.70 µA/µm |
+| `mwfine` (19 pts) | 8 (0.48 µs) | 4.92e-3 | 20.95 µA/µm |
+| **`iv_fe07b` (41 pts)** | 20 (1.20 µs) | **4.50e-3** | **24.37 µA/µm** |
+
+The two states move *apart* with settling time, so the longest-settled read is
+the closest to the true retained state. This is a measurable device property,
+not measurement error, and RR-0 (`iv_fe07b`) is now the authoritative node:
+MW = 0.387 V, SS = 63.5 mV/dec, retained ON/OFF = 5410×, ΔP = −2.57e-6 C/cm².
+
+**E7 — two more cross-node errors, same family as the Areafactor bug.** Both are
+ratios assembled from numbers that were never measured together:
+- `fire_ratio = 30.6×` divided `t8_ltp`'s pulse-9 read by **`mwfine`'s**
+  baseline. Against `t8_ltp`'s own `baseline_pre` it is **18.4×**.
+- `R_off` / `g_min` mixed nodes the same way. The LIF block now draws
+  `ID_baseline`, `ID_p9` and `ID_p15` from `t8_ltp` alone: R_off = 6.767e7 Ω,
+  R_on = 3.680e6 Ω, g_min = 1.478e-8 S, g_max = 2.718e-7 S, dynamic range 1013×.
+
+The general rule this establishes: **a ratio may only be formed from two
+measurements taken in the same run.** Worth a line in the methods.
+
+**E8 — SS must not be read off one point.** 62.3 mV/dec was the steepest single
+50 mV pair. On a 50 mV grid one pair spans a whole decade, so a single point
+sets the answer — and the programmed branch's ambipolar minimum at V_G = −0.55 V
+reads as 45 mV/dec that way, i.e. an apparently sub-Boltzmann slope produced by
+a branch crossover. `rranalyze.ss_mv_dec` now fits over ≥ 2 decades starting
+≥ 1 decade above the branch minimum, giving 63.5 mV/dec. Sub-60 values are still
+physically expected here (NC steepening, figure B4) but must not be claimed off
+a single pair.
+
+**E9 — solver pathology to state in the methods.** With `RelErrControl`, a
+non-converging deck does not fail, it *crawls*: the timestep walks down to
+whatever `MinStep` is given and never recovers. Three decks hit this (the RR-0
+continuous read sweep: 71 MB log; the MFM loop twice: 143 MB and 344 MB, 217k
+and 320k steps covering a few percent of the ramp). The fixes are structural,
+not cosmetic: every gate/drain transition is an **instant hop between short
+fixed-bias holds**, never a finely stepped `Goal` ramp; `MinStep` is a floor
+proportional to `MaxStep`; and the MFM uses Synopsys's own `sat_loop_des.cmd`
+timing, which forces large steps through the coercive crossing where a
+voltage-driven ferroelectric is genuinely unstable (negative differential
+capacitance). A per-job `timeout` turns any remaining crawl into a logged
+failure instead of a silent license hold.
+
+**E10 — RR-1's par.** The MFM measures the *material*, so it must use the
+calibrated material value τ_P = 0 (cal_n16), not the application par's τ_P =
+1e-5. The latter is a deliberate LIF-leakiness choice; on a quasi-static loop a
+10 µs relaxation time bleeds P_r away between coercive crossings and would
+understate the material. Rendered separately as `runs/app_mfm.par`.
+
 ---
 
 # PART I — Areafactor / width-normalization audit
