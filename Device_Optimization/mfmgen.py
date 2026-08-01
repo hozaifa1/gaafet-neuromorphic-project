@@ -46,11 +46,10 @@ import norm
 HEAD = """*== RR-1 MFM P-E loop (mfmgen.py): TiN / HZO {tfe_nm:g} nm / TiN, +/-{vmax} V, {ncyc} wake-up cycles.
 File {{ Grid="mfm_msh.tdr" Parameter="{par}"
   Plot="opt_outputs/{node}_des.tdr" Current="opt_outputs/{node}_des.plt" Output="opt_outputs/{node}_des.log" }}
-Electrode {{ {{Name="top_metal" Voltage=0.0}} {{Name="bot_metal" Voltage=0.0}} }}
+Electrode {{ {{Name="top_metal" Voltage=0.0{resist}}} {{Name="bot_metal" Voltage=0.0}} }}
 Physics {{ Temperature=300 Areafactor=1.0 }}
 Physics(Material="HZO") {{ Polarization }}
-Math {{ Extrapolate RelErrControl Digits=5 Notdamped=50 Iterations=50 Transient=BE
-  FEPolarizationIP=1.0 Method=Blocked SubMethod=ParDiSo GeometricDistances Derivative }}
+Math {{ {math} }}
 Plot {{ Polarization/Vector ElectricField/Vector Potential SpaceCharge DisplacementCurrent }}
 CurrentPlot {{
   Polarization/Vector (( {xmid:.5f} {ymid:.5f} ))
@@ -67,11 +66,24 @@ LEG = """  NewCurrentPrefix="{prefix}"
 """
 
 
+# Math blocks tried for the coercive-crossing instability, in order of increasing
+# intervention.  "ref" is Synopsys's own saturated-loop deck verbatim; "dev" is the
+# FeFET application deck's block; "soft" adds a series resistance to the driving
+# electrode, the standard way to regularize a negative-differential-capacitance
+# load so the voltage-driven solution stops being multivalued.
+MATH = {
+    "ref": "Extrapolate RelErrControl Digits=5 Notdamped=20 Iterations=10 Derivatives",
+    "dev": ("Extrapolate RelErrControl Digits=5 Notdamped=50 Iterations=50 Transient=BE\n"
+            "  FEPolarizationIP=1.0 Method=Blocked SubMethod=ParDiSo GeometricDistances Derivative"),
+}
+
+
 def gen(vmax=1.96, node="mfm_pe196", par="app_mfm.par", n_wakeup=2, npts=200,
-        t_fe_um=0.007, l_cap_um=0.100):
+        t_fe_um=0.007, l_cap_um=0.100, math="ref", resist=None):
     """Triangular P-E loop: 0 -> +V, n_wakeup full cycles, then one measured cycle."""
     s = HEAD.format(tfe_nm=t_fe_um * 1e3, vmax=vmax, ncyc=n_wakeup, par=par, node=node,
-                    xmid=l_cap_um / 2.0, ymid=t_fe_um / 2.0)
+                    xmid=l_cap_um / 2.0, ymid=t_fe_um / 2.0,
+                    math=MATH[math], resist=f" Resist={resist}" if resist else "")
     s += LEG.format(prefix="rise_", v=vmax, plot="")
     for k in range(n_wakeup):                 # wake-up cycles, not recorded densely
         s += LEG.format(prefix=f"wake{k + 1}d_", v=-vmax, plot="")

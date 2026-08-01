@@ -87,10 +87,47 @@ def vth_cc(vg, idd, icc):
     return float("nan")
 
 
-def ss_mv_dec(vg, idd):
-    d = np.diff(vg) / np.diff(np.log10(np.maximum(idd, 1e-30)))
-    d = d[np.isfinite(d) & (d > 0)]
-    return float(np.min(d) * 1000.0) if d.size else float("nan")
+def ss_mv_dec(vg, idd, min_decades=2.0, guard_decades=1.0):
+    """SS in mV/dec from a straight-line fit over the clean subthreshold region.
+
+    NOT the steepest adjacent pair.  On a 50 mV grid a single pair spans a whole
+    decade, so one glitchy point fakes a sub-thermal slope: the RR-0 programmed
+    branch has a non-monotonic point at V_G = -0.55 V (3.3e-6 uA/um between
+    9.4e-6 and 4.2e-5) that alone reported SS = 45 mV/dec, i.e. below the 60
+    mV/dec Boltzmann limit.  Claiming sub-thermal switching off a numerical
+    glitch is exactly the kind of thing a reviewer catches.
+
+    Instead: over every strictly-increasing window that spans at least
+    `min_decades`, fit log10(I) vs V_G and keep the STEEPEST fit.  Requiring two
+    decades means no single point can carry the answer; taking the steepest
+    (rather than the widest) window keeps the fit inside the subthreshold region
+    instead of dragging it up into saturation.
+    """
+    vg, idd = np.asarray(vg, float), np.asarray(idd, float)
+    li = np.log10(np.maximum(idd, 1e-30))
+    # An n-FeFET's off state is an ambipolar V: the hole branch falls, hits a
+    # minimum, then the electron branch rises.  The first points out of that
+    # minimum are a branch crossover, not subthreshold conduction, and they read
+    # artificially steep.  Require the fit to start at least `guard_decades`
+    # above the minimum so the crossover cannot set the answer.
+    floor = float(np.min(li)) + guard_decades
+    best = np.inf
+    i = 0
+    while i < len(vg) - 1:                       # walk maximal increasing runs
+        j = i
+        while j < len(vg) - 1 and li[j + 1] > li[j]:
+            j += 1
+        for a in range(i, j):
+            if li[a] < floor:
+                continue
+            for b in range(a + 2, j + 1):        # >= 3 points in the fit
+                if li[b] - li[a] < min_decades:
+                    continue
+                p = np.polyfit(vg[a:b + 1], li[a:b + 1], 1)
+                if p[0] > 0:
+                    best = min(best, abs(1000.0 / p[0]))
+        i = max(j, i + 1)
+    return float(best) if np.isfinite(best) else float("nan")
 
 
 def nonlinearity(g):
@@ -121,34 +158,60 @@ def _emit(df, path, label):
 
 # ------------------------------------------------------------------- RR-0
 def rr0(node="iv_fe07b"):
-    """Continuous retained I-V under app.par -> the corrected figure D1."""
-    if not have(node, "ers_", "pgm_"):
+    """Retained I-V on the 41-point fixed-V_G grid -> the corrected figure D1.
+
+    One .plt per read point (ers_rNN_ / pgm_rNN_), each a short frozen hold, so
+    the settled last row of each file is the measurement.  Supersedes both the
+    dead frozen-par iv_fe07 node and the 9-point mw_fe07 grid.
+    """
+    import re as _re
+    d = OUTPUTS / node
+    # memwingen names the instant hop legs <state>_rsetNN_ and the reads
+    # <state>_rNN_; a "*_r*" glob matches both, so match the read files exactly.
+    read_re = _re.compile(rf"^(ers|pgm)_r(\d\d)_{node}_des\.plt$")
+    if not d.exists() or not any(read_re.match(f.name) for f in d.glob("*.plt")):
         print(f"rr0: no data for {node} yet")
         return
-    e, p = series(node, "ers_"), series(node, "pgm_")
-    ve, vp = e[VG].values, p[VG].values
-    grid = np.linspace(max(ve.min(), vp.min()), min(ve.max(), vp.max()), 250)
+    rows = {}
+    for state in ("ers", "pgm"):
+        vg, idd, tot, py = [], [], [], []
+        for f in sorted(f for f in d.glob("*.plt")
+                        if (m := read_re.match(f.name)) and m.group(1) == state):
+            x = parse_plt(f)
+            if not len(x):
+                continue
+            r = x.iloc[[-1]]
+            vg.append(float(r[VG].iloc[0]))
+            idd.append(float(cond_uA(r)[0]))
+            tot.append(float(total_uA(r)[0]))
+            py.append(float(r[_probe(x, "Polarization/y")].iloc[0]))
+        o = np.argsort(vg)
+        rows[state] = (np.array(vg)[o], np.array(idd)[o], np.array(tot)[o], np.array(py)[o])
+
+    ve, ie, te, pye = rows["ers"]
+    vp, ip, tp, pyp = rows["pgm"]
+    n = min(len(ve), len(vp))
     out = pd.DataFrame({
-        "Vg_V": grid,
-        "Id_erased_uA_um": np.interp(grid, ve, cond_uA(e)),
-        "Id_programmed_uA_um": np.interp(grid, vp, cond_uA(p)),
-        "Id_erased_total_uA_um": np.interp(grid, ve, total_uA(e)),
-        "Id_programmed_total_uA_um": np.interp(grid, vp, total_uA(p)),
+        "Vg_V": ve[:n],
+        "Id_erased_uA_um": ie[:n], "Id_programmed_uA_um": ip[:n],
+        "Id_erased_total_uA_um": te[:n], "Id_programmed_total_uA_um": tp[:n],
+        "Py_erased_C_cm2": pye[:n], "Py_programmed_C_cm2": pyp[:n],
     })
-    _emit(out, RAW / "memory_window_iv.csv", "RR-0 retained I-V, conduction current")
+    _emit(out, RAW / "memory_window_iv.csv", "RR-0 retained I-V, 41-point grid")
 
     icc = 1e-2 * norm.CORR
     vt_e = vth_cc(out.Vg_V, out.Id_erased_uA_um, icc)
     vt_p = vth_cc(out.Vg_V, out.Id_programmed_uA_um, icc)
     i0 = int(np.argmin(np.abs(out.Vg_V)))
     ion, ioff = out.Id_programmed_uA_um[i0], out.Id_erased_uA_um[i0]
-    pe = _probe(e, "Polarization/y")
     print(f"  V_t,ers = {vt_e:+.4f} V   V_t,pgm = {vt_p:+.4f} V   MW = {vt_e - vt_p:.4f} V")
     print(f"  SS(pgm) = {ss_mv_dec(out.Vg_V, out.Id_programmed_uA_um):.1f} mV/dec   "
           f"SS(ers) = {ss_mv_dec(out.Vg_V, out.Id_erased_uA_um):.1f} mV/dec")
     print(f"  @V_G=0  ON {ion:.4g}  OFF {ioff:.4g} uA/um  ->  {ion / ioff:.0f}x")
-    print(f"  retained P_y: erased {e[pe].values[0]:+.4e}  programmed "
-          f"{p[pe].values[0]:+.4e} C/cm2   (the old frozen-par node had both at +2.33e-7)")
+    print(f"  retained P_y @V_G=0: erased {out.Py_erased_C_cm2[i0]:+.4e}  programmed "
+          f"{out.Py_programmed_C_cm2[i0]:+.4e} C/cm2")
+    print(f"     dP = {out.Py_programmed_C_cm2[i0] - out.Py_erased_C_cm2[i0]:+.4e} C/cm2 "
+          f"(the dead frozen-par node had both states at +2.33e-7, dP = 3e-10)")
 
 
 # ------------------------------------------------------------------- RR-1

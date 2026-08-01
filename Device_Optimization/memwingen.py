@@ -65,10 +65,10 @@ def gen(mesh, py, WF=4.35, VE=-2.0, VP=2.0, VDS=0.05, vgs=None,
     if save_states:
         # snapshot each retained state right after its write hold, before the reads
         b1 = b1.replace('  NewCurrentPrefix="ers_rset00_"',
-                        f'  Save ( FilePrefix="opt_outputs/state_erased_{node}" )\n'
+                        f'  Plot ( FilePrefix="opt_outputs/state_erased_{node}" )\n'
                         '  NewCurrentPrefix="ers_rset00_"', 1)
         b2 = b2.replace('  NewCurrentPrefix="pgm_rset00_"',
-                        f'  Save ( FilePrefix="opt_outputs/state_programmed_{node}" )\n'
+                        f'  Plot ( FilePrefix="opt_outputs/state_programmed_{node}" )\n'
                         '  NewCurrentPrefix="pgm_rset00_"', 1)
     return s + b1 + b2 + "}\n"
 

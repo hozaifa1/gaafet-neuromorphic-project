@@ -106,12 +106,12 @@ def tdr_states(node="t13_tdr", V_ers=-2.0, V_pgm=2.0, t_w=5e-6, VREAD=0.0, **kw)
     s += a
     s += _hold("ers_settle_", t, t + 100e-9, intervals=10)
     t += 100e-9
-    s += f'  Save ( FilePrefix="opt_outputs/state_erased_{node}" )\n'
+    s += f'  Plot ( FilePrefix="opt_outputs/state_erased_{node}" )\n'
     b, t = _write("pgm_w_", t, V_pgm, t_w, VREAD)
     s += b
     s += _hold("pgm_settle_", t, t + 100e-9, intervals=10)
     t += 100e-9
-    s += f'  Save ( FilePrefix="opt_outputs/state_programmed_{node}" )\n'
+    s += f'  Plot ( FilePrefix="opt_outputs/state_programmed_{node}" )\n'
     return s + "}\n"
 
 
