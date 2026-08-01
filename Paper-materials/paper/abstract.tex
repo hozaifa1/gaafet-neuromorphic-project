@@ -1,0 +1,49 @@
+\begin{abstract}
+We report a calibrated TCAD study of a gate-all-around HZO ferroelectric FET used as
+an analog synapse, and we carry the resulting device through to the accuracy and the
+energy of a spiking electrocardiogram classifier deployed on it. The ferroelectric model
+is calibrated against published measurements of a comparable device; the calibration
+reproduces the memory window, threshold voltages, subthreshold slope and turn-on shape,
+and we state explicitly that it does not calibrate the absolute current level.
+
+The device holds a retained window of $5410\times$ at zero read bias with a
+\SI{0.387}{\volt} threshold separation and a subthreshold slope of
+\SI{63.5}{\milli\volt\per\text{dec}}. Fifteen identical \SI{2}{\volt},
+\SI{100}{\nano\second} pulses move the channel current monotonically over
+\num{3.79} decades at about \SI{9}{\atto\joule} of switching energy per pulse. Under the
+measured cycle-to-cycle noise, eight of those fifteen stops are separable open-loop;
+placing targets across the same range with write-verify would support about sixteen.
+After the depolarization transient the state is flat to better than \SI{1}{\percent}
+across the last two decades of a \SI{10}{\milli\second} hold, at \SI{300}{\kelvin} and
+\SI{400}{\kelvin} and for a mid-ladder analog state as well as the fully programmed one,
+and a zero-bias read leaves it unchanged over \num{9.9e5} equivalent reads.
+
+Three results are the substance of the paper. First, \emph{where} conductance levels sit
+matters more than how many there are: at eight levels, four different choices of which
+eight gave accuracies from \num{0.336} to \num{0.491}, while spacing the same eight
+evenly gave \num{0.804}. Second, level placement is controlled by interface charge, not
+by ferroelectric thickness --- perturbing fixed interface charge by \SI{10}{\percent}
+moves levels by \num{1.31} decades, while perturbing the ferroelectric thickness by
+\SI{0.3}{\nano\metre} moves them by \num{0.07}, which is the opposite of the expected
+ordering and tells a process team what to control. Third, being able to tell levels apart
+does not predict whether the network works: three independent readout-separability
+statistics all fail to track accuracy, while deployed-weight error tracks it with a
+Spearman coefficient of \num{-0.85}.
+
+Deployed on the fifteen-level ladder with write-verify, the classifier reaches
+\num{0.8304} accuracy against \num{0.8571} in full precision, and the measured
+cycle-to-cycle noise costs \num{0.001} of that. Per-device calibration is not optional:
+without it, deployment onto twenty corner devices gives \num{0.243}.
+
+We also state the system scope rather than leaving it to be discovered. The computing
+core costs \SI{535.8}{\pico\joule} per heartbeat and programming the entire array costs
+\SI{69.6}{\pico\joule} once. Under a standard \SI{1}{\pico\joule} per conversion
+assumption, the analog-to-digital converters a real chip would need come to
+\SI{183}{\nano\joule} per beat --- \num{342} times the core. On this workload the
+ferroelectric array is not the limiting element of a complete system.
+
+Finally, the device is modelled as a two-dimensional double-gate cross-section mapped to
+a nanosheet through the gate perimeter. The mapping is verified to be exact arithmetic;
+no three-dimensional simulation was performed, so corner and edge-field effects are not
+captured.
+\end{abstract}

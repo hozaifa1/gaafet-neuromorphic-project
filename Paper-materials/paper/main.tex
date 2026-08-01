@@ -1,0 +1,74 @@
+% =====================================================================
+%  A calibrated 2D TCAD gate-all-around FeFET synapse, and what it does
+%  to a spiking ECG classifier.
+%
+%  Target: IEEE Transactions on Electron Devices.
+%
+%  SCOPE OF THIS DRAFT
+%  -------------------
+%  By decision, this draft contains only work done in this project:
+%  methods, results, discussion, conclusion.  There is NO introduction
+%  and NO related-work section, and there are no narrative citations --
+%  those are to be written separately.  The only bibliography entries
+%  are the published devices plotted in the benchmark figure (J5),
+%  which are data points rather than narrative references; they are in
+%  literature.bib and are traceable through
+%  Paper-materials/literature_benchmark.csv.
+%
+%  Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+% =====================================================================
+\documentclass[journal,twoside]{IEEEtran}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage{cite}
+
+\graphicspath{{../panels/}{../figures/}}
+
+\sisetup{
+  detect-all,
+  range-units = single,
+  per-mode = symbol,
+}
+
+\newcommand{\uAum}{\si{\micro\ampere\per\micro\metre}}
+\newcommand{\mVdec}{\si{\milli\volt\per\text{dec}}}
+
+\begin{document}
+
+\title{A Calibrated Gate-All-Around FeFET Analog Synapse and Its
+Consequences for a Spiking ECG Classifier}
+
+\author{%
+  \IEEEauthorblockN{[Author names]}%
+  \thanks{Manuscript submitted [date]. [Affiliations, funding, contact.]}%
+}
+
+\maketitle
+
+\input{abstract}
+
+\begin{IEEEkeywords}
+Ferroelectric field-effect transistor, gate-all-around, hafnium zirconium
+oxide, analog synapse, spiking neural network, TCAD, write-verify,
+electrocardiogram classification.
+\end{IEEEkeywords}
+
+% ---------------------------------------------------------------------
+% NOTE: Introduction and related work are deliberately absent from this
+% draft.  Section numbering below therefore begins at the methodology.
+% ---------------------------------------------------------------------
+
+\input{sec_methods}
+\input{sec_device_results}
+\input{sec_network_results}
+\input{sec_discussion}
+\input{sec_conclusion}
+
+\bibliographystyle{IEEEtran}
+\bibliography{literature}
+
+\end{document}

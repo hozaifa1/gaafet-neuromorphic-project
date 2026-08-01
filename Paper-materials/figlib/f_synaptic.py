@@ -6,9 +6,10 @@ compute the annotation from the plotted arrays, return (fig, plotted_df).
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 
-from ._common import (ACC, ERS, GREY, PGM, bold_labels, decade_ticks, figure,
-                      load_raw, new_ax, note)
+from ._common import (ACC, ERS, GREY, LEVELS, PGM, bold_labels, decade_ticks,
+                      figure, load_raw, new_ax, note, plt)
 
 
 def _verify_levels(log_g: np.ndarray, sigma: np.ndarray) -> int:
@@ -83,4 +84,191 @@ def F1():
     out = c2c.copy()
     out["band_lo_uA_um"] = lo
     out["band_hi_uA_um"] = hi
+    return fig, out
+
+
+def _nl_model(n, A, N):
+    """The conventional synaptic nonlinearity form, G normalized to [0, 1]."""
+    return (1.0 - np.exp(-n * A)) / (1.0 - np.exp(-N * A))
+
+
+@figure(
+    "F2",
+    claim="The potentiation ladder is not described by the conventional exponential-saturation "
+          "nonlinearity model: fitted on the normalized linear scale the residual is systematic "
+          "and one-sided, because this device's response is close to exponential in pulse number "
+          "rather than saturating from the first pulse.",
+    source="raw/ltp_potentiation.csv -- node t8_ltp, one 15 x 2.0 V / 100 ns train. Single node.",
+    convention="normalized conductance -- a ratio, invariant to the width convention",
+)
+def F2():
+    """LTP nonlinearity fit, with the residual shown rather than hidden."""
+    from scipy.optimize import curve_fit
+
+    d = load_raw("ltp_potentiation")
+    n = d["pulse_n"].to_numpy(dtype=float)
+    g = d["Id_uA_per_um"].to_numpy()
+    gn = (g - g.min()) / (g.max() - g.min())
+    N = float(n.max())
+
+    popt, _ = curve_fit(lambda x, A: _nl_model(x, A, N), n, gn, p0=[-0.3], maxfev=20000)
+    A = float(popt[0])
+    fit = _nl_model(n, A, N)
+    resid = gn - fit
+    ss = 1.0 - np.sum(resid ** 2) / np.sum((gn - gn.mean()) ** 2)
+
+    fig, ax = new_ax(figsize=(8.2, 5.6))
+    nn = np.linspace(n.min(), n.max(), 300)
+    ax.plot(nn, _nl_model(nn, A, N), "-", color=GREY, lw=2.6,
+            label="$(1-e^{-nA})/(1-e^{-NA})$ fit")
+    ax.plot(n, gn, "o", color=PGM, ms=11, mec="black", mew=1.6, label="measured")
+    bold_labels(ax, "Pulse number", "Normalized conductance")
+    ax.set_ylim(-0.08, 1.14)
+    ax.legend(loc="upper left")
+    note(ax, f"A$_{{LTP}}$ = {A:.2f},  R$^2$ = {ss:.3f}\n"
+             f"max residual {np.abs(resid).max():.3f}, "
+             f"{int(np.sum(resid < 0))} of {len(n)} points below the fit",
+         xy=(0.30, 0.42), fontsize=12)
+
+    ins = ax.inset_axes([0.62, 0.60, 0.34, 0.28])
+    ins.axhline(0, color="black", lw=1.6)
+    ins.bar(n, resid, color=ACC, edgecolor="black", lw=1.0)
+    ins.set_xlabel("n", fontweight="bold", fontsize=11)
+    ins.set_ylabel("residual", fontweight="bold", fontsize=10)
+    ins.tick_params(direction="in", labelsize=9, width=1.4)
+    for sp in ins.spines.values():
+        sp.set_linewidth(1.6)
+
+    out = d.copy()
+    out["G_normalized"] = gn
+    out["fit"] = fit
+    out["residual"] = resid
+    return fig, out
+
+
+@figure(
+    "F5",
+    claim="Potentiation and depression close into a repeatable loop over three cycles, and the "
+          "window lost between cycles is lost almost entirely at the erased floor while the "
+          "potentiated ceiling barely moves -- a single erase pulse does not fully switch a "
+          "programmed device, because erase is opposed by the depolarization field.",
+    source="raw/ltp_ltd_cycles.csv -- RR-3, three alternating 15-pulse potentiation / "
+           "15-pulse depression trains on one device, one node.",
+    convention="norm.to_uA_per_um applied upstream in rranalyze.rr3 (W_eff = 90 nm)",
+)
+def F5():
+    """LTP + LTD loop, three cycles, log axis.
+
+    This is WRITE REPEATABILITY, not endurance.  The Preisach ferroelectric model
+    used here carries no fatigue, wake-up or imprint term, so it is structurally
+    incapable of measuring endurance; a flat cycling curve would be a property of
+    the equations rather than evidence about the device.
+    """
+    d = load_raw("ltp_ltd_cycles")
+    npulse = int(d["pulse_n"].max())
+
+    fig, ax = new_ax(figsize=(8.8, 5.6))
+    ax.set_yscale("log")
+    rows = []
+    for c, s in d.groupby("cycle"):
+        s = s.sort_values("pulse_n")
+        col = LEVELS(0.10 + 0.38 * (c - 1))
+        x_up = s.pulse_n.to_numpy(dtype=float)
+        x_dn = npulse + s.pulse_n.to_numpy(dtype=float)
+        ax.plot(x_up, s.G_ltp_uA_um, "-o", color=col, lw=2.6, ms=6, mec="black", mew=0.9,
+                label=f"cycle {int(c)}")
+        ax.plot(x_dn, s.G_ltd_uA_um, "--s", color=col, lw=2.6, ms=6, mec="black", mew=0.9)
+        rows.append(pd.DataFrame({"cycle": c, "cumulative_pulse": np.r_[x_up, x_dn],
+                                  "phase": ["LTP"] * npulse + ["LTD"] * npulse,
+                                  "G_uA_um": np.r_[s.G_ltp_uA_um, s.G_ltd_uA_um]}))
+
+    out = pd.concat(rows, ignore_index=True)
+    stat = out.groupby("cycle").G_uA_um.agg(["min", "max"])
+    stat["window_x"] = stat["max"] / stat["min"]
+    for _, r in stat.iterrows():
+        ax.plot([0.4, 2 * npulse + 0.6], [r["min"]] * 2, ":", color=GREY, lw=1.4)
+
+    ax.axvline(npulse + 0.5, color="black", lw=1.6, alpha=0.5)
+    ax.set_xlim(0.4, 2 * npulse + 0.6)
+    ax.set_ylim(out.G_uA_um.min() / 6, out.G_uA_um.max() * 60)
+    decade_ticks(ax)
+    bold_labels(ax, "Cumulative pulse number  (potentiate $\\rightarrow$ depress)",
+                "I$_D$ ($\\mu$A/$\\mu$m)")
+    ax.legend(loc="lower left", ncol=3, fontsize=11)
+    note(ax, "window per cycle: " +
+             ", ".join(f"{r.window_x:,.0f}$\\times$" for _, r in stat.iterrows()) +
+             f"\nceiling moves {stat['max'].iloc[-1] / stat['max'].iloc[0]:.2f}$\\times$, "
+             f"floor moves {stat['min'].iloc[-1] / stat['min'].iloc[0]:.1f}$\\times$",
+         xy=(0.03, 0.97), fontsize=12)
+
+    return fig, out
+
+
+@figure(
+    "F9",
+    claim="The potentiation ladder is strongly temperature dependent and the dependence is not "
+          "monotonic: at the top of the ladder 350 K sits about six times BELOW 300 K while "
+          "250 K sits slightly above it, so no activation energy can be extracted from these "
+          "three points and none is claimed.",
+    source="raw/ltp_vs_temperature.csv -- nodes t9_t250 / t8_ltp / t9_t350, the same "
+           "15 x 2.0 V train at 250, 300 and 350 K. Three temperatures only.",
+    convention="norm.to_uA_per_um applied upstream in rebuild_raw.py (W_eff = 90 nm)",
+)
+def F9():
+    """LTP against temperature on a log axis, plus the ratio to 300 K.
+
+    The conventional second panel here would be an Arrhenius plot.  It is not
+    drawn, because the trend across the three available temperatures is not
+    monotonic: a straight line through log(G) vs 1/T would be fitting a sign
+    change.  The ratio panel carries the same information without implying a
+    thermally activated law the data does not support.
+    """
+    d = load_raw("ltp_vs_temperature")
+    n = d["pulse_n"].to_numpy()
+    temps = [(250, "G_250K_uA_um", ERS, "o"),
+             (300, "G_300K_uA_um", PGM, "s"),
+             (350, "G_350K_uA_um", "#e07b00", "^")]
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.0, 5.2))
+    for ax in axes:
+        for sp in ax.spines.values():
+            sp.set_linewidth(2.0)
+        ax.tick_params(axis="both", which="both", direction="in", top=False, right=False,
+                       width=2.0, labelsize=12)
+        ax.minorticks_on()
+        for lbl in ax.get_xticklabels() + ax.get_yticklabels():
+            lbl.set_fontweight("bold")
+
+    ax = axes[0]
+    ax.set_yscale("log")
+    for T, col, colour, mk in temps:
+        ax.plot(n, d[col], "-", marker=mk, color=colour, lw=2.6, ms=7, mec="black",
+                mew=1.0, label=f"{T} K")
+    decade_ticks(ax)
+    bold_labels(ax, "Pulse number", "I$_D$ ($\\mu$A/$\\mu$m)")
+    ax.legend(loc="upper left", fontsize=12)
+
+    ax = axes[1]
+    ax.set_yscale("log")
+    ref = d["G_300K_uA_um"].to_numpy()
+    for T, col, colour, mk in temps:
+        if T == 300:
+            continue
+        ax.plot(n, d[col].to_numpy() / ref, "-", marker=mk, color=colour, lw=2.6, ms=7,
+                mec="black", mew=1.0, label=f"{T} K / 300 K")
+    ax.axhline(1.0, color="black", lw=2.0, ls="--")
+    decade_ticks(ax)
+    bold_labels(ax, "Pulse number", "I$_D$ / I$_D$(300 K)")
+    ax.legend(loc="lower left", fontsize=12)
+    top = d.iloc[-1]
+    ax.text(0.03, 0.97,
+            f"at the top level 350 K is "
+            f"{ref[-1] / top['G_350K_uA_um']:.1f}$\\times$ below 300 K,\n"
+            f"250 K is {top['G_250K_uA_um'] / ref[-1]:.2f}$\\times$ it "
+            f"-- not monotonic in T",
+            transform=ax.transAxes, ha="left", va="top", fontweight="bold", fontsize=11)
+
+    out = d.copy()
+    out["ratio_250_over_300"] = d["G_250K_uA_um"] / ref
+    out["ratio_350_over_300"] = d["G_350K_uA_um"] / ref
     return fig, out

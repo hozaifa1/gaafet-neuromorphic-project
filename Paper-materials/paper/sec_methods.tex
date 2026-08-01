@@ -1,0 +1,242 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Device structure}
+
+The simulated device is a silicon nanosheet of thickness $T_\mathrm{si}=\SI{5}{\nano\metre}$
+and width $W=\SI{40}{\nano\metre}$, gated through a \SI{1}{\nano\metre} interfacial
+\ce{SiO2} layer and a \SI{7}{\nano\metre} \ce{Hf}\ce{Zr}\ce{O_x} (HZO) ferroelectric,
+with a \SI{5}{\nano\metre} TiN gate metal of work function \SI{4.35}{\electronvolt}.
+The gate is \SI{100}{\nano\metre} long and overlaps the source and drain extensions by
+\SI{15}{\nano\metre} on each side. The body is doped
+$N_\mathrm{sub}=\SI{1e16}{\per\cubic\centi\metre}$ and the source and drain
+$N_\mathrm{sd}=\SI{5e19}{\per\cubic\centi\metre}$. Panel~1(a) shows the stack to scale,
+together with the position $(0,\,\SI{7}{\nano\metre})$ at which polarization and
+electric field are probed in every transient reported here.
+
+This geometry is the endpoint of a coordinate-descent search over read bias,
+$T_\mathrm{ox}$, $T_\mathrm{si}$, $N_\mathrm{sub}$, $T_\mathrm{fe}$ and gate length,
+each turn evaluated on the retained on/off window at the sub-coercive operating point.
+The trajectory is in panel~8(a) and the individual sweeps in panels~8(b)--(c).
+
+\subsection{Simulation setup}
+
+Structures were built in Sentaurus Structure Editor and solved in Sentaurus Device.
+The ferroelectric is the Preisach model, whose parameters were calibrated as described
+in Section~\ref{sec:cal}. Transport uses the Philips unified mobility model with normal-field
+degradation. All transient drive is applied as instantaneous hops between short
+fixed-bias holds rather than finely stepped ramps.
+
+That last choice is not cosmetic. Under relative-error timestep control a
+non-converging deck does not fail --- it \emph{crawls}: the timestep walks down to
+whatever minimum is specified and never recovers, so the run continues to produce
+output indefinitely. Three decks in this work hit that behaviour and produced log
+files of \SI{71}{\mega\byte}, \SI{143}{\mega\byte} and \SI{344}{\mega\byte}, the last
+covering a few percent of its intended ramp in 320\,000 steps. The fixes are
+structural: instantaneous bias transitions, a minimum timestep floored in proportion
+to the maximum, and a wall-clock limit per job so that a remaining crawl is recorded
+as a failure instead of consuming a shared license quietly.
+
+\subsection{Calibration}
+\label{sec:cal}
+
+The deck was calibrated against published measurements of a gate-all-around
+metal--ferroelectric--metal--insulator--semiconductor FeFET. The calibration searched
+over remanent and saturation polarization, coercive field, permittivity, interface trap
+density, fixed interface charge and the Preisach kinetic prefactor, minimizing the
+disagreement between the simulated and measured transfer characteristics on both
+polarization states. The locked parameter set is
+$P_r=\SI{32}{\micro\coulomb\per\square\centi\metre}$,
+$P_s=\SI{40}{\micro\coulomb\per\square\centi\metre}$,
+$F_c=\SI{1.4}{\mega\volt\per\centi\metre}$, $\varepsilon=33$,
+$D_\mathrm{it}=\SI{4e12}{\per\square\centi\metre}$ and
+$Q_f=\SI{7e12}{\per\square\centi\metre}$.
+
+Panel~2 shows the result three ways: the overlay itself, the same curves with the
+window and the current level divided out, and the residual.
+
+\paragraph*{What is calibrated, and what is not}
+The overlay applies a single free width scalar, fitted so that the erased branch's
+saturation current matches the measurement's. That scalar absorbs any constant error in
+normalization --- and it is large: the simulated saturation current is
+\SI{2.150e-4}{\ampere\per\micro\metre} against the measurement's
+\SI{1.523e-6}{\ampere\per\micro\metre}, a factor of 141. Consequently this work claims a
+calibrated memory window, threshold voltage, subthreshold slope, on/off ratio and
+turn-on shape. It does \emph{not} claim that the absolute current density is
+experimentally validated, and no conclusion in this paper depends on it: every
+device-level result is a ratio, a voltage, a polarization or a field, and the network
+results normalize the conductance ladder by its own maximum.
+
+\subsection{From a two-dimensional cross-section to a nanosheet}
+\label{sec:norm}
+
+Sentaurus Device solves the two-dimensional cross-section per unit depth in $z$. An
+area factor $A$ declares that the slab is $A$ micrometres deep, so a contact current
+in the output file is $I=A\,I_\mathrm{2D}$; it is a pure post-multiplier on contact
+currents and charges and never enters the Poisson or continuity solve.
+
+The simulated slab is gated on both faces, so a slab of depth $A$ carries a total gate
+width $2A$. Matching the real nanosheet's gate perimeter,
+\begin{equation}
+  W_\mathrm{eff} = \mathrm{TESW} = 2\,(W + T_\mathrm{si})
+                 = 2\,(40 + 5)\ \mathrm{nm} = \SI{90}{\nano\metre},
+  \label{eq:tesw}
+\end{equation}
+gives $2A = \SI{0.090}{\micro\metre}$ and therefore $A=\SI{0.045}{\micro\metre}$.
+All currents in this paper are reported per micrometre of gate perimeter under
+(\ref{eq:tesw}). Panel~1(b) draws the mapping.
+
+The runs were executed at $A=\SI{0.071}{\micro\metre}$, a value inherited from an
+earlier campaign and never re-derived from the geometry. Because $A$ is a post-multiplier,
+the correction is an exact rescale by $0.045/0.071=0.6338$ rather than a re-simulation.
+This was verified rather than asserted: one node was re-run at $A=\SI{0.045}{\micro\metre}$
+and divided by the same node at \num{0.071}, giving \num{0.633802816901} against an
+expected \num{0.633802816901} --- a relative error of \num{1.8e-16}, which is
+double-precision epsilon. Every ratio, voltage, subthreshold slope, polarization and
+field quantity is unchanged by the correction; every absolute current, conductance,
+resistance, charge and energy scales by \num{0.6338}.
+
+\paragraph*{Limitation: this is a two-dimensional model}
+What the check above establishes is that the arithmetic of the mapping is exact. It does
+not establish that a flat double-gated slab behaves like a wrapped gate. A real
+gate-all-around nanosheet has corners, and the electrostatics at those corners --- and
+the edge fields along the sheet width --- are not represented in a cross-section, so
+corner-enhanced inversion, corner-dependent field concentration in the ferroelectric,
+and any width-direction non-uniformity of switching are outside what this model can
+show. No three-dimensional gate-all-around simulation was performed. The effect is
+expected to matter most for absolute current and least for the ratio and voltage
+quantities this paper reports, but that expectation is an argument, not a measurement,
+and it is stated here so that it is not mistaken for one.
+
+One second-order consequence is worth naming. The area factor was held at
+\num{0.071} across the entire $T_\mathrm{si}$ sweep, while the true perimeter under
+(\ref{eq:tesw}) runs from \SI{90}{\nano\metre} to \SI{110}{\nano\metre} across that
+sweep --- a \SI{22}{\percent} spread the constant factor does not capture. Ratio metrics
+cancel it; absolute currents from geometry sweeps do not, and are normalized by each
+device's own perimeter where they are used.
+
+\subsection{Write and read protocols}
+
+Three protocols appear in this paper and they are not interchangeable.
+
+\emph{Retained-state characterization} (panels 3--4, 8(d), 9) writes with a
+\SI{\pm2}{\volt}, \SI{5}{\micro\second} pulse, then reads with a single continuous
+\SI{500}{\nano\second} gate ramp. The read is analysed on the \emph{conduction} current,
+the sum of the electron and hole contact currents, so that the ramp's displacement term
+through the \SI{15}{\nano\metre} gate--drain overlap is removed exactly rather than
+argued to be negligible.
+
+\emph{Analog programming} (panels 5--7, 10) applies trains of identical sub-coercive
+pulses at \SI{2.0}{\volt} for \SI{100}{\nano\second}, with a read between pulses at
+$V_G=0$ and $V_{DS}=\SI{0.05}{\volt}$. Depression uses \SI{-2.0}{\volt} pulses of at
+least \SI{1}{\micro\second}: at \SI{100}{\nano\second} the erase pulse sees only about
+\SI{26}{\percent} of the ferroelectric field that a programming pulse of the same
+amplitude sees, because the depolarization field opposes erase, so a short erase pulse
+does not switch the device and the resulting apparent asymmetry is a protocol artefact.
+
+\emph{Material characterization} (panel 3(a)) uses a standalone TiN/HZO/TiN capacitor
+with no semiconductor, swept triangularly. The capacitor is simulated with the
+calibrated material value of the depolarization time constant rather than the
+application value; on a quasi-static loop the application value bleeds remanent
+polarization away between coercive crossings and understates the material.
+
+The depolarization time constant in the application parameter set is
+$\tau_P=\SI{10}{\micro\second}$. Every retained value in this paper is read after at
+least $5\tau_P$, and each figure states the delay it used.
+
+\subsection{Extraction rules}
+\label{sec:rules}
+
+Each of the following rules exists because its absence produced a wrong number in this
+work. They are stated so that the numbers below can be reproduced, and because several
+of them are the reason a result reported here differs from an earlier one.
+
+\begin{enumerate}
+\item \textbf{A ratio may only be formed from two measurements taken in the same run.}
+  Three previously reported numbers divided a reading from one run by a reading from
+  another and were wrong as a result. The read contrast after nine potentiation pulses,
+  for instance, is $18.4\times$ against that run's own baseline and $30.6\times$ against
+  a different run's.
+
+\item \textbf{A retained value must be read after the state has settled, and the delay
+  must be stated.} Reading immediately after a write measures the depolarization
+  transient. Doing so produced three separate fabricated failures in this work --- a
+  retention collapse, a read-disturb collapse of \SI{-84.7}{\percent}, and an endurance
+  collapse --- each of which looked like responsible bad news. Measured after settling,
+  the same runs give a flat plateau, \SI{0.0000}{\percent} read disturb, and no
+  degradation at all.
+
+\item \textbf{A threshold voltage means nothing without its extraction criterion.} The
+  same calibration data gives a memory window of \SI{1.296}{\volt} at a constant current
+  of \SI{1e-8}{\ampere} per nanosheet and \SI{1.218}{\volt} at
+  \SI{1e-7}{\ampere\per\micro\metre}, roughly a decade deeper in subthreshold. Both are
+  correct. Every window and threshold quoted here carries its criterion.
+
+\item \textbf{Subthreshold slope is fitted, not read off a pair of points.} On a
+  \SI{50}{\milli\volt} grid a single adjacent pair can span a decade, so one point sets
+  the answer; the programmed branch's ambipolar minimum reads as
+  \SI{45}{\milli\volt\per\text{dec}} that way, which would be an apparently
+  sub-thermal slope produced by a branch crossover. Slopes here are the steepest
+  straight-line fit over a window spanning at least two decades and starting at least
+  one decade above the branch minimum.
+
+\item \textbf{A simulation that completes without an error is not a result.} Two runs in
+  this work completed cleanly with essentially zero field everywhere: a parameter set
+  with a \SI{100}{\micro\second} depolarization time constant made a
+  \SI{500}{\micro\second} write hold five time constants long, so the model relaxed back
+  inside the same hold and the probe read \SI{2.3267e-7}{\coulomb\per\square\centi\metre}
+  erased against \SI{2.3238e-7}{\coulomb\per\square\centi\metre} programmed --- a
+  \SI{0.1}{\percent} difference against a remanent polarization of
+  \SI{3.2e-5}{\coulomb\per\square\centi\metre}. Nothing from those runs is used here.
+
+\item \textbf{Counts are counted.} The synapse count of the deployed network was
+  previously stated as \num{10700}; enumerating the model's parameters gives
+  \num{261440} weights, because the recurrent layer is 160 neurons rather than 100 and
+  both delayed layers store ten independently programmed taps per connection.
+
+\item \textbf{A figure may not display a number it did not compute.} Every figure in this
+  paper is produced by a single generator that writes, alongside each image, the table
+  of exactly the values plotted; annotations are computed from those arrays. One
+  previously published figure carried a memory window typed in as text. It happened to
+  be correct, and it could never have caught an error.
+\end{enumerate}
+
+\paragraph*{Two on/off ratios, and which is which}
+This device has two legitimate current-ratio figures of merit and they differ by more
+than two orders of magnitude. The \emph{retained memory window} is the ratio between the
+fully erased and fully programmed states read at $V_G=0$ after settling: $5410\times$.
+The \emph{read contrast} is the ratio between the rest state and the state after nine
+sub-coercive potentiation pulses: $18.4\times$. The first describes a binary memory
+operation, the second an integrate-and-fire event. They are never quoted adjacently in
+this paper without that distinction.
+
+\subsection{Energy measurement}
+
+Energy per programming pulse is taken as $V_\mathrm{pgm}\,\Delta Q_G$, with $\Delta Q_G$
+read from the solver's own gate-charge trace across each write window. The apparently
+more direct route --- integrating $V_G I_G$ over the pulse --- is not usable at the
+available time resolution. The gate current during a write is a switching spike followed
+by a flat conduction floor of about \SI{23}{\pico\ampere}, and the transient output is
+sampled every \SI{50}{\nano\second}, so the spike is one sample wide and its apparent
+width is set by the sampler rather than by the device. Integrating on that grid returns
+roughly \SI{20}{\femto\joule} per pulse, three orders of magnitude above the
+charge-based value, and it is measuring the sampling interval.
+
+\subsection{Network deployment}
+
+The classifier is a spiking recurrent network trained on single-lead electrocardiogram
+beats, with three input channels, a recurrent layer of 100 leaky integrate-and-fire and
+60 adaptive leaky integrate-and-fire neurons, and four output classes. Input and
+recurrent connections carry a ten-tap delay line, giving \num{261440} weights and
+\num{522880} devices in a differential pair arrangement.
+
+Weights are deployed by post-training quantization onto the measured conductance ladder.
+Each weight is realized as $(G^+ - G^-)/g_\mathrm{max}$, so a global scale on the
+measured current cancels exactly; this is why correcting the area factor, which changes
+every absolute current by \num{0.6338}, reproduces the previously locked accuracy to four
+decimal places. The checkpoint is fixed throughout: no retraining, quantization-aware or
+otherwise, was performed after the device export was corrected.
+
+Cycle-to-cycle noise is injected per conductance branch rather than per weight. Applying
+it to the weight understates the noise for weights near zero, where $G^+\approx G^-$ and
+the difference is small but each branch's jitter is not.

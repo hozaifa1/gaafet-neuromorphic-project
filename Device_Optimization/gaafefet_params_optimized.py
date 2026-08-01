@@ -39,7 +39,7 @@ DEVICE = {
     "Vth_fire": -0.363,           # V  programmed-state Vth, same criterion
     "SS": 63.5e-3,                # V/dec  programmed branch, steepest >=2-decade fit
     "ID_baseline": 4.05e-10,      # A  erased read @ V_G=0   (4.504e-3 uA/um)
-    "ID_fire": 2.193e-9,          # A  programmed read @ V_G=0 (24.37 uA/um) -- see note
+    "ID_fire": 2.193e-6,          # A  programmed read @ V_G=0 (24.37 uA/um) -- see note
     "MW": 0.387,                  # V  memory window = Vth_virgin - Vth_fire
     # PROVENANCE (RR-0, 2026-08-01).  These six now all come from iv_fe07b, the
     # 41-point retained I-V (-1.0..+1.0 V, 50 mV steps) under app.par.  They
