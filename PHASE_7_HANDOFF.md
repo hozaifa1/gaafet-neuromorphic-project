@@ -13,8 +13,12 @@ Repo: `F:\RESEARCH\FeFET x ML\TCAD Files\GAAFet`, branch `paper/gap-fix`.
 The simulations are done. There are 109 run nodes on disk and 1377 CSVs, and every planned
 re-run (RR-0 through RR-10) has finished and been analysed. The SNN work is done too.
 
-What is left is: clean up four loose ends, draw about sixty figures from data that is
-already on disk, and write the paper.
+What is left is: clean up four loose ends, draw the figures the main text needs, and write
+the paper.
+
+**Scope for this pass: main text only.** The full catalogue is 79 figures, but the ten
+composite panels are built from 27 of them. Draw those. The remaining ~50 supplementary
+figures are deliberately deferred to a later pass — the list is at the end of this document.
 
 Read these three first. They are short and they are the source of truth for every number:
 
@@ -162,8 +166,9 @@ old data** — they had been drawn before a correction and never re-drawn, so th
 numbers 1.578× too large. A fifth was plotting a settling transient and calling it retention.
 Nobody noticed for months.
 
-So before drawing sixty more, build the thing that prevents it. PLOT_PLAN calls this item 0.7
-and it was never done.
+So before drawing twenty more, build the thing that prevents it. PLOT_PLAN calls this item 0.7
+and it was never done. It also pays for itself when the supplementary figures get drawn later —
+that pass becomes "add twenty more functions", not another archaeology.
 
 Write `Paper-materials/figs.py`:
 
@@ -204,70 +209,85 @@ device settling down and only the flat part afterwards is the real result.
 
 ---
 
-# PART 3 — Draw the remaining figures (about three days)
+# PART 3 — Draw the figures the main text needs (about a day and a half)
 
-PLOT_PLAN items 2.1 to 2.10 — roughly sixty figures. **All of the data is already on disk.
-None of this needs a simulation.**
+**Scope decision: only draw what the ten main-text panels use. Everything else is deferred.**
 
-The groups are: write transients (chapter E), the neuron circuit figures (chapter G, which uses
-224 files nobody has touched yet), more current-voltage figures (D5–D10), the electric-field and
-voltage-divider figures (C3–C8), the synapse analysis set (F2–F11), the design-space set
-(I1–I10), the calibration chapter (B1–B9), four drawn schematics (A1, A4, A5, A6), the
-comparison against the flat-transistor version (J1–J4), and H2/G7.
+The full catalogue is 79 figures. The ten composite panels are built from **27** of them, and
+seven of those you have already fixed in Part 2. So the actual list here is **20 figures**, not
+sixty. The other ~50 are supplementary and are explicitly out of scope for this pass — see
+"Deferred" at the end of this document.
+
+All the data is already on disk. None of this needs a simulation.
+
+## 3.1 The twenty figures to draw
+
+Grouped by the panel they feed:
+
+| panel | figures | where the data is |
+|---|---|---|
+| 1 structure & mapping | **A1**, A5 | drawn schematics — the device stack and the 2D→nanosheet mapping |
+| 2 calibration | **B1**, B3, B5 | `Calibration/` + `autocal/results.csv` |
+| 3 ferroelectric | **C1** | the saturated capacitor loop (RR-1) |
+| 4 DC characteristics | **D2** | output-current family (RR-2), `raw/output_char.csv` |
+| 5 synaptic | **F2**, F5 | potentiation/depression analysis (RR-3) |
+| 6 transients & energy | **E1**, E2, E6 | write transients, nodes `t5_fe07` and `t8_ltp` |
+| 7 LIF neuron | **G1**, G2, G3 | nodes `t7c_lif` + `t8_lif0` — 224 files, none used yet |
+| 8 design space | **I1** | the voltage × pulse-width grid (RR-7) |
+| 9 reliability | **H4**, H8 | long retention (RR-4), read disturb (RR-9) |
+| 10 comparison | **J1**, **J5** | `Planar_Device_Work/` — and J5 needs a literature pull, see 3.2 |
+
+Already done in Part 2 and feeding the panels: C2, D1, F1, I2, I3, I5, H1.
 
 If a figure looks like it needs a new simulation, check `Device_Optimization/outputs/` first.
 There are 109 run folders there, and an earlier phase converted 483 files that had been sitting
 unused.
 
-## 3.11 The two comparison-to-other-work figures (different job, plan time for it)
+## 3.2 J5 — the comparison against other published devices
 
-Two figures cannot be drawn from this repo at all, because their data is other people's
-published results:
+This is the one figure whose data is not in the repo, because it is other people's results:
+**analog levels vs energy per pulse, with this work marked on it.**
 
-- **J5** — analog levels vs energy per pulse, with this work marked on it
-- **J6** — memory window vs operating voltage, same idea
+Someone has to read papers. Pull ten to twenty published ferroelectric-memory devices and
+record, for each: number of analog levels, energy per programming pulse, and the citation.
+Save it as `Paper-materials/literature_benchmark.csv` with a `source` column, so every point
+can be traced back later.
 
-These need someone to go and read papers: pull ten to twenty published ferroelectric-memory
-devices, record levels / energy per pulse / memory window / operating voltage for each, and
-build a small table with a citation per row. Save it as
-`Paper-materials/literature_benchmark.csv` with a `source` column giving the citation, so the
-numbers can be checked later.
+**Do this early, not last.** It is a couple of hours of careful reading rather than a scripting
+job, it cannot be automated or harvested, and the comparison-against-others figure is often the
+first thing a reviewer looks at. It is also the natural thing to postpone until the time is
+gone.
 
-**J5 is needed for main-text panel 10**, so it is not optional if you want the full ten
-composites. J6 is a nice-to-have and can be dropped or moved to supplementary.
+*(J6, the memory-window vs operating-voltage version of the same idea, is deferred — see the
+end of this document.)*
 
-Be realistic about this one: it is a couple of hours of careful reading, not a scripting task,
-and it is the one part of the figure work that cannot be automated or harvested. Do not put it
-at the end and run out of time — the comparison-to-others figure is often the first thing a
-reviewer looks at.
+## 3.3 A clash in panel 9 — resolve it this way
 
-## 3.12 A problem with main-text panel 9
+PLOT_PLAN builds panel 9 (reliability) from **H1 + H4 + H5**, but H5 is the endurance figure
+and the endurance simulation is not being re-run (see 0.5).
 
-PLOT_PLAN builds panel 9 (reliability) from **H1 + H4 + H5**, and H5 is the endurance figure.
-Since the endurance simulation is not being re-run (see 0.5), you have two options:
+Build panel 9 as **H1 + H4 + H8** instead — retention, mid-state retention, read disturb.
 
-- build panel 9 as **H1 + H4 + H8** (retention, mid-state retention, read disturb) — read
-  disturb is a genuinely strong result: 0.0000 % drift over 990,000 equivalent reads
-- or keep H5 but caption it honestly as write repeatability, making clear it is not an
-  endurance measurement
-
-The first is cleaner. Read disturb is real evidence about the device; the cycling figure is
-mostly evidence about the model.
+Read disturb is the stronger figure anyway: 0.0000 % drift over 990,000 equivalent reads. That
+is evidence about the device. The cycling figure is mostly evidence about the model, which has
+no wear-out physics in it.
 
 ---
 
 # PART 4 — Assemble
 
-- **Ten combined figures for the main text.** PLOT_PLAN section 5.1 already specifies which
-  figures group together. The remaining ~50 become supplementary material.
+- **The ten combined panels for the main text.** PLOT_PLAN section 5.1 gives the groupings; use
+  them as written except for panel 9, which becomes H1+H4+H8 (see 3.3).
 - **A tracking table**, `figures_manifest.csv`, with one row per figure: figure ID, the raw file
   it came from, the function in `figs.py` that draws it, **the specific claim it supports**, and
-  which scaling convention it used. This permanently kills the "where did this number come
-  from" problem that cost this project nine errors.
+  which scaling convention it used. Fill this in for the 27 main-text figures now; leave rows
+  for the supplementary ones to be added when those get drawn. This permanently kills the
+  "where did this number come from" problem that cost this project nine errors.
 - **The methods section.** It must cover:
   - that the device is a 2D cross-section scaled to a nanosheet, and that the absolute current
     level is **not** calibrated against experiment (the memory window, threshold voltage,
     subthreshold slope, on/off ratio and turn-on shape *are* calibrated)
+  - that no 3D simulation was done, so corner and edge-field effects are not captured (0.4)
   - which write/read timing was used for which figure
   - the two different on/off numbers and what each means: **5410×** is the retained memory
     window, **18.4×** is the read contrast after nine pulses. Never print them next to each
@@ -339,3 +359,31 @@ Each of these came from a real mistake caught in this project.
 - Do not quote the cycle-to-cycle noise figure without saying how many repeats it came from and
   that the run was cut short.
 - Do not re-download `t14_end10` expecting a complete run. It is a partial, cut off at two hours.
+
+---
+
+# Deferred to a later pass — do not do these now
+
+These are all real work that the paper eventually wants. None of them blocks submission, and
+attempting them in this pass is how the main text ends up rushed.
+
+**The ~50 supplementary figures.** Everything in PLOT_PLAN items 2.1–2.10 that does not feed
+one of the ten main-text panels: the rest of chapters E, G, D, C, F and I, plus A4/A6, J2–J4,
+B2/B4/B6–B9, H2, G7. The data is on disk and will stay there. Once `figs.py` exists (Part 1),
+each of these is one more function in it.
+
+**J6** — memory window vs operating voltage against published devices. It is a second view of
+the same comparison J5 already makes. Drop it, or add it when the supplementary set is drawn.
+
+**The endurance figure (H5).** Not deferred so much as declined — see 0.5. The model has no
+wear-out physics, so more simulation cannot produce a real endurance result.
+
+**The 3D gate-all-around check (RR-11).** Declined, see 0.4. Handled by stating the limitation
+in the methods instead.
+
+**Finishing the cycle-to-cycle run to 20 repeats.** Would narrow the error bar on the noise
+figure. Does not change any conclusion.
+
+If you find yourself with time after the main text is drafted, the order I would take these in
+is: supplementary figures for whichever chapter a reviewer is most likely to probe (C, the
+ferroelectric chapter), then J6, then the rest.
