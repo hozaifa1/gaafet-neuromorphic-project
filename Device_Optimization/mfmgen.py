@@ -44,7 +44,7 @@ The measured cycle writes prefixes `down_` (+Vmax -> -Vmax) and `up_`
 import norm
 
 HEAD = """*== RR-1 MFM P-E loop (mfmgen.py): TiN / HZO {tfe_nm:g} nm / TiN, +/-{vmax} V, {ncyc} wake-up cycles.
-File {{ Grid="mfm_msh.tdr" Parameter="{par}"
+File {{ Grid="{mesh}_msh.tdr" Parameter="{par}"
   Plot="opt_outputs/{node}_des.tdr" Current="opt_outputs/{node}_des.plt" Output="opt_outputs/{node}_des.log" }}
 Electrode {{ {{Name="top_metal" Voltage=0.0{resist}}} {{Name="bot_metal" Voltage=0.0}} }}
 Physics {{ Temperature=300 Areafactor=1.0 }}
@@ -79,10 +79,10 @@ MATH = {
 
 
 def gen(vmax=1.96, node="mfm_pe196", par="app_mfm.par", n_wakeup=2, npts=200,
-        t_fe_um=0.007, l_cap_um=0.100, math="ref", resist=None):
+        t_fe_um=0.007, l_cap_um=0.100, math="ref", resist=None, mesh="mfm"):
     """Triangular P-E loop: 0 -> +V, n_wakeup full cycles, then one measured cycle."""
     s = HEAD.format(tfe_nm=t_fe_um * 1e3, vmax=vmax, ncyc=n_wakeup, par=par, node=node,
-                    xmid=l_cap_um / 2.0, ymid=t_fe_um / 2.0,
+                    mesh=mesh, xmid=l_cap_um / 2.0, ymid=t_fe_um / 2.0,
                     math=MATH[math], resist=f" Resist={resist}" if resist else "")
     s += LEG.format(prefix="rise_", v=vmax, plot="")
     for k in range(n_wakeup):                 # wake-up cycles, not recorded densely

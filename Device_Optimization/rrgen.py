@@ -120,7 +120,7 @@ VDS_GRID = [round(0.05 * i, 3) for i in range(21)]      # 0 .. 1.0 V in 50 mV st
 
 
 def idvd(node="t11_idvd", vg_list=(0.0, 0.2), ltp_at=(3, 6, 9, 12, 15),
-         V_ers=-2.0, V_pgm=2.0, t_w=5e-6, t_p=1e-6, vds_grid=None,
+         V_ers=-2.0, V_pgm=2.0, t_w=5e-6, t_p=0.3e-6, vds_grid=None,
          VREAD=0.0, **kw):
     """I_D-V_DS families: erased, fully programmed, then 5 analog LTP states.
 
@@ -130,6 +130,13 @@ def idvd(node="t11_idvd", vg_list=(0.0, 0.2), ltp_at=(3, 6, 9, 12, 15),
     per family, well under tau_P = 10 us, so the retained state survives a sweep.
     The analysis reads the conduction current (eCurrent + hCurrent), so the
     dV_DS/dt displacement term through the overlap is removed exactly.
+
+    t_p = 0.3 us, NOT 1 us.  It must match the canonical LTP train (t8_ltp,
+    +2.0 V / 0.3 us) or the "5 analog states" in this figure are not the analog
+    states in the LTP figure.  A first version used 1 us and put level 15 at
+    25.3 uA/um against the LTP curve's 8.32 -- a three-fold discrepancy that is
+    purely protocol, and exactly the kind of cross-figure mismatch this whole
+    audit exists to remove.
     """
     vds_grid = vds_grid or VDS_GRID
     s = head(node, VREAD=VREAD, **kw)
