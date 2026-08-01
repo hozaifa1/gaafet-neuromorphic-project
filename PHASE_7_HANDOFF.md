@@ -1,226 +1,306 @@
-# Phase 7 handoff — figure production and paper writing
+# Phase 7 handoff — clear the leftovers, make the figures, write the paper
 
 Paste everything below the line into a fresh session. It is self-contained.
 
-Scope: **produce the 79-figure catalog and write the paper.** No new device physics is
-required. EEG remains dropped — do not touch `PYTHON_Modelling_Fefet_Codes/eeg detection/`.
+Do not touch `PYTHON_Modelling_Fefet_Codes/eeg detection/`. The EEG task was dropped.
 
 ---
 
-## Context
+## Where things stand
 
 Repo: `F:\RESEARCH\FeFET x ML\TCAD Files\GAAFet`, branch `paper/gap-fix`.
 
-Read these three, in this order. They are the ground truth and they are short:
-1. [PHASE_1_5_RESULTS.md](PHASE_1_5_RESULTS.md) — every device number and how it was checked.
-2. [PHASE_6_RESULTS.md](PHASE_6_RESULTS.md) — the SNN deployment, K2/K3/K4, and five errors
-   found by counting things that had been assumed.
-3. [PLOT_PLAN.md](PLOT_PLAN.md) — the 79-figure catalog (Part III), the re-run list
-   (Part IV) and the phased TODO (Part V).
+The simulations are done. There are 109 run nodes on disk and 1377 CSVs, and every planned
+re-run (RR-0 through RR-10) has finished and been analysed. The SNN work is done too.
 
-**State of the work.** Data is complete: 109 run nodes on disk, 1377 CSVs, every re-run
-RR-0…RR-10 landed and analysed. Phase 6 (device→SNN) is complete. What is left is figure
-production and prose.
+What is left is: clean up four loose ends, draw about sixty figures from data that is
+already on disk, and write the paper.
+
+Read these three first. They are short and they are the source of truth for every number:
+
+1. [PHASE_1_5_RESULTS.md](PHASE_1_5_RESULTS.md) — the device numbers and how each was checked
+2. [PHASE_6_RESULTS.md](PHASE_6_RESULTS.md) — the SNN work, figures K2/K3/K4
+3. [PLOT_PLAN.md](PLOT_PLAN.md) — the list of 79 figures and where each one's data lives
+
+Work in order. Part 0 first — two of those items change numbers that go in the paper, so
+doing them after you start writing means rewriting.
 
 ---
 
-## Settle these three before drafting anything
+# PART 0 — Clear the leftovers (half a day)
 
-### S1 — the analog-depth claim (BLOCKING, no simulation needed)
+## 0.1 Make the two documents agree about RR-8b
 
-There is a live contradiction between two documents in the repo, and it is the paper's
-headline device number.
+Two files currently disagree about the same measurement. `PHASE_1_5_RESULTS.md` says the
+cycle-to-cycle run gave **9** repeats with a spread of about 0.015 decades.
+`PHASE_6_RESULTS.md` and the committed data say **11** repeats and 0.0215 decades.
 
-`PHASE_1_5_RESULTS.md` §4 says the analog depth is **8 levels open-loop, not 15**, and that
-"15 levels" is defensible only as a write-verify claim — concluding that K2/K3 should
-quantize to 8.
+Both were written while the data was still downloading, so one of them is simply out of date.
 
-`PHASE_6_RESULTS.md` §6.4c measured exactly that and found the opposite for *deployment*:
-at the measured c2c σ, keeping all 15 levels costs **0.001** accuracy, while restricting to
-the 8 separable levels costs **0.036**.
+```bash
+cd "F:/RESEARCH/FeFET x ML/TCAD Files/GAAFet" && python rranalyze.py rr8b
+```
 
-**These reconcile, and the reconciliation is the paper's story — but it must be stated
-explicitly, not left implicit:**
+Whatever that prints now is the truth. Then:
 
-| claim | value | rests on |
+- open `PHASE_1_5_RESULTS.md` §4 and `PHASE_6_RESULTS.md` §6.4c and make both match it
+- keep the repeat count next to the spread **everywhere it is quoted**, because the run was
+  cut off by the two-hour job limit and never finished its 20 repeats
+- do not average the two versions
+
+If the numbers moved, also re-make the figure that depends on them:
+
+```bash
+cd "F:/RESEARCH/FeFET x ML/TCAD Files/GAAFet/PYTHON_Modelling_Fefet_Codes/ecg detection" && python fig_k3_variability.py c2c
+```
+
+That takes about 40 minutes. Only run it if 0.1 actually changed the numbers.
+
+## 0.2 Decide how many analog levels the paper claims
+
+**This is the paper's headline device number and the two documents currently contradict each
+other. Settle it before you write anything.**
+
+The disagreement:
+
+- `PHASE_1_5_RESULTS.md` says the device has **8 usable levels**, because levels 9 to 15 are
+  packed so close together at the top of the range that cycle-to-cycle noise smears them into
+  each other. It concludes that "15 levels" is only honest if you have write-verify circuitry.
+- `PHASE_6_RESULTS.md` measured what happens if you actually deploy the network on only those
+  8 levels: accuracy drops by 0.036. Deploying on all 15 under the measured noise costs 0.001.
+
+Both are correct. They are answering different questions, and the paper needs to say so:
+
+| what you are claiming | number | why it holds |
 |---|---|---|
-| device, open loop (n pulses, no verify) | **8 levels** | RR-8b: levels 9–15 sit inside 0.11 decades while c2c σ ≈ 0.013–0.022 decades |
-| device, closed loop (write-verify to placed targets) | **~16 levels** | the 3.79-decade measured range |
-| SNN deployment | **15 levels** | *presupposes write-verify* |
+| the device, no verify circuitry | **8 levels** | levels 9–15 sit inside 0.11 decades, noise is 0.013–0.022 decades |
+| the device, with write-verify | **~16 levels** | the measured range is 3.79 decades wide |
+| what the network was deployed on | **15 levels** | assumes write-verify |
 
-The SNN's 15-level deployment is legitimate **only** if the paper says it assumes a
-write-verify array. That assumption is not a concession: K3a shows write-verify is
-**already mandatory** for device-to-device — uncalibrated deployment onto the RR-8 corners
-collapses to 0.243 median, and per-device write-verify restores 0.8304, the nominal result
-to four decimals. So the system the paper describes needs write-verify regardless, and the
-15-level claim comes free with it.
+So: **state plainly, in both the device section and the network section, that the network
+result assumes a write-verify array.**
 
-Write it that way, in the device section and again in the SNN section. A reviewer who spots
-"8 levels" in the characterization and "15 levels" in the deployment without that bridge
-will treat it as an inconsistency.
+That is not a weakness, and it should not be written apologetically. Figure K3a already shows
+write-verify is unavoidable for this device anyway — without per-device calibration, deploying
+onto the 20 corner devices drops accuracy to 0.243. With it, you get 0.8304, which is the
+nominal result to four decimal places. The system needs write-verify regardless of the level
+count, so the 15-level claim costs nothing extra.
 
-### S2 — a factual conflict in the RR-8b numbers (15 minutes)
+If you skip this, a reviewer reads "8 levels" in one section and "15 levels" in the next and
+concludes the paper contradicts itself.
 
-`PHASE_1_5_RESULTS.md` says RR-8b delivered **9** complete repeats with σ ≈ 0.015 decades.
-The committed data (`Device_Optimization/csv_export/raw/c2c_ensemble.csv`) has **11**
-complete repeats, median σ = **0.0215** decades, s.e. ≈ 22 %.
+## 0.3 Finish DIBL, or drop it on purpose
 
-Both were produced during the same afternoon as `t17_c2c` downloaded incrementally — one
-document is stale. Re-run `python rranalyze.py rr8b`, take whatever the current data gives,
-and make both documents agree. Do not average them, and do not quote either without the
-repeat count: the run was **capped at 2 h (rc=137), it did not complete its 20 repeats**,
-and every quotation of σ must carry that.
+DIBL is currently not reported because two ways of extracting it disagreed about the *sign*.
 
-### S3 — DIBL (in flight, cheap, no new simulation)
+The cause was found: on the wide −1.5 V sweep the transistor's off state is V-shaped (current
+falls, bottoms out, then rises again). A naive search finds the falling side first and reads a
+threshold from the wrong carrier, which gave a nonsense −241 mV/V. The fix is already in
+`rranalyze.py` — `vth_cc()` now takes `after_min=True`, which starts looking from the bottom
+of the V.
 
-DIBL is still **not reported**: the two extraction criteria disagreed in sign. A fix was in
-progress at the end of Phase 6 — `rranalyze.vth_cc` gained an `after_min=True` argument that
-starts the constant-current search at the ambipolar minimum, because on the extended −1.5 V
-sweep a naive scan finds the hole/GIDL branch first and returns a threshold from the wrong
-carrier (that produced the −241 mV/V erased DIBL). `t11_dibl` has completed and its data is
-on disk. Finish that, or explicitly decide DIBL stays unreported.
+The data is on disk (`t11_dibl` finished). Finish the job:
+
+```bash
+cd "F:/RESEARCH/FeFET x ML/TCAD Files/GAAFet" && python rranalyze.py rr2
+```
+
+Then check that the erased and programmed branches now give DIBL values with the **same sign**
+and a sensible size (tens of mV/V, not hundreds).
+
+- If they agree → report DIBL, and say in the methods which criterion you used.
+- If they still disagree → leave DIBL out of the paper and say why in one sentence. Do not
+  report a number you cannot reproduce two ways.
+
+## 0.4 State the 2D limitation in the methods (writing task, no simulation)
+
+**Decision already taken: no 3D simulation. Do not start one.**
+
+Everything here is simulated as a **2D slice** of the transistor and scaled up to a nanosheet
+by multiplying by a width factor. RR-10 proved that scaling is arithmetically exact to
+1.8e-16. That proves the multiplication is right; it does not prove a flat slice behaves like
+a real wrapped gate, which has corners and edge fields a slice cannot show.
+
+Since we are not running the 3D check, the paper must say so plainly. Put a short paragraph in
+the methods that states:
+
+- the device is modelled as a 2D double-gate cross-section, mapped to a nanosheet through the
+  gate perimeter (`Device_Optimization/norm.py`, 90 nm)
+- the mapping was verified to be exact arithmetic (RR-10), and that is the extent of what was
+  verified
+- a full 3D gate-all-around simulation was not performed, so corner and edge-field effects are
+  not captured
+
+That is a normal, survivable limitation — plenty of published device work is 2D. What is not
+survivable is a reviewer discovering it themselves. Write it in your own voice, do not
+apologise for it, and do not bury it.
+
+## 0.5 What NOT to run
+
+**Do not re-run the endurance simulations.** The ferroelectric model used here has no wear-out
+physics in it at all — no fatigue, no wake-up, no imprint. Cycling it more times produces a
+perfectly flat line, because a flat line is what the equations say, not what a real device
+would do. The 10-cycle run already hit the 2-hour limit and was recorded as not completed;
+that cost you nothing scientific.
+
+Either caption the existing cycling data as "write repeatability", making clear it is not an
+endurance measurement, or leave that figure out. Do not spend machine time here.
+
+**Do not bother finishing the cycle-to-cycle run to 20 repeats.** It would narrow the error bar
+on the noise figure from about ±22 % to ±16 %. The conclusion does not change. Only worth it if
+the machine is sitting idle anyway.
 
 ---
 
-## Task 7.1 — `figs.py`, and why it comes first
+# PART 1 — Build one figure script (do this before drawing anything)
 
-PLOT_PLAN item **0.7 was never done**, and it is the keystone of this phase. Right now 57
-PNGs exist across four directories, produced by half a dozen ad-hoc scripts
-(`make_device_figures.py`, `make_ecg_figures.py`, `make_extra_figures.py`,
-`Calibration/autocal/pub_figure.py`, …). Nothing guarantees a figure matches the data it
-claims to show — and Phase 6 found **four** figures that had silently drifted from their own
-source data (`dev1`, `dev2`, `dev4`, `dev5` were pre-Phase-1 *and* pre-RR-0; `dev3` plotted
-a settling transient and captioned it as retention).
+Right now there are 57 image files spread across four folders, made by six different scripts.
+Nothing checks that a figure still matches the data it claims to show.
+
+That is not a theoretical worry. In the last phase, **four figures were found to be showing
+old data** — they had been drawn before a correction and never re-drawn, so they were showing
+numbers 1.578× too large. A fifth was plotting a settling transient and calling it retention.
+Nobody noticed for months.
+
+So before drawing sixty more, build the thing that prevents it. PLOT_PLAN calls this item 0.7
+and it was never done.
 
 Write `Paper-materials/figs.py`:
 
-- one function per figure ID (`def A1(): ...`, `def D2(): ...`), CLI `python figs.py --fig D2`
-  and `--all`;
-- one shared style block — reuse `PYTHON_Modelling_Fefet_Codes/Combined Figures/figstyle.py`,
-  which already encodes the supervisor's Origin rules (bold everything, ticks inside on
-  left/bottom only, no title, thick spines);
-- every figure emits **600 dpi PNG + vector PDF + the tidy CSV it consumed**;
-- every figure reads through `Device_Optimization/norm.py` — the single width convention —
-  and never hardcodes a width, Areafactor or current scale;
-- **no figure may assert a number in its annotation.** Compute it from the plotted data and
-  print it. Phase 6 found a publication calibration figure whose "MW = 1.30 V" was a
-  hardcoded string; it happened to match, but it could never have caught a drift.
+- one function per figure, named after the figure ID — `def A1(): ...`, `def D2(): ...`
+- a command line: `python figs.py --fig D2` and `python figs.py --all`
+- one shared style block — reuse the existing
+  `PYTHON_Modelling_Fefet_Codes/Combined Figures/figstyle.py`, which already matches the
+  supervisor's requirements (bold text everywhere, tick marks inside the axes on the left and
+  bottom only, no plot titles, thick axis lines)
+- every figure saves three things: a 600 dpi PNG, a vector PDF, and the CSV of exactly the
+  numbers it plotted
+- every figure gets its current scaling from `Device_Optimization/norm.py` and never hardcodes
+  a width or scale factor of its own
+- **no figure is allowed to print a number in its caption or annotation that it did not
+  calculate from the data on screen.** One published figure had "MW = 1.30 V" typed into it as
+  plain text. It happened to be right, but it could never have caught an error.
 
-Port the existing generators into it rather than leaving both alive; delete what you port.
-
-## Task 7.2 — PLOT_PLAN Phase 1: fix the existing deck (~1 day)
-
-Items 1.1–1.7. These are figures that already exist and are wrong or weak: the P–V/P–E sign
-flip and recaption (C2), DR vs V_read (I5) replacing deck Fig 8, LTP to semilogy with level
-bands (F1), temperature + Arrhenius (F9), the retained I–V decoration (D1), the T_ox/T_fe
-merges (I2, I3), retention (H1 — note `dev3_retention` has already been rebuilt correctly in
-Phase 6; use it as the template for what "read after settling" looks like in a figure).
-
-## Task 7.3 — PLOT_PLAN Phase 2: harvest what is on disk (~3 days, the bulk)
-
-Items 2.1–2.10, roughly 60 figures, **all from data already present**. Chapters E (write
-transients), G (LIF neuron, 224 currently-unused files), D5–D10, C3–C8 (field/divider),
-F2–F11 (synaptic), I1–I10 (design space), B1–B9 (calibration, including B6/B7 from the
-57-node `Calibration/autocal/results.csv`), A1/A4/A5/A6 (drawn), J1–J4 (planar comparison),
-H2/G7.
-
-No simulation. If a figure appears to need a run, check `Device_Optimization/outputs/`
-first — there are 109 nodes and Phase 4 of the earlier work converted 483 previously dead
-`.plt` files.
-
-## Task 7.4 — PLOT_PLAN Phase 5: assemble
-
-- **5.1** the 10 main-text composites (the grouping is already specified in PLOT_PLAN);
-  remaining ~50 figures become supplementary.
-- **5.2** `figures_manifest.csv`: figure ID → source `.plt`/CSV → `figs.py` function → **the
-  exact claim it supports** → the normalization convention used. This kills the whole
-  "where did this number come from" class of problem permanently.
-- **5.3** the methods paragraph. It must cover, at minimum:
-  - the 2D↔GAA Areafactor mapping and the honest statement that absolute current is **not**
-    experimentally calibrated (window, V_t, SS, on/off and turn-on shape are);
-  - the τ_E/τ_P protocol used per figure;
-  - the two distinct ON/OFF definitions (retained window 5410× vs 9-pulse LIF contrast
-    18.4×) — never adjacent, always labelled;
-  - **the rules below**, which are methods-section material, not lab hygiene.
-
-## Task 7.5 — the writing
-
-Target venue is IEEE TED (the existing `METHODOLOGY.md` is drafted for it). The
-device→SNN→system arc is already written up across `METHODOLOGY.md`, `README.md` and
-`PHASE_6_RESULTS.md`; the paper is an editing job over those plus the figure catalog, not a
-blank page.
-
-The three findings that are genuinely novel and should carry the paper:
-
-1. **Analog level *placement*, not level count, is the figure of merit.** At n = 8, four
-   random level placements score 0.336–0.491 while the evenly-spaced one scores 0.804 (K2).
-   Independently, accuracy after a per-device gain trim tracks the worst single-level
-   misplacement at Spearman −0.85, holding 0.78–0.83 out to ≈0.6 decades and collapsing at
-   ≈0.9 (K3c). Two different analyses, same conclusion.
-2. **Level placement is an interface-charge problem, not a thickness problem.**
-   FixedCharge ±10 % → 1.31 decades; Dit ±20 % → 0.85; T_fe ±0.3 nm → **0.07** (RR-8). This
-   is the most directly actionable result in the whole set and it was the opposite of the
-   expectation.
-3. **Distinguishability statistics do not predict accuracy.** Three independent ones —
-   RR-8's ensemble overlap, the post-gain-trim overlap, RR-8b's 3σ separability — all
-   describe whether levels can be told apart *on readout*. None predicts accuracy.
-   Deployed-weight error does.
-
-And the honest scope statement, which belongs in the abstract's last line, not buried: the
-core compute is 535.8 pJ/beat, and the **assumed** column ADCs are 183 nJ/beat — 342× that.
-The device is not the bottleneck of a full system and the paper should say so before a
-reviewer does.
+Move the existing figure code into this script as you go, and delete the old copies once
+they're ported. Two scripts drawing the same figure is how the last set drifted.
 
 ---
 
-## Rules carried forward from Phases 1–6
+# PART 2 — Fix the figures that already exist (about a day)
 
-These produced nine caught errors between them. They are not style preferences.
+PLOT_PLAN items 1.1 to 1.7. These figures exist but are wrong, misleading, or weak:
 
-1. **A ratio may only be formed from two measurements taken in the same run.** Three
-   published numbers violated this (`fire_ratio`, `R_off`, `g_min`).
-2. **A retained-state value must be read after settling (≥5 τ_P), and any window number must
-   state its read delay.** Reading unsettled state fabricated three separate failures.
-3. **A window number must also state its extraction criterion.** `cal_n16` read 1.218 V at
-   1e-7 A/µm and 1.296 V at 1e-8 A/sheet — both correct, one decade apart, neither
-   meaningful unbadged.
-4. **`rc=0` is not a result.** Two MFM runs exited clean with zero field everywhere.
-5. **A result that flatters the story deserves the same scrutiny as one that doesn't.**
-6. **Count things; do not assume them.** `N_SYN` was wrong by 24× because nobody counted the
-   delay taps. Every count in K4 is taken from `model.named_parameters()`.
-7. **No figure asserts a number it did not compute.**
+- the polarisation loops have a sign error and need re-captioning (C2)
+- dynamic range vs read voltage (I5) replaces the old Figure 8
+- the potentiation curve should be on a log axis with the level bands marked (F1)
+- the temperature curves need a log axis plus an Arrhenius panel (F9)
+- the retained current-voltage curve needs annotating (D1)
+- the oxide-thickness and ferroelectric-thickness figures should be merged (I2, I3)
+- retention (H1)
+
+For retention, use `dev3_retention.png` as your model — it was rebuilt correctly in the last
+phase, and it shows how to present a measurement where the first part of the curve is the
+device settling down and only the flat part afterwards is the real result.
+
+---
+
+# PART 3 — Draw the remaining figures (about three days)
+
+PLOT_PLAN items 2.1 to 2.10 — roughly sixty figures. **All of the data is already on disk.
+None of this needs a simulation.**
+
+The groups are: write transients (chapter E), the neuron circuit figures (chapter G, which uses
+224 files nobody has touched yet), more current-voltage figures (D5–D10), the electric-field and
+voltage-divider figures (C3–C8), the synapse analysis set (F2–F11), the design-space set
+(I1–I10), the calibration chapter (B1–B9), four drawn schematics (A1, A4, A5, A6), the
+comparison against the flat-transistor version (J1–J4), and H2/G7.
+
+If a figure looks like it needs a new simulation, check `Device_Optimization/outputs/` first.
+There are 109 run folders there, and an earlier phase converted 483 files that had been sitting
+unused.
+
+---
+
+# PART 4 — Assemble
+
+- **Ten combined figures for the main text.** PLOT_PLAN section 5.1 already specifies which
+  figures group together. The remaining ~50 become supplementary material.
+- **A tracking table**, `figures_manifest.csv`, with one row per figure: figure ID, the raw file
+  it came from, the function in `figs.py` that draws it, **the specific claim it supports**, and
+  which scaling convention it used. This permanently kills the "where did this number come
+  from" problem that cost this project nine errors.
+- **The methods section.** It must cover:
+  - that the device is a 2D cross-section scaled to a nanosheet, and that the absolute current
+    level is **not** calibrated against experiment (the memory window, threshold voltage,
+    subthreshold slope, on/off ratio and turn-on shape *are* calibrated)
+  - which write/read timing was used for which figure
+  - the two different on/off numbers and what each means: **5410×** is the retained memory
+    window, **18.4×** is the read contrast after nine pulses. Never print them next to each
+    other without saying which is which.
+  - the working rules listed below
+
+---
+
+# PART 5 — Write the paper
+
+Target is IEEE TED. You are not starting from a blank page: `METHODOLOGY.md`, `README.md` and
+`PHASE_6_RESULTS.md` already contain most of the argument in draft form.
+
+Three findings are genuinely new and should carry the paper:
+
+**1. Where you put the conductance levels matters more than how many you have.**
+With 8 levels, four different choices of *which* 8 gave accuracies from 0.336 to 0.491, while
+spacing them evenly gave 0.804. Separately, once each device is given a simple gain
+adjustment, what predicts its accuracy is how far its worst level sits from where it should
+be — accuracy holds up to about 0.6 decades of error and falls apart by 0.9. Two independent
+analyses, same conclusion.
+
+**2. Level placement is controlled by interface charge, not by ferroelectric thickness.**
+Changing fixed interface charge by ±10 % moves levels by 1.31 decades. Changing the
+ferroelectric thickness by ±0.3 nm moves them by 0.07. This was the opposite of what everyone
+expected, and it is the most directly useful result in the whole project — it tells a
+fabrication team what to control.
+
+**3. Being able to tell levels apart is not the same as the network working.**
+Three separate measurements of "can you distinguish one level from the next" — and none of
+them predicted accuracy. What predicts accuracy is how far the deployed weight ends up from
+the weight you wanted.
+
+**And state the scope honestly, in the abstract, not buried at the end.** The computing core
+uses 535.8 pJ per heartbeat. The analog-to-digital converters that a real chip would need come
+to 183 nJ — about 342 times more, under a standard assumption for their cost. The device is not
+the limiting factor in a complete system. Say so before a reviewer does; it costs nothing and
+it buys credibility for everything else.
+
+---
+
+## Working rules — these belong in the methods section
+
+Each of these came from a real mistake caught in this project.
+
+1. **Only compare two measurements taken in the same run.** Three published numbers compared
+   readings from different runs and were wrong because of it.
+2. **Wait for the device to settle before reading it, and always say how long you waited.**
+   Reading too early created three separate fake failures — a retention collapse, a read-disturb
+   collapse, and an endurance collapse — all of which looked like honest bad news.
+3. **Always say how a threshold voltage was extracted.** The same calibration data gives
+   1.218 V or 1.296 V depending on the current level you define the threshold at. Both are
+   correct; neither means anything without saying which.
+4. **A simulation finishing without an error is not a result.** Two runs completed cleanly with
+   zero electric field everywhere. Look at the numbers.
+5. **Check results that flatter you as hard as results that don't.**
+6. **Count things instead of assuming them.** The synapse count was wrong by a factor of 24
+   because nobody counted the delay taps in the network.
+7. **A figure may not display a number it did not calculate.**
 
 ## Do not
 
-- Do not touch `PYTHON_Modelling_Fefet_Codes/eeg detection/` — dropped. `build_defense_pdf.py`
-  contains EEG sections annotated as pre-RR-4; leave them annotated, do not re-run.
-- Do not retrain the locked ECG model (`paper150b_best.ckpt`).
-- Do not "update" `Device_Optimization/verify_norm.py` to current numbers. It deliberately
-  pins the pre-RR-0 dataset; changing it destroys its only ability.
-- Do not quote RR-8b's σ without its repeat count and the fact that the run was capped.
-- Do not re-harvest `t14_end10` expecting a finished run — it is a 2 h-capped partial.
-
-## Open items
-
-**Worth running (optional, in parallel with writing)**
-- **RR-11 — 3D GAA cross-check, 4–8 h. The one run with real reviewer value.** Every
-  simulation here is a 2D double-gate cross-section mapped to a nanosheet by an Areafactor.
-  RR-10 proved that mapping is arithmetically exact to 1.8e-16 — but that is an identity,
-  not evidence that the 2D→GAA *physics* holds (corner fields, wrapped-gate electrostatic
-  control, the ambipolar branch). The paper's title claim is "gate-all-around". Expect to be
-  asked; right now the answer is arithmetic.
-
-**Not worth running**
-- **RR-5 endurance.** The Preisach model has no fatigue, wake-up or imprint term, so more
-  cycles produce an analytically flat line. `t14_end10` timed out at the corrected protocol
-  (rc=137, 7200 s, 781 plt) and is **reported as not run**. Caption whatever exists as write
-  repeatability and numerical cycle-stability, or drop H5. Do not spend host hours here.
-- **`t17_c2c` to 20 repeats.** Would tighten σ from ±22 % to ±16 %; the conclusion does not
-  move. Only if the queue is idle anyway.
-
-**Needs a decision, not a run**
-- S1, S2, S3 above.
-- `metrics.py` MW vs the documented value: **resolved** in Phase 6 (criterion mismatch), no
-  action beyond keeping the criterion stated.
-- `Combined Figures/eeg figures/dev1..dev6` are stale copies of the device figures. They are
-  referenced by nothing. Delete them or leave them; do not silently refresh them.
+- Do not touch `PYTHON_Modelling_Fefet_Codes/eeg detection/`. The EEG work was dropped.
+  `build_defense_pdf.py` still has EEG sections, marked as out of date — leave the marks, don't
+  re-run them.
+- Do not retrain the ECG network. The checkpoint `paper150b_best.ckpt` is final.
+- Do not "update" `Device_Optimization/verify_norm.py`. It deliberately holds old numbers so it
+  can detect if the scaling ever breaks again. Changing it destroys the only thing it does.
+- Do not quote the cycle-to-cycle noise figure without saying how many repeats it came from and
+  that the run was cut short.
+- Do not re-download `t14_end10` expecting a complete run. It is a partial, cut off at two hours.
