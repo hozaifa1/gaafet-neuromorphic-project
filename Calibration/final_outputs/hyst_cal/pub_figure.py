@@ -66,20 +66,38 @@ ax.set_title("GAA-FeFET TCAD calibration to Liao 2022 (MFMFS-GAA),  $V_{DS}$ = 0
 ax.grid(alpha=0.3, which="both")
 ax.tick_params(which="both", direction="in", top=True, right=True)
 
-# MW arrow at 1e-8 between the two V_t
-ax.annotate("", xy=(0.36, 1e-8), xytext=(-0.93, 1e-8),
+# --- extracted metrics (COMPUTED from the plotted curves, not asserted) ---------
+# Constant-current V_t at IREF_SHEET on the per-nanosheet axis this figure plots.
+# STATE THE CRITERION with any MW: autocal/metrics.py uses 1e-7 A/um, which is
+# ~1e-9 A/sheet -- a decade deeper in subthreshold -- and therefore reports
+# MW = 1.218 V on this same node. Neither is wrong; they are different criteria,
+# and quoting one without the criterion is what made them look inconsistent.
+IREF_SHEET = 1e-8
+vt_ers = M.vth_cc(ve_r, ie * scale, IREF_SHEET)
+vt_pgm = M.vth_cc(vp_r, ip * scale, IREF_SHEET)
+mw = vt_ers - vt_pgm
+i_on = float(np.median(ie[ve >= 2.5]) * scale)
+on_off = float((ie * scale).max() / (ie * scale).min())
+print(f"cal_n16 @ I_ref={IREF_SHEET:.0e} A/sheet: "
+      f"Vt_ERS={vt_ers:+.3f} Vt_PGM={vt_pgm:+.3f} MW={mw:.3f} V, "
+      f"I_on={i_on:.3g} A/sheet, I_on/I_off={on_off:.3g}")
+
+ax.annotate("", xy=(vt_ers, IREF_SHEET), xytext=(vt_pgm, IREF_SHEET),
             arrowprops=dict(arrowstyle="<->", color="black", lw=1.4))
-ax.text(-0.28, 1.4e-8, "MW = 1.3 V", fontsize=10.5, ha="center",
+ax.text(0.5 * (vt_ers + vt_pgm), 1.4e-8, f"MW = {mw:.2f} V", fontsize=10.5, ha="center",
         bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85))
 
 # legend: lower-right (empty area below the saturated plateau)
 ax.legend(fontsize=9.5, loc="lower right", framealpha=0.95)
 
 # metrics box: top strip (above the 5e-6 saturation plateau -> clear)
+exp = int(np.floor(np.log10(on_off)))
+on_off_tex = f"{on_off/10**exp:.1f}$\\times$10$^{{{exp}}}$"
 ax.text(0.015, 0.975,
-        "MW = 1.30 V  (= Liao)\n"
-        "$I_{on}$ = 4.8 µA/sheet,   $I_{on}/I_{off}$ ~ 2$\\times$10$^{7}$\n"
-        "$V_{t,PGM}$ = $-$0.93 V,   $V_{t,ERS}$ = $+$0.36 V",
+        f"MW = {mw:.2f} V  (Liao quotes 1.30 V)\n"
+        f"$I_{{on}}$ = {i_on*1e6:.1f} µA/sheet,   $I_{{on}}/I_{{off}}$ ~ {on_off_tex}\n"
+        f"$V_{{t,PGM}}$ = {vt_pgm:+.2f} V,   $V_{{t,ERS}}$ = {vt_ers:+.2f} V\n"
+        f"constant-current $V_t$ at $I_{{ref}}$ = {IREF_SHEET:.0e} A/sheet",
         transform=ax.transAxes, fontsize=9, va="top", ha="left",
         bbox=dict(boxstyle="round,pad=0.4", fc="#fffbe6", ec="0.6", lw=0.8))
 
