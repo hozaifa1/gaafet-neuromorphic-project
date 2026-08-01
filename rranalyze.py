@@ -79,8 +79,20 @@ def have(node, *prefixes):
     return all((OUTPUTS / node / f"{p}{node}_des.plt").exists() for p in prefixes)
 
 
-def vth_cc(vg, idd, icc):
+def vth_cc(vg, idd, icc, after_min=True):
+    """V_G at which I_D crosses icc on the ELECTRON branch.
+
+    `after_min` starts the search at the ambipolar minimum. An n-FeFET's off
+    state is a V: the hole/GIDL branch falls with V_G, bottoms out, then the
+    electron branch rises. On a sweep wide enough to capture the hole branch --
+    the extended -1.5 V DIBL sweep does -- a naive scan finds its crossing first
+    and returns a threshold from the wrong carrier. That put the erased DIBL at
+    -241 mV/V, i.e. the wrong sign.
+    """
     vg, idd = np.asarray(vg, float), np.asarray(idd, float)
+    if after_min and len(idd) > 2:
+        k0 = int(np.argmin(idd))
+        vg, idd = vg[k0:], idd[k0:]
     for k in range(1, len(vg)):
         if idd[k - 1] < icc <= idd[k] and idd[k] > idd[k - 1]:
             f = ((np.log10(icc) - np.log10(idd[k - 1]))
@@ -369,12 +381,16 @@ def rr2(node="t11_idvd", dnode="t11_dibl"):
                 vt[(st, round(float(g.Vds_V.iloc[0]), 3))] = vth_cc(g.Vg_V, g.Id_uA_um, icc)
             for k, v in sorted(vt.items()):
                 print(f"    V_t {k[0]} @ V_DS={k[1]} V : {v:+.4f} V")
-            # A fixed-current criterion is confounded across two V_DS values: in the
-            # linear region I_D itself scales with V_DS, so the crossing moves by
-            # about SS*log10(V_DS2/V_DS1) with no electrostatics involved at all
-            # (~64 mV here for SS = 63.5 mV/dec and a 10x V_DS ratio). Scaling the
-            # criterion with V_DS -- i.e. a constant-CONDUCTANCE criterion --
-            # removes that term. Both are reported; the scaled one is the DIBL.
+            # Criterion choice, corrected. A fixed-current criterion is confounded
+            # across two V_DS values IF the device is in the linear region, where
+            # I_D scales with V_DS and the crossing moves by ~SS*log10(V_DS ratio)
+            # with no electrostatics involved. Scaling the criterion with V_DS
+            # removes that -- but only in the linear region. At V_DS = 0.5 V this
+            # device is in SATURATION, where subthreshold current is essentially
+            # V_DS-independent, so the scaled criterion over-corrects by the full
+            # ~85 mV and flips the sign of the erased DIBL. Fixed current is the
+            # right criterion for a 0.05 -> 0.5 V pair; the scaled one is reported
+            # only to show the size of the confound.
             vt_s = {}
             for (st, j), g in groups.items():
                 vds = float(g.Vds_V.iloc[0])
@@ -388,18 +404,23 @@ def rr2(node="t11_idvd", dnode="t11_dibl"):
                     raw = -(vt[ks[1]] - vt[ks[0]]) / (ks[1][1] - ks[0][1]) * 1000
                 if np.isfinite(vt_s[ks[0]]) and np.isfinite(vt_s[ks[1]]):
                     sc = -(vt_s[ks[1]] - vt_s[ks[0]]) / (ks[1][1] - ks[0][1]) * 1000
-                print(f"  DIBL ({st}): {sc:7.1f} mV/V  [constant-conductance criterion]"
-                      f"   {raw:7.1f} mV/V  [fixed-current, drive-confounded]")
-                bad = (not np.isfinite(sc) or not np.isfinite(raw)
-                       or sc * raw < 0 or abs(sc - raw) > 0.5 * max(abs(sc), abs(raw)))
-                if bad:
-                    print(f"    ^ NOT TRUSTWORTHY. The two criteria disagree in sign or by")
-                    print(f"      more than 50 %, which means V_t is being read outside a")
-                    print(f"      clean subthreshold region on at least one curve. The sweep")
-                    print(f"      only reaches V_G = -0.5 V; at V_DS = 0.5 V neither state is")
-                    print(f"      properly off there (the programmed branch never drops below")
-                    print(f"      2.7e-2 uA/um at all). Do not quote a DIBL from this run --")
-                    print(f"      re-run t11_dibl with the sweep extended to V_G = -1.5 V.")
+                print(f"  DIBL ({st}) = {raw:7.1f} mV/V   "
+                      f"[scaled-criterion cross-check {sc:7.1f}, invalid in saturation]")
+            ke = sorted([k for k in vt if k[0] == "ers"], key=lambda k: k[1])
+            kp = sorted([k for k in vt if k[0] == "pgm"], key=lambda k: k[1])
+            if len(ke) == 2 and len(kp) == 2:
+                de = -(vt[ke[1]] - vt[ke[0]]) / (ke[1][1] - ke[0][1]) * 1000
+                dp = -(vt[kp[1]] - vt[kp[0]]) / (kp[1][1] - kp[0][1]) * 1000
+                print(f"  The erased branch, {de:.0f} mV/V, is a normal short-channel DIBL for")
+                print("  a 100 nm gate on a 5 nm body.")
+                if abs(dp) > 3 * abs(de):
+                    print(f"  The programmed branch, {dp:.0f} mV/V, is {abs(dp / de):.0f}x larger and is NOT")
+                    print("  explicable as electrostatic DIBL at this geometry. The likely cause is")
+                    print("  the drain field acting on the ferroelectric itself -- a")
+                    print("  drain-induced polarization change, not a short-channel effect. That")
+                    print("  is a distinct claim and is NOT established by this run: confirming it")
+                    print("  needs P_y probed at the drain end versus V_DS, or a non-ferroelectric")
+                    print("  control. Report the erased DIBL; flag the programmed one as open.")
 
 
 # ------------------------------------------------------------------- RR-3
@@ -518,14 +539,24 @@ def rr4(nodes=(("t12_ret", 300, "programmed"), ("t12_ret400", 400, "programmed")
         if state == "levels_1_15":
             # 15 separate holds, one per analog level -- a single fit across them
             # is a category error, so each hold is reported on its own.
-            print(f"  {node}: {g.seg.nunique()} per-level holds, analysed individually:")
+            # These holds are 200 us starting immediately after each level's write,
+            # so they span the tau_P settling transient -- they measure per-level
+            # SETTLING, not retention. RR-4's t12_ret shows the state only becomes
+            # flat after ~5 tau_P. A true multi-level retention run must settle
+            # first and hold afterwards; this one does not, so its per-level
+            # numbers are reported as settling and must not be captioned as
+            # retention.
+            print(f"  {node}: {g.seg.nunique()} per-level holds. NOTE these span the")
+            print("  post-write settling transient, so they are SETTLING per level, not")
+            print("  retention. A retention version must settle first, then hold.")
             for seg, h in g.groupby("seg", sort=True):
                 h = h.sort_values("t_rel_s")
                 if len(h) < 3:
                     continue
                 drift = (h.G_uA_um.iloc[-1] / h.G_uA_um.iloc[0] - 1) * 100
                 print(f"     {seg}: G {h.G_uA_um.iloc[0]:.4g} -> {h.G_uA_um.iloc[-1]:.4g} "
-                      f"uA/um over {h.t_rel_s.iloc[-1] - h.t_rel_s.iloc[0]:.3g} s ({drift:+.2f} %)")
+                      f"uA/um over {h.t_rel_s.iloc[-1] - h.t_rel_s.iloc[0]:.3g} s "
+                      f"({drift:+.2f} %, settling)")
             continue
 
         # split settling from plateau: the plateau is the tail over which the
@@ -817,8 +848,36 @@ def rr8b(node="t17_c2c", n_ltp=15):
     print("  Unlike RR-8's corner envelope this IS a sigma -- repeats of one protocol")
     print("  on one device -- so it can legitimately be used as the SNN's c2c input.")
     if n_ok < len(sp):
-        print("  Levels that fail the criterion cannot be separated by write-verify")
-        print("  either: c2c blurs the rungs rather than shifting the ladder.")
+        print("  The failures are at the TOP: the LTP curve saturates, so levels 9-15")
+        print("  are crammed into a fraction of a decade while sigma stays flat.")
+
+    # What could write-verify achieve? The train's natural stops are not the only
+    # option -- with verify you place targets where you like. The ceiling is then
+    # set by the measured range and the c2c noise floor, not by the pulse count.
+    # Greedy placement from the bottom, each target 3 sigma above the last.
+    lo, hi = float(np.log10(sp.median_uA_um.iloc[0])), float(np.log10(sp.median_uA_um.iloc[-1]))
+    ls = np.log10(sp.median_uA_um.values)
+    n_opt, x = 1, lo
+    while True:
+        s = float(np.interp(x, ls, sp.sigma_log10.values))
+        x += 3 * s
+        if x > hi:
+            break
+        n_opt += 1
+    print(f"  range {hi - lo:.2f} decades; write-verify placement at 3 sigma would give")
+    print(f"  about {n_opt} levels ({np.log2(n_opt):.1f} bits) against the train's {n_ok}.")
+    print()
+    print("  THE DISTINCTION IS THE RESULT, so state which protocol is claimed:")
+    print(f"    open loop  -- n pulses, no verify (what the deck actually does): {n_ok}")
+    print(f"                  levels, {np.log2(max(n_ok, 1)):.1f} bits. The train's own stops bunch up")
+    print("                  at the top of a saturating curve, below the c2c floor.")
+    print(f"    closed loop -- write-verify to placed targets: ~{n_opt} levels,")
+    print(f"                  {np.log2(n_opt):.1f} bits. The range supports it; reaching it needs")
+    print("                  verify circuitry and per-write iteration, which is a")
+    print("                  system cost the paper would have to own.")
+    print("  So '15 levels' is defensible ONLY as a write-verify claim. As an")
+    print("  open-loop pulse-counting claim -- which is how the LTP figure reads --")
+    print("  the measured number is 8.")
 
 
 # ------------------------------------------------------------------- RR-9

@@ -61,6 +61,14 @@ while true; do
     # first RR-0 attempt collapsed to 1e-15 s steps and wrote a 71 MB log while
     # holding the only license. timeout turns that into rc=124 and lets the
     # queue move on instead of stalling the whole night on one bad deck.
+    # Clear this node's previous .plt before running. The host accumulates output
+    # across runs of the same node name, so a re-run that fails or times out part
+    # way leaves a MIX of old and new files under one name -- and the mix looks
+    # like a complete result. That happened to t14_end10: the 15-pulse train run
+    # hit the 2 h cap before reaching cycle 10, the previous single-pulse run's
+    # w10_* files survived, and the two got averaged into one endurance CSV.
+    rm -f opt_outputs/*_${NODE}_des.plt "opt_outputs/${NODE}_des.plt"
+
     timeout -s KILL "$JOB_TIMEOUT" csh -c "source ~/.cshrc && sdevice ${NODE}_des.cmd"         > "opt_outputs/${NODE}_runlog.txt" 2>&1
     RC=$?
     ELAPSED=$(( $(date +%s) - START ))
