@@ -177,6 +177,11 @@ and belong in the methods section:
   422 in 2513 s. The corrected 5 µs write protocol is simply much more expensive per cycle
   than the superseded single-pulse deck that finished in 307 s. **Reported as not run.**
   (The kill was clean — `csh` exec'd `sdevice`, so no orphan held the shared license.)
+  **Do not blind-harvest this node.** `outputs/t14_end10/` still holds the 55 `.plt` of the
+  superseded 307 s single-pulse run; the host has 781 from the truncated corrected run.
+  `harvest.py` skips nodes that are already local, so nothing is mixed today — but clearing
+  that directory and re-harvesting would pull the truncated set and hand `rr5` a blend of
+  two protocols under one node name. Delete the host copy or rename the node first.
 - RR-2: `t11_dibl` requeued with the sweep extended to −1.5 V.
 - `t14_end1000`: parked at the back of the queue. It needs ~8 h at the corrected
   5 µs write and will hit the 2 h job timeout. **If it does not complete it is
