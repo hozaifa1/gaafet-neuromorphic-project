@@ -6,6 +6,35 @@ The EEG task is dropped and was not touched.
 
 ---
 
+## The short version
+
+Phase 6 is complete. The locked ECG result **did not move**: 0.8304 / 0.7536 / 0.7417,
+reproduced to four decimals after the device export was corrected — which is exactly what
+had to happen, since deployment normalizes by `g_max` and a global current scale cancels.
+
+Four errors were found beyond the two the handoff named, and one instruction in the handoff
+turned out to be wrong:
+
+| | |
+|---|---|
+| `N_SYN = 10 700` | actually **261 440** weights / 522 880 FeFETs — the hidden layer is 160 not 100, and both delayed layers store 10 taps per connection (§6.5) |
+| `dev1/2/4/5` figures | still pre-Phase-1 **and** pre-RR-0; the published memory-window figure was the superseded sweep |
+| `dev3_retention` | plotted the 17.5–100 µs settling transient and captioned it as retention drift — Phase-5 error #7 baked into a figure |
+| K3b noise model | mine: c2c was multiplying the weight instead of each conductance branch |
+| handoff §6.4 point 3 | "quantize to the separable-level count, not 15" costs **0.42–0.48 accuracy**; the measured c2c costs 0.002 (§6.4c) |
+
+And `cal_n16`'s MW = 1.218 vs 1.30 V was resolved as a **criterion** mismatch, not a
+fabrication (§"Also fixed on the way past").
+
+**The one result that ties the phase together:** three independent analyses — RR-8's
+ensemble level overlap, the post-gain-trim overlap, and RR-8b's 3σ separability — all
+describe whether levels can be *told apart on readout*, and **none of them predicts
+accuracy**. What predicts accuracy is deployed-weight error: per-device level misplacement
+(K3c, Spearman −0.85) and where the levels sit (K2). Level *count* and level
+*distinguishability* are both the wrong figures of merit for this network.
+
+---
+
 ## 6.1 The stale device bundle
 
 `PYTHON_Modelling_Fefet_Codes/ecg detection/` carried its own copy of
