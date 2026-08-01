@@ -5,6 +5,19 @@ asserts it against the corrected target in PLOT_PLAN.md Part I.4.  Run this afte
 any change to norm.py, rebuild_raw.py, or the raw CSVs.
 
     python verify_norm.py
+
+THESE ARE NOT THE PAPER'S NUMBERS, and that is deliberate.  This file is a
+FIXTURE test: it pins the pre-RR-0 dataset (mw_fe07 / mwfine) so that the
+x0.6338 rescale can be shown to have changed nothing but the axis.  It checks
+3137x, SS 62.3 mV/dec (steepest-pair) and MW 0.336 V because those are the
+values that dataset had before the rescale.
+
+The paper's canonical values come from RR-0 (node iv_fe07b) and are different
+measurements, not different arithmetic: 5410x, SS 63.5 mV/dec (>=2-decade fit)
+and MW 0.387 V, read after a longer post-write settling time.  See the
+"Canonical measurement protocol" section of OPTIMIZED_DEVICE.md.  If this file
+is ever updated to the RR-0 numbers it stops being able to detect a
+normalization regression, which is its only job.
 """
 import sys
 from pathlib import Path
