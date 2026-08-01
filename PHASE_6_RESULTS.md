@@ -275,6 +275,21 @@ visual justification for the "read after settling" rule rather than a counterexa
 than leave one document asserting two values for the same measurement, it is annotated
 in place as pre-RR-4 and pessimistic. Nothing under `eeg detection/` was touched or re-run.
 
+**The device figures in the paper package were pre-Phase-1 and pre-RR-0.**
+`make_device_figures.py` reads the canonical repo-level export, so the *script* was right —
+the PNGs and CSVs had simply never been rebuilt. `dev1_LTP_ladder.csv` held
+p1 = 2.0146e-08, p15 = 2.6244e-04 S/µm against the canonical 1.2769e-08 / 1.6634e-04:
+ratio 1.5778, the Areafactor factor again, one directory over from the bundle in §6.1.
+
+Rebuilding also pulled RR-0 through for the first time. `dev5_memory_window` went from the
+superseded 200-point sweep to the canonical 41-point retained I–V (`iv_fe07b`, −1.0…+1.0 V
+at 50 mV): erased 4.504e-3 and programmed 24.37 µA/µm at V_G = 0, MW = 0.39 V, with the
+ambipolar minima at V_G ≈ −0.25 V (erased) and −0.55 V (programmed) now visible. The
+published memory-window figure had been the pre-RR-0 one.
+
+Affected and now regenerated: `dev1`, `dev2`, `dev4`, `dev5`. `dev6` (the differential
+weight map) moved only in float rounding, as it must — it is normalized by `g_max`.
+
 **The `cal_n16` memory-window discrepancy is resolved, and it was not a fabrication.**
 `metrics.py` reported MW = 1.218 V where the calibration docs and the publication figure
 said 1.30 V. Both are correct constant-current extractions on the same data, one decade
