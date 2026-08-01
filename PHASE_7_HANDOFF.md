@@ -219,6 +219,41 @@ If a figure looks like it needs a new simulation, check `Device_Optimization/out
 There are 109 run folders there, and an earlier phase converted 483 files that had been sitting
 unused.
 
+## 3.11 The two comparison-to-other-work figures (different job, plan time for it)
+
+Two figures cannot be drawn from this repo at all, because their data is other people's
+published results:
+
+- **J5** — analog levels vs energy per pulse, with this work marked on it
+- **J6** — memory window vs operating voltage, same idea
+
+These need someone to go and read papers: pull ten to twenty published ferroelectric-memory
+devices, record levels / energy per pulse / memory window / operating voltage for each, and
+build a small table with a citation per row. Save it as
+`Paper-materials/literature_benchmark.csv` with a `source` column giving the citation, so the
+numbers can be checked later.
+
+**J5 is needed for main-text panel 10**, so it is not optional if you want the full ten
+composites. J6 is a nice-to-have and can be dropped or moved to supplementary.
+
+Be realistic about this one: it is a couple of hours of careful reading, not a scripting task,
+and it is the one part of the figure work that cannot be automated or harvested. Do not put it
+at the end and run out of time — the comparison-to-others figure is often the first thing a
+reviewer looks at.
+
+## 3.12 A problem with main-text panel 9
+
+PLOT_PLAN builds panel 9 (reliability) from **H1 + H4 + H5**, and H5 is the endurance figure.
+Since the endurance simulation is not being re-run (see 0.5), you have two options:
+
+- build panel 9 as **H1 + H4 + H8** (retention, mid-state retention, read disturb) — read
+  disturb is a genuinely strong result: 0.0000 % drift over 990,000 equivalent reads
+- or keep H5 but caption it honestly as write repeatability, making clear it is not an
+  endurance measurement
+
+The first is cleaner. Read disturb is real evidence about the device; the cycling figure is
+mostly evidence about the model.
+
 ---
 
 # PART 4 — Assemble
