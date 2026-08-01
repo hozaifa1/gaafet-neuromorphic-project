@@ -13,8 +13,17 @@ Design notes
   fictitious time, and a Preisach ferroelectric integrates its state in REAL
   time -- a QS ramp either freezes the state or creep-overwrites it depending on
   the step size, and neither is a P-E loop.
-* Quasi-static in the physical sense instead: a quarter period of 10 us = 10
-  tau_E, so the loop is rate-independent (tau_E = 1e-6 s).
+* Timing follows Synopsys's own reference deck for exactly this measurement,
+  GettingStarted/sdevice/Ferroelectric/Hysteresis/sat_loop_des.cmd: each leg is
+  its own Transient with InitialTime=0, FinalTime=1, InitialStep=1e-4,
+  MaxStep=1e-3, MinStep=1e-4.  A 1 s ramp is 1e6 tau_E, i.e. utterly
+  quasi-static, and MinStep only one decade below MaxStep means the solver
+  cannot walk itself into a crawl at the coercive crossing -- where a
+  voltage-driven ferroelectric is genuinely unstable (negative differential
+  capacitance), and where two hand-timed ramps both collapsed to MinStep and
+  burned 200k+ steps covering a few percent of the sweep.  Long absolute times
+  are harmless precisely because tau_P = 0 in the material par: with no
+  relaxation term, elapsed time between coercive crossings cannot degrade P_r.
 * tau_P = 0, the CALIBRATED material value (cal_n16), NOT the application par's
   1e-5.  tau_P = 1e-5 is a deliberate application choice -- the LIF leakiness
   the device work wants -- and on a quasi-static loop a 10 us relaxation time
@@ -23,10 +32,6 @@ Design notes
 * 2 wake-up cycles before the measured one.  A fresh Preisach model starts
   depolarized and its first loop is not representative.  The model has no
   fatigue term, so unlike real HZO two cycles is already the steady loop.
-* Step floor, not step freedom.  The first attempt used MinStep = MaxStep/1e4
-  and RelErrControl drove it straight to the floor: 217,080 solver steps to
-  cover 3.2 us of a 425 us ramp, and a 143 MB log.  MinStep is now MaxStep/20,
-  so the solver either keeps up or fails loudly instead of crawling.
 * Two amplitudes: +-1.96 V = 2*F_c*T_fe (the smallest drive that guarantees full
   reversal) and +-3.0 V for saturation margin.  If the two loops do not
   superimpose in P_r, the loop is not saturated.
@@ -56,42 +61,24 @@ Solve {{
 """
 
 LEG = """  NewCurrentPrefix="{prefix}"
-  Transient ( InitialTime={t0:.6e} FinalTime={t1:.6e}
-    InitialStep={dt:.6e} MaxStep={dt:.6e} MinStep={dtmin:.6e} Increment=2.0
+  Transient ( InitialTime=0 FinalTime=1
+    InitialStep=1e-4 MaxStep=1e-3 MinStep=1e-4 Increment=1.2
     Goal{{ Name="top_metal" Voltage={v} }} ) {{ Coupled(Iterations=100) {{ Poisson }}{plot} }}
 """
 
 
-def gen(vmax=1.96, node="mfm_pe196", par="app_mfm.par", t_quarter=10e-6,
-        n_wakeup=2, npts=200, t_fe_um=0.007, l_cap_um=0.100):
+def gen(vmax=1.96, node="mfm_pe196", par="app_mfm.par", n_wakeup=2, npts=200,
+        t_fe_um=0.007, l_cap_um=0.100):
     """Triangular P-E loop: 0 -> +V, n_wakeup full cycles, then one measured cycle."""
-    dt = t_quarter / 25.0            # 25 solver steps per quarter on the wake-up legs
-    dt_meas = 2 * t_quarter / npts   # finer on the measured half-cycles
     s = HEAD.format(tfe_nm=t_fe_um * 1e3, vmax=vmax, ncyc=n_wakeup, par=par, node=node,
                     xmid=l_cap_um / 2.0, ymid=t_fe_um / 2.0)
-
-    t = 0.0
-    # rise from the virgin state to +Vmax (a quarter period)
-    s += LEG.format(prefix="rise_", t0=t, t1=t + t_quarter, dt=dt, dtmin=dt / 20.0,
-                    v=vmax, plot="")
-    t += t_quarter
-
-    for k in range(n_wakeup):        # wake-up cycles, not recorded densely
-        s += LEG.format(prefix=f"wake{k + 1}d_", t0=t, t1=t + 2 * t_quarter, dt=dt,
-                        dtmin=dt / 20.0, v=-vmax, plot="")
-        t += 2 * t_quarter
-        s += LEG.format(prefix=f"wake{k + 1}u_", t0=t, t1=t + 2 * t_quarter, dt=dt,
-                        dtmin=dt / 20.0, v=vmax, plot="")
-        t += 2 * t_quarter
-
-    # the measured cycle
-    for prefix, v in (("down_", -vmax), ("up_", vmax)):
-        t1 = t + 2 * t_quarter
-        plot = (f"\n      CurrentPlot( Time=(Range=({t:.6e} {t1:.6e}) Intervals={npts}) )")
-        s += LEG.format(prefix=prefix, t0=t, t1=t1, dt=dt_meas, dtmin=dt_meas / 20.0,
-                        v=v, plot=plot)
-        t = t1
-
+    s += LEG.format(prefix="rise_", v=vmax, plot="")
+    for k in range(n_wakeup):                 # wake-up cycles, not recorded densely
+        s += LEG.format(prefix=f"wake{k + 1}d_", v=-vmax, plot="")
+        s += LEG.format(prefix=f"wake{k + 1}u_", v=vmax, plot="")
+    plot = f"\n      CurrentPlot( Time=(Range=(0 1) Intervals={npts}) )"
+    for prefix, v in (("down_", -vmax), ("up_", vmax)):   # the measured cycle
+        s += LEG.format(prefix=prefix, v=v, plot=plot)
     return s + "}\n"
 
 
