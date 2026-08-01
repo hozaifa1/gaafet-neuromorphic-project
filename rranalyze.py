@@ -147,7 +147,26 @@ def nonlinearity(g):
         r = float(np.sum((model - gn) ** 2))
         if r < best:
             best, bestA = r, float(A)
-    return bestA, best
+    ss_tot = float(np.sum((gn - gn.mean()) ** 2))
+    r2 = 1.0 - best / ss_tot if ss_tot > 0 else float("nan")
+    return bestA, r2
+
+
+def pulse_span(g, lo=0.1, hi=0.9):
+    """Pulses needed to cross lo..hi of the normalized range.
+
+    A model-free companion to A: it does not assume the curve is a saturating
+    exponential, which matters because these trains are not. Both branches show
+    an incubation delay -- the first two or three 1 us pulses move the state
+    almost not at all, then it swings four decades in three pulses -- so the
+    curve is sigmoidal and the one-parameter exponential cannot represent it.
+    """
+    g = np.asarray(g, float)
+    gn = (g - g.min()) / (g.max() - g.min())
+    if gn[-1] < gn[0]:
+        gn = gn[::-1]
+    n = np.arange(1, len(gn) + 1)
+    return float(np.interp(hi, gn, n) - np.interp(lo, gn, n))
 
 
 def _emit(df, path, label):
@@ -335,15 +354,26 @@ def rr3(node="t10_ltd", cnode="t10_cyc"):
         out = pd.DataFrame({"pulse_n": range(1, 16),
                             "G_ltp_uA_um": ltp, "G_ltd_uA_um": ltd})
         _emit(out, RAW / "ltd_depression.csv", "RR-3 LTP + LTD")
-        a_ltp, _ = nonlinearity(ltp)
-        a_ltd, _ = nonlinearity(ltd[::-1])
+        a_ltp, r2_ltp = nonlinearity(ltp)
+        a_ltd, r2_ltd = nonlinearity(ltd[::-1])
         mono = bool(np.all(np.diff(ltd) <= 0))
-        print(f"  baseline (erased)  {norm.to_uA_per_um(abs(base[ID])):.4g} uA/um")
-        print(f"  LTP  {ltp[0]:.4g} -> {ltp[-1]:.4g} uA/um   A_LTP = {a_ltp:+.3f}")
-        print(f"  LTD  {ltd[0]:.4g} -> {ltd[-1]:.4g} uA/um   A_LTD = {a_ltd:+.3f}   "
-              f"monotonic: {mono}")
+        i_base = norm.to_uA_per_um(abs(base[ID]))
+        print(f"  baseline (erased)  {i_base:.4g} uA/um")
+        print(f"  LTP  {ltp[0]:.4g} -> {ltp[-1]:.4g} uA/um   "
+              f"A_LTP = {a_ltp:+.3f} (fit R2 {r2_ltp:.3f})   "
+              f"10-90 % span {pulse_span(ltp):.1f} pulses")
+        print(f"  LTD  {ltd[0]:.4g} -> {ltd[-1]:.4g} uA/um   "
+              f"A_LTD = {a_ltd:+.3f} (fit R2 {r2_ltd:.3f})   "
+              f"10-90 % span {pulse_span(ltd):.1f} pulses   monotonic: {mono}")
         print(f"  asymmetry |A_LTP - A_LTD| = {abs(a_ltp - a_ltd):.3f}; "
               f"depression depth {ltp[-1] / max(ltd[-1], 1e-30):.1f}x")
+        print(f"  loop closure: LTD endpoint is {100 * ltd[-1] / i_base:.1f} % of the "
+              f"erased baseline (100 % = a perfectly closing loop)")
+        if min(r2_ltp, r2_ltd) < 0.95:
+            print("  NOTE: the exponential nonlinearity model fits poorly (R2 above). These")
+            print("  trains are SIGMOIDAL -- an incubation delay of 2-3 pulses, then a fast")
+            print("  swing -- so A is not a faithful descriptor and the 10-90 % pulse span")
+            print("  should be quoted alongside it.")
         if not mono:
             print("  LTD is NOT monotonic -- raise t_p to 2 us and re-run (screening).")
     else:
