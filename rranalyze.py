@@ -7,7 +7,8 @@
     python rranalyze.py rr4        RR-4  long retention         -> raw/retention_long.csv
     python rranalyze.py rr5        RR-5  endurance              -> raw/endurance.csv
     python rranalyze.py rr7        RR-7  V_pgm x t_p grid       -> sweeps/vpgm_tp_grid.csv
-    python rranalyze.py rr8        RR-8  variability ensemble   -> raw/variability_ensemble.csv
+    python rranalyze.py rr8        RR-8  d2d corner ensemble    -> raw/variability_ensemble.csv
+    python rranalyze.py rr8b       RR-8b cycle-to-cycle        -> raw/c2c_ensemble.csv
     python rranalyze.py rr9        RR-9  read disturb           -> raw/read_disturb.csv
     python rranalyze.py rr10       RR-10 Areafactor sanity      -> prints the exactness check
     python rranalyze.py all        everything whose data is on disk
@@ -737,6 +738,72 @@ def rr8():
         print("     levels blurring. A dedicated c2c run is the honest follow-up.")
 
 
+# ------------------------------------------------------------------- RR-8b
+def rr8b(node="t17_c2c", n_ltp=15):
+    """Cycle-to-cycle: the SAME device, the SAME 15-pulse train, repeated.
+
+    The companion RR-8 perturbs device parameters across 20 corner devices, which
+    is device-to-device. D2D shifts a device's whole ladder and per-device
+    write-verify recovers it. C2C blurs the rungs of ONE device and cannot be
+    calibrated away, so it is the variation that actually limits usable analog
+    depth -- and it is what figure K3 should be built on. The Phase 5G checklist
+    asks for both; only d2d had been run.
+
+    Reports per-level spread across repeats and, the number that matters, how many
+    of the 15 levels stay separable once c2c spread is accounted for.
+    """
+    d = OUTPUTS / node
+    if not d.exists():
+        print(f"rr8b: no data for {node} yet")
+        return
+    reads = {}
+    for f in d.glob(f"p*_read_{node}_des.plt"):
+        m = re.match(rf"p(\d+)_read_{node}_des\.plt$", f.name)
+        if m:
+            reads[int(m.group(1))] = f
+    if not reads:
+        print(f"rr8b: no read files in {node}")
+        return
+    # pulses are numbered globally across repeats: repeat r, level k -> r*n_ltp + k
+    rows = []
+    for idx in sorted(reads):
+        rep, lvl = divmod(idx - 1, n_ltp)
+        x = parse_plt(reads[idx])
+        if len(x):
+            rows.append({"repeat": rep + 1, "level": lvl + 1,
+                         "G_uA_um": float(cond_uA(x.iloc[[-1]])[0])})
+    if not rows:
+        return
+    out = pd.DataFrame(rows)
+    _emit(out, RAW / "c2c_ensemble.csv", "RR-8b cycle-to-cycle")
+
+    g = out.pivot_table(index="level", columns="repeat", values="G_uA_um")
+    lg = np.log10(np.maximum(g.values, 1e-30))
+    sp = pd.DataFrame({
+        "level": g.index,
+        "median_uA_um": np.median(g.values, axis=1),
+        "sigma_log10": lg.std(axis=1, ddof=1),
+        "range_log10": lg.max(axis=1) - lg.min(axis=1),
+    })
+    med = sp.median_uA_um.values
+    spacing = np.full(len(med), np.nan)
+    spacing[1:] = np.log10(np.maximum(med[1:], 1e-30) / np.maximum(med[:-1], 1e-30))
+    sp["spacing_log10"] = spacing
+    # separable if the levels are further apart than 3 sigma of the c2c spread
+    sp["separable_from_prev"] = spacing > 3 * sp.sigma_log10
+    _emit(sp, RAW / "c2c_per_level.csv", "RR-8b per-level c2c (SNN K3 input)")
+    print(sp.to_string(index=False))
+    n_ok = int(sp.separable_from_prev.iloc[1:].sum()) + 1
+    print()
+    print(f"  {g.shape[1]} repeats of the same 15-pulse train on ONE device.")
+    print(f"  usable levels at a 3-sigma separation criterion: {n_ok} of {len(sp)}")
+    print("  Unlike RR-8's corner envelope this IS a sigma -- repeats of one protocol")
+    print("  on one device -- so it can legitimately be used as the SNN's c2c input.")
+    if n_ok < len(sp):
+        print("  Levels that fail the criterion cannot be separated by write-verify")
+        print("  either: c2c blurs the rungs rather than shifting the ladder.")
+
+
 # ------------------------------------------------------------------- RR-9
 def rr9(node="t15_disturb", t_settled=1e-3):
     """Read disturb: window before and after ~1e6 equivalent reads at V_G = 0.
@@ -805,7 +872,7 @@ def rr10(a="t13_tdr", b="t16_af045"):
 
 
 ALL = {"rr0": rr0, "rr1": rr1, "rr2": rr2, "rr3": rr3, "rr4": rr4,
-       "rr5": rr5, "rr7": rr7, "rr8": rr8, "rr9": rr9, "rr10": rr10}
+       "rr5": rr5, "rr7": rr7, "rr8": rr8, "rr8b": rr8b, "rr9": rr9, "rr10": rr10}
 
 if __name__ == "__main__":
     what = sys.argv[1] if len(sys.argv) > 1 else "all"

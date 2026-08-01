@@ -104,10 +104,16 @@ Three things must not be got wrong here:
    rather than merging its rungs, and per-device write-verify recovers them.
    The correct K3 is therefore *accuracy vs per-device calibration*, not
    *accuracy vs a blurred shared grid*.
-3. **Cycle-to-cycle variability is not measured.** C2C is the variation that would
-   actually destroy analog depth. RR-3's 3-cycle run is the only evidence and it
-   shows the floor rising, not the levels blurring. State this as a limitation;
-   do not model c2c from the d2d ensemble.
+3. **Cycle-to-cycle is measured separately — use it, do not derive it from d2d.**
+   `RR-8b` (node `t17_c2c`) repeats the SAME 15-pulse train on ONE device 20
+   times: `raw/c2c_ensemble.csv` and `raw/c2c_per_level.csv`. Unlike RR-8's corner
+   envelope, that IS a sigma (repeats of one protocol on one device), so it is the
+   legitimate c2c input for the SNN. `c2c_per_level.csv` carries a
+   `separable_from_prev` column at a 3-sigma criterion and the analysis prints the
+   usable level count — **that count, not 15, is what K3 should quantize to.**
+   Levels failing it cannot be rescued by write-verify: c2c blurs the rungs rather
+   than shifting the ladder.
+   If `t17_c2c` has not landed yet, run `python harvest.py` first.
 
 Also usable: RR-8 decomposes by axis — FixedCharge ±10 % gives 1.31 decades, Dit
 ±20 % gives 0.85, T_fe ±0.3 nm gives **0.07**. Level placement is an
@@ -142,8 +148,8 @@ SNN's actual spike counts.
 
 ## Open device-side items (not blocking Phase 6)
 
-- `t11_dibl`, `t12_ret15`, `t11_idvd`, `t14_end10` may still be in the Sentaurus
-  queue. Check with `python runjob.py queue`; harvest with `python harvest.py`.
+- `t11_dibl`, `t12_ret15`, `t11_idvd`, `t14_end10`, `t17_c2c` may still be in the
+  Sentaurus queue. Check with `python runjob.py queue`; harvest with `python harvest.py`.
 - DIBL is **not reported** — the two extraction criteria disagreed in sign on the
   old sweep. The requeued run should settle it.
 - RR-5 endurance cannot measure fatigue: the Preisach model has no fatigue,
