@@ -58,7 +58,7 @@ current, the eCurrent/hCurrent split, source-contact balance — are now availab
 |---|---|
 | **RR-0** retained I–V | MW **0.387 V**, SS **63.5 mV/dec**, ON/OFF **5410×**, ΔP = −2.57e-6 C/cm² |
 | **RR-1** MFM P–E | at 5.1·F_c: P_s **39.99**, P_r **31.99**, F_c **1.400** vs targets 40 / 32 / 1.4 |
-| **RR-2** output family | ohmic at low V_DS for every analog state, r = 0.958–0.998 |
+| **RR-2** output family | ohmic at low V_DS for every analog state, r = 0.958–0.998; DIBL **59.5 mV/V** erased (see §6) |
 | **RR-3** LTD | monotonic; depression depth 11650×; loop closes to **96.2 %** |
 | **RR-3** 3 cycles | window 11650 → 4187 → 3577×, entirely from the floor rising |
 | **RR-4** retention | settles in ~5 τ_P then flat to 0.62–0.96 % over 2.3 decades |
@@ -82,13 +82,18 @@ This also finally quantifies defect **C5**: the MFIS gate-stack loop reaches
 the voltage divider is the whole story.
 
 ### RR-8b — the analog depth is 8 levels open-loop, not 15
-Nine completed repeats of the same 15-pulse train on ONE device (`t17_c2c`; the
-run hit the 2 h cap at 9 of 20 repeats, which is enough for a σ).
+**Eleven** completed repeats of the same 15-pulse train on ONE device (`t17_c2c`;
+the run hit the 2 h cap at 11 of the 20 queued repeats — `rr8b` keeps the complete
+repeats and drops the partial one by name). Eleven is enough for a σ, but the σ
+itself carries a relative standard error of ≈22 %, and **the repeat count must be
+quoted next to the σ everywhere**, because the run was cut short.
 
 Levels 1–8 are separable at 3σ. **Levels 9–15 are not.** The LTP curve
-saturates, so 9–15 sit inside 0.11 decades at the top of the range while the c2c
-σ stays ≈0.015 decades — at level 15 the spacing is 0.009 decades against a σ of
-0.014, i.e. the levels are closer together than the noise.
+saturates, so 9–15 sit inside **0.114 decades** at the top of the range while the
+c2c σ over those levels is **0.0131–0.0187 decades** (median σ across all 15
+levels, **0.0215 decades**, is set by level 8). At level 15 the spacing is
+**0.0085 decades** against a σ of **0.0131** — the levels are closer together
+than the noise.
 
 Both of these are defensible, but only one is currently claimed:
 
@@ -96,6 +101,23 @@ Both of these are defensible, but only one is currently claimed:
 |---|---|---|
 | open loop — n pulses, no verify (**what the LTP figure shows**) | **8** | 3.0 |
 | closed loop — write-verify to placed targets | ~16 | 4.0 |
+
+**Decision taken in Phase 7 — this is what the paper claims.** The two numbers are
+answers to two different questions and the paper states both, in the same place,
+each with its protocol attached:
+
+| claim | number | basis |
+|---|---|---|
+| the device, open loop, no verify circuitry | **8 levels** | levels 9–15 span 0.114 dec; c2c σ 0.0131–0.0215 dec |
+| the device, with write-verify | **~16 levels** | measured range 3.79 dec at 3σ placement |
+| what the network was deployed on | **15 levels** | assumes a write-verify array |
+
+The network result is stated as assuming a write-verify array, in both the device
+section and the network section. This is not a concession: K3a shows write-verify
+is unavoidable for this device regardless of level count — deploying onto the 20
+corner devices without per-device calibration gives 0.243 accuracy, with it 0.8304,
+which equals the nominal result to four decimals. The system pays for write-verify
+either way, so the 15-level claim costs nothing extra.
 
 The 3.79-decade range does support ~16 levels, but reaching them needs verify
 circuitry and per-write iteration — a system cost the paper would have to own.
@@ -228,12 +250,29 @@ it. RR-3's 3-cycle run is the real cycling evidence.
 **Needs a decision or further work**
 - **Phase 6 SNN re-quantization.** MW moved 0.336 → 0.387 V (+15 %) and `fire_ratio`
   30.6 → 18.4×, so the STE weight grid must be rebuilt. Outside Phases 1–5.
-- **DIBL is not reported.** The two extraction criteria disagree in sign, which
-  means V_t is being read outside a clean subthreshold region. The requeued run
-  should settle it; until then no DIBL number should be quoted.
-- **Cycle-to-cycle variability is not measured.** RR-8 is device-to-device only.
-  C2C is the variation that would actually destroy analog depth, and RR-3's
-  3-cycle run is the only evidence (it shows the floor moving, not levels blurring).
+- ~~**DIBL is not reported.**~~ — **RESOLVED (Phase 7).** The requeued `t11_dibl`
+  landed and `vth_cc(after_min=True)` fixed the sign inversion: the wide −1.5 V
+  sweep has a V-shaped off state, and the naive search was reading a threshold off
+  the ambipolar falling branch. At a fixed criterion I_cc = 6.338e-3 µA/µm (the
+  lowest level crossed by all four curves) **both branches now give the same
+  sign**:
+
+  | branch | V_t @ V_DS = 0.05 V | V_t @ V_DS = 0.5 V | DIBL |
+  |---|---|---|---|
+  | erased | +0.0253 V | −0.0014 V | **59.5 mV/V** |
+  | programmed | −0.3737 V | −0.5128 V | **309.0 mV/V** |
+
+  **Report 59.5 mV/V as the device DIBL**, stating the criterion. It is a normal
+  short-channel value for a 100 nm gate on a 5 nm body. The programmed branch is
+  5× larger and is *not* explicable as electrostatic DIBL at this geometry; the
+  likely cause is the drain field acting on the ferroelectric itself — a
+  drain-induced polarization change. **That is a separate claim and this run does
+  not establish it.** Report it, flag it as open, and name the measurement that
+  would settle it (P_y probed at the drain end vs V_DS, or a non-ferroelectric
+  control). Do not quietly report only the erased branch.
+- ~~**Cycle-to-cycle variability is not measured.**~~ — **RESOLVED.** RR-8b
+  (`t17_c2c`) measures it directly: 11 complete repeats of one 15-pulse train on
+  one device, median σ 0.0215 decades. RR-8 remains device-to-device only.
 - ~~**`metrics.py` MW = 1.218 V vs the documented 1.30 V** for `cal_n16`~~ —
   **RESOLVED (Phase 6).** Both are correct constant-current extractions on the same
   data, one decade apart in criterion: `pub_figure.py` uses 1e-8 A per nanosheet
