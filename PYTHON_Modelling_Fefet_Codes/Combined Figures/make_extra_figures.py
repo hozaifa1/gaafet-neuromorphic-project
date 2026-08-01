@@ -60,10 +60,13 @@ def weight_distribution():
 
 def robustness_bar():
     if TASK == "ecg":
-        j = json.load(open(os.path.join(ROOT, "ecg detection", "REDESIGN/runs/robust_measured.json")))
+        # robust_final.json = the 2026-08-01 re-run against the corrected device export,
+        # with the MEASURED RR-4 retention plateau (-0.96 %) replacing the old -2.9 %,
+        # which had been read from inside the post-write settling transient.
+        j = json.load(open(os.path.join(ROOT, "ecg detection", "REDESIGN/runs/robust_final.json")))
         order = ["nominal_300K", "T=250K", "T=350K", "D2D_s0.1", "C2C_s0.1", "D2D+C2C",
-                 "retention_MEASURED_-2.9pct", "retention_stress_-10pct"]
-        labels = ["Nominal", "250 K", "350 K", "D2D", "C2C", "D2D+C2C", "Ret −2.9%", "Ret −10%"]
+                 "retention_MEASURED_-0.96pct", "retention_stress_-10pct"]
+        labels = ["Nominal", "250 K", "350 K", "D2D", "C2C", "D2D+C2C", "Ret −0.96%", "Ret −10%"]
         vals = [j[k]["macro_f1"] for k in order]; ylab = "macro-F1"
     else:
         j = json.load(open(os.path.join(ROOT, "eeg detection", "REDESIGN/runs/eeg_lastread/eeg_robust.json")))

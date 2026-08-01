@@ -560,10 +560,16 @@ but the node needs `plt2csv.py` first; `RR-n` = needs the re-run in Part IV;
 
 | ID | Figure | Source | Status |
 |---|---|---|---|
-| K1 | Device-to-synapse mapping — 15 measured G levels → quantized STE weight grid | `raw/ltp_potentiation.csv` + `gaafefet_params_optimized.py` | HAVE (after Part I fix) |
-| K2 | SNN accuracy vs number of conductance levels (2/4/8/15) | `PYTHON_Modelling_Fefet_Codes/` | NEW (sim) |
-| K3 | SNN accuracy vs device variability | K2 + RR-8 | NEW (sim) |
-| K4 | Energy per inference breakdown — device write vs read vs peripheral | E6 + SNN spike counts | NEW |
+| K1 | Device-to-synapse mapping — 15 measured G levels → quantized STE weight grid | `raw/ltp_potentiation.csv` + `gaafefet_params_optimized.py` | **DONE** — `ecg figures/dev1_LTP_ladder`, `dev6_differential_weight_map` |
+| K2 | SNN accuracy vs number of conductance levels (2…15), two grid constructions + grid-choice band | `ecg detection/fig_k2_levels.py` | **DONE** — `K2_accuracy_vs_levels.{png,csv}` |
+| K3a | SNN accuracy vs **per-device calibration** across the 20 RR-8 corner devices (none 0.243 / gain trim 0.777 / full write-verify 0.830) | `fig_k3_variability.py d2d`, `gain` | **DONE** — `K3a_accuracy_vs_calibration.{png,csv}` |
+| K3c | SNN accuracy vs the level misplacement a gain trim leaves — the placement spec (Spearman −0.85) | `fig_k3_variability.py ladder`, `shape` | **DONE** — `K3c_accuracy_vs_shape_error.{png,csv}`, `K3a_ladder_shift.csv`, `K3a_overlap_after_gain_trim.csv` |
+| K3b | SNN accuracy vs **measured cycle-to-cycle σ** (RR-8b), 15-level vs usable-level grid | `fig_k3_variability.py c2c` + `raw/c2c_per_level.csv` | needs `t17_c2c` |
+| K4 | Energy per inference breakdown — device write vs read vs peripheral, all counts measured | `fig_k4_energy.py` | **DONE** — `K4_energy_per_inference.{png,csv}` |
+
+K3 split into two panels in Phase 6: RR-8 is a **corner envelope** (worst case, never a
+Gaussian σ) and RR-8b is a **true σ** (repeats of one protocol on one device). They answer
+different questions and must not share an axis. See PHASE_6_RESULTS.md §6.4.
 
 **Total: 79 figures.** 46 need no new simulation; 21 need only `plt2csv.py` on existing
 `.plt` files; 12 need a re-run.

@@ -111,8 +111,17 @@ $$
 
 **Each partial-polarization state → one non-volatile analog conductance level.** Our measured
 long-term-potentiation curve is exactly this $G_n$ ladder: **15 levels spanning 4.11 decades**
-(13,027×; $R_{on}=2.34\ \mathrm{M\Omega}\to R_{off}=71.4\ \mathrm{M\Omega}$), with non-uniform log
-spacing (0.04–0.41 per level). We additionally measured the ladder at **250 K / 300 K / 350 K**.
+(13,027×; $R_{15}=66.8\ \mathrm{k\Omega}\to R_{1}=870\ \mathrm{M\Omega}$ for one nanosheet at
+$W_{\text{eff}}=90$ nm), with non-uniform log spacing (0.04–0.41 per level). We additionally
+measured the ladder at **250 K / 300 K / 350 K**.
+
+Two resistance pairs appear in this work and they are **not** interchangeable. The ladder span
+above is level 1 → level 15 of the potentiation train. The *LIF read window* is a different
+measurement — the erased baseline against the read after 9 pulses, both from node `t8_ltp`:
+$R_{off}=67.7\ \mathrm{M\Omega}\to R_{on}=3.68\ \mathrm{M\Omega}$, i.e. **18.4×**. The 30.6×
+quoted previously divided `t8_ltp`'s pulse-9 read by a baseline taken from a different node
+(`mwfine`) at a different post-write settling time; a ratio is only formed from two
+measurements taken in the same run.
 
 ### 2.5 Stage 3 — spikes to a decision (the neurons)
 The column currents (§2.3) drive leaky integrate-and-fire (LIF) and adaptive-LIF (ALIF) neurons whose
@@ -211,7 +220,7 @@ cosine-decayed then held, gradient-norm clip 1.0.
 | Non-volatile retention (>100 µs @ 0 V) | Fixed synaptic weight; **zero standby power** |
 | 15-level, 4-decade analog conductance (partial polarization) | High-resolution **analog synaptic weight** |
 | Steep switching, sub-fJ program | Efficient weight write; sharp transfer |
-| Characterized 30× read window, 250–350 K ladders | Robust, quantifiable in-memory MAC |
+| Characterized 18.4× read window, 250–350 K ladders | Robust, quantifiable in-memory MAC |
 | *(cannot self-leak)* | Leak delegated to CMOS → honest LIF, no µF cap |
 
 The **ablation** (§7) turns this qualitative alignment into a quantitative claim: remove the multilevel
@@ -233,16 +242,25 @@ Cohen's κ, per-class sensitivity/positive-predictivity, confusion.
 | Ablation — 2 levels (binary synapse) | 0.563 | 0.286 | 0.290 |
 | Temperature 250 K (measured) | 0.821 | 0.739 | 0.729 |
 | Temperature 350 K (measured) | 0.839 | 0.766 | 0.753 |
-| D2D σ=0.1 | 0.813 | 0.724 | 0.715 |
-| C2C σ=0.1 | 0.810 | 0.733 | 0.713 |
+| D2D σ=0.1 (generic log-normal) | 0.813 | 0.724 | 0.715 |
+| C2C σ=0.1 (generic log-normal) | 0.807 | 0.729 | 0.708 |
 | D2D + C2C | 0.798 | 0.724 | 0.696 |
-| **Retention −2.9 % (MEASURED, 100 µs)** | **0.824** | **0.742** | 0.735 |
+| **Retention −0.96 % (MEASURED, RR-4 plateau)** | **0.821** | **0.721** | 0.728 |
 | Retention −10 % (stress extrapolation) | 0.819 | 0.740 | 0.725 |
 
-*(Robustness re-verified on the paper150b checkpoint; retention now uses the **measured** leak-retention
-data, −2.9 % over 100 µs, as the nominal case with −10 % as a pessimistic long-term stress. All conditions
-degrade only gracefully; the classifier is essentially unaffected by measured temperature, variation and
-retention.)*
+*(Re-verified 2026-08-01 on the paper150b checkpoint against the corrected device export. Retention is the
+**measured** RR-4 plateau, −0.96 % — not the −2.9 % reported previously, which was read from
+`leak_retention.csv` between 17.5 µs and 100 µs, a window sitting **inside** the post-write settling
+transient that relaxes with τ_P = 10 µs and is not retention loss at all. Measured out to 10 ms the state
+settles by ≈5 τ_P and is then flat to 0.62–0.96 % over the remaining 2.3 decades.*
+
+*Two honest notes on this table. First, −0.96 % scores marginally **below** −10 %; both sit ≈0.03 macro-F1
+under nominal and the ordering is not meaningful. A retention factor is a uniform multiplicative gain
+applied after quantization, and a spiking classifier with fixed thresholds responds to a small uniform gain
+piecewise, through discrete spike-count changes, not smoothly. Second, the D2D/C2C rows here are **generic**
+σ = 0.1 log-normal stand-ins, retained for continuity with the earlier table. The measured variability —
+which is not a single σ, and for which the device-to-device and cycle-to-cycle halves must be handled
+differently — is figure K3.)*
 
 Per-class on-device (Se / +P / F1): **N 0.906 / 0.969 / 0.937**, F 0.868 / 0.589 / 0.702,
 SVEB 0.475 / 0.760 / 0.585, VEB 0.828 / 0.758 / 0.791.
@@ -256,10 +274,32 @@ task**, using its VO₂-memristor encoder and RC-based LIF/ALIF neurons with **s
 raw accuracy is not the target here — our contribution is that GAA-FeFET polarization-switching physics
 realizes and is load-bearing for the same neuromorphic ECG classifier, as the **hardware synapse**.)*
 
-**Efficiency FoM (device-level, first-order).** The neuron membrane time constant τ = R·C = 11.11 ms
-enters the dynamics; only τ matters, so the network is invariant to the individual R and C. We report the
-**compact subthreshold-CMOS realization: C_mem = 1 pF with R_leak ≈ 11 GΩ** (τ = 11.11 ms), giving
-**~0.6 nJ per beat** for the core in-memory MAC (read energy V_read²·G·t_read) plus neuron membrane events.
+**Efficiency FoM (device-level, first-order) — figure K4.** The neuron membrane time constant
+τ = R·C = 11.11 ms enters the dynamics; only τ matters, so the network is invariant to the individual R
+and C. We report the **compact subthreshold-CMOS realization: C_mem = 1 pF with R_leak ≈ 11 GΩ**
+(τ = 11.11 ms). Every count below is measured on the deployed network rather than assumed
+(`fig_k4_energy.py`):
+
+| quantity | value |
+|---|---|
+| synaptic weights | **261 440** → **522 880 FeFETs** (differential) |
+| | `fc1` (160, 3, 10) = 4 800 · `hidden.rc` (160, 160, 10) = 256 000 · `fc2` (4, 160) = 640 |
+| input line activity | 196.1 spikes/beat = **5.86 %** |
+| hidden line activity | 3 455.7 spikes/beat = **1.94 %** (21.6 spikes/neuron) |
+| device read, event-driven | **103.9 pJ/beat** |
+| device read, fully clocked | 4.62 nJ/beat |
+| neuron membrane | **432.0 pJ/beat** |
+| **core compute (event-driven read + neuron)** | **535.8 pJ/beat** |
+| peripheral ADC *(assumption: 1 pJ/conversion × 164 columns × 1116 steps)* | **183.0 nJ/beat** |
+| device write, whole array, **one-time** | **69.6 pJ** (0.0089 fJ × 15 pulses × 522 880) |
+
+Both delayed layers store `max_delay = 10` independently programmed taps per connection, so the array is
+24× larger than a naive `in × out` count suggests; the count above comes from
+`model.named_parameters()`. Two results are worth stating plainly. **Programming the entire array costs
+0.13× a single inference** — non-volatility means that cost is paid once and then never again, which is
+the whole argument for a ferroelectric weight. And **the assumed ADC term is 342× the core compute**: the
+FeFET array is not the bottleneck of a real system, and quoting only the core number would overclaim.
+That is why the peripheral bar is in the figure rather than in a caveat.
 The behavioural simulation uses an equivalent RC (C = 1.419 µF, R = 7.83 kΩ, identical τ) inherited from
 the reference LSNN neuron circuit [VO₂ ref]; because τ is preserved the two realizations give identical
 outputs. Adopting the pF realization is compatible with standard compact CMOS neurons and avoids the
@@ -305,7 +345,9 @@ Code (this directory):
 
 Data:
 - `data_ecg/{up,down}/*_guiyi.csv` — encoded ECG beats.
-- `Device_Optimization/csv_export/raw/{ltp_potentiation,ltp_vs_temperature}.csv` — measured device (bundled locally).
+- `../../Device_Optimization/csv_export/raw/{ltp_potentiation,ltp_vs_temperature}.csv` — measured device
+  (repo-level; `fefet_device.py` resolves it by walking up, and rejects any copy that is not the
+  post-Phase-1 export).
 
 Commands:
 ```

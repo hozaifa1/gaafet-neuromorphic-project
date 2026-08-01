@@ -1,0 +1,282 @@
+# Phase 6 — SNN re-quantization against the corrected device (ECG only)
+
+Branch `paper/gap-fix`. Session of 2026-08-01, following
+[PHASE_1_5_RESULTS.md](PHASE_1_5_RESULTS.md) and [PHASE_6_HANDOFF.md](PHASE_6_HANDOFF.md).
+The EEG task is dropped and was not touched.
+
+*(in progress — sections are filled as each run lands)*
+
+---
+
+## 6.1 The stale device bundle
+
+`PYTHON_Modelling_Fefet_Codes/ecg detection/` carried its own copy of
+`Device_Optimization/csv_export/raw/{ltp_potentiation,ltp_vs_temperature}.csv` and
+`fefet_device.py` **preferred** it. That copy was the pre-Phase-1 export: every current in
+it is `1/0.6338 = 1.5778×` the canonical value, exactly the Areafactor correction.
+
+The fallback path (`../Device_Optimization`) was one level too shallow — the repo root is
+two levels up — so the bundle was never actually bypassed and the staleness could not
+surface on its own.
+
+Fixed three ways, because a silent wrong number is worse than a loud missing one:
+
+1. the bundle is deleted (`git rm`), so there is one source of truth;
+2. `_RAW` is resolved by walking up to the first directory containing
+   `Device_Optimization/csv_export/raw`, so depth is no longer hardcoded;
+3. `measured_levels()` **refuses** any `ltp_potentiation.csv` whose top level is not
+   8.316845 µA/µm, naming the 1.5778 ratio in the error message.
+
+Verification (`python fefet_device.py`):
+
+```
+measured LTP levels: n=15
+  G span: 1.277e-08 .. 1.663e-04 S  (dynamic range 13027x, 4.11 decades)
+  absolute (x W_eff=90 nm): g_p15 = 1.4970e-05 S vs params g_max_p15 = 1.4970e-05 S
+  OK: reads the canonical post-Phase-1 export.
+```
+
+### What this did and did not change
+
+**Accuracy is unchanged.** `measured_levels()` returns `G = I/V_read` and every downstream
+weight is `(G_i − G_j)/g_max`, so a global scale on `I` cancels exactly. Re-running
+`post_quantize.py --levels 15` on the locked `paper150b` checkpoint reproduces the locked
+result to four decimals: **0.8304 accuracy / 0.7536 macro-F1 / 0.7417 κ**, against
+0.8571 / 0.7925 / 0.7819 full precision. This was the predicted outcome, and it is the
+check that the correction was a normalization and not a physics change.
+
+**Every absolute number did change**, and those are in §6.3.
+
+---
+
+## 6.2 Level ablation — figure K2
+
+`fig_k2_levels.py` sweeps n ∈ {2, 3, 4, 5, 6, 8, 10, 12, 15} on the locked checkpoint, in
+**two** grid constructions, because one on its own would not be believable:
+
+- **measured subset** — n levels taken from the measured LTP ladder (endpoints kept);
+  states the device demonstrably reaches;
+- **log-spaced** — n levels geometrically spaced over the same span; the idealized
+  designed grid, and the construction the published 2-level ablation used.
+
+| n | measured subset acc / F1 | log-spaced acc / F1 |
+|---:|---|---|
+| 2 | 0.5625 / 0.2857 | 0.5625 / 0.2857 |
+| 3 | 0.5625 / 0.2857 | 0.5595 / 0.2823 |
+| 4 | 0.3631 / 0.2384 | 0.3423 / 0.2308 |
+| 5 | 0.5060 / 0.4714 | 0.4911 / 0.4541 |
+| 6 | 0.3512 / 0.1978 | 0.2292 / 0.2713 |
+| 8 | 0.8036 / 0.7155 | 0.7768 / 0.7002 |
+| 10 | 0.7619 / 0.6387 | 0.7976 / 0.7230 |
+| 12 | **0.8452 / 0.7628** | 0.7946 / 0.6995 |
+| 15 | **0.8304 / 0.7536** | 0.8274 / 0.7372 |
+
+**Accuracy is not monotonic in n below 8 levels**, and the two constructions agree, so it is
+not an artifact of how the coarse grid was built. The mechanism is the differential
+encoding on a 4.11-decade ladder: `|G_i − G_j|` is dominated by `max(i, j)`, so the
+achievable weight set is approximately `{0, ±G_k/g_max}` — dense near 0, very sparse near
+±1. Which weights a coarse grid can represent therefore changes discontinuously with n, and
+post-training quantization gets no opportunity to compensate.
+
+The claim the figure supports is a **threshold, not a ranking**: below 8 levels the
+classifier collapses and behaves erratically; from 8 levels up it recovers to the
+neighbourhood of the measured 15-level device. `fig_k2_levels.py --spread` re-draws the
+interior levels at fixed n to bound how much of the residual jitter is grid choice, so the
+plateau is reported as a band rather than as nine independent point estimates.
+
+---
+
+## 6.3 The absolute numbers
+
+| quantity | was | now | why |
+|---|---|---|---|
+| `R_OFF` (`energy_ledger.py`, `fefet_synapse.py`) | 1.129e8 Ω | **6.767e7 Ω** | the old value divided `t8_ltp`'s pulse-9 read by `mwfine`'s baseline — two nodes, two post-write settling times |
+| `R_ON` | 3.68e6 Ω | 3.680e6 Ω | unchanged |
+| read window (`R_off/R_on`) | 30.6× | **18.4×** | follows from the above |
+| `g_min` / `g_max` | 8.86e-9 / 2.72e-7 S | **1.478e-8 / 2.718e-7 S** | 1/R, both from `t8_ltp` |
+| write energy | 0.014 fJ/pulse | **0.0089 fJ/pulse** | Areafactor |
+| retention (nominal) | 0.971 hardcoded | **0.9904 measured** | RR-4 plateau |
+| synaptic weights | 10 700 | **261 440** | see §6.5 |
+| LTP ladder resistance span | quoted as `R_on = 2.34 MΩ → R_off = 71.4 MΩ` | **66.8 kΩ → 870 MΩ** | the old sentence quoted the *fire-window* pair while claiming the *ladder* ratio (13 027×); they are two different measurements |
+
+The last row was a live inconsistency in `METHODOLOGY.md` §2.4 rather than a stale number:
+13 027× and 71.4/2.34 = 30.5× cannot both describe the same pair. The ladder span (level 1
+→ level 15 of the potentiation train) and the LIF read window (erased baseline → read after
+9 pulses) are now stated separately, with the rule that produced the confusion written
+underneath.
+
+`robustness_eval.py`'s retention patch was verified numerically, not just by reading the
+source. Re-run against the corrected export (`REDESIGN/runs/robust_final.json`):
+
+| condition | acc | macro-F1 | κ |
+|---|---:|---:|---:|
+| full precision | 0.857 | 0.793 | 0.782 |
+| nominal 300 K (device) | 0.830 | 0.754 | 0.742 |
+| 250 K (measured ladder) | 0.821 | 0.739 | 0.729 |
+| 350 K (measured ladder) | 0.839 | 0.766 | 0.753 |
+| D2D σ=0.1 (generic) | 0.813 | 0.724 | 0.715 |
+| C2C σ=0.1 (generic) | 0.807 | 0.729 | 0.708 |
+| D2D + C2C | 0.798 | 0.724 | 0.696 |
+| **retention −0.96 % (measured)** | 0.821 | 0.721 | 0.728 |
+| retention −10 % (stress) | 0.819 | 0.740 | 0.725 |
+
+Two things about this table deserve saying out loud rather than being left for a reviewer
+to find. **−0.96 % scores marginally below −10 %.** Both sit ≈0.03 macro-F1 under nominal
+and the ordering is not meaningful: a retention factor is a uniform multiplicative gain
+applied *after* quantization, and a spiking classifier with fixed thresholds responds to a
+small uniform gain piecewise, through discrete spike-count changes, not smoothly. And the
+D2D/C2C rows are **generic σ = 0.1 log-normal stand-ins** kept for continuity with the
+earlier table — the measured variability is figure K3, and it is not a single σ.
+
+Individual conditions also moved by ≤4 beats out of 336 versus the pre-correction run
+(e.g. C2C 0.810 → 0.807). That is float32 rounding at quantization boundaries: the levels
+are identical after normalization by `g_max`, but they are not bit-identical, so a handful
+of weights land on the other side of a bucket edge. Worth knowing that the deployment is
+boundary-sensitive at the one-beat level; not worth reading anything into.
+
+---
+
+## 6.4a Device-to-device variability — figure K3a
+
+RR-8's 20 runs are the **corners** of the (Dit ±20 %, FixedCharge ±10 %, T_fe ±0.3 nm)
+box: ≥2 axes off-nominal at once. That is a worst-case envelope, not a σ, so it is never
+fed to the network as a Gaussian. It is used the only way it legitimately can be —
+deploy the locked network onto each corner device and vary how much per-device
+calibration is allowed:
+
+- **none** — the compiler targets the nominal ladder and the nominal readout gain; the
+  corner device realizes its own conductances instead;
+- **gain** — one scalar per device: normalize by that device's own `g_max`, leave the
+  ladder *shape* at nominal. A transimpedance trim, essentially free;
+- **full write-verify** — target that device's own measured ladder per level.
+
+| calibration | median accuracy | range |
+|---|---:|---|
+| none | **0.2426** | 0.069 – 0.771 |
+| gain trim only | **0.7768** | 0.244 – 0.830 |
+| full write-verify | **0.8304** | 0.798 – 0.860 |
+
+**The full-calibration median is 0.8304 — the nominal device's result to four decimals**,
+and every corner lands in 0.798–0.860. A gain trim alone recovers about two thirds of the
+gap; the last ≈0.054 needs per-level placement.
+
+This is the precise statement RR-8 supports, and it is narrower than "the levels overlap
+so the device has fewer than 15 levels". All 14 adjacent level pairs *do* overlap across
+the corner box, and that invalidates a **shared** 15-level quantization grid — which is
+what the SNN previously assumed. It does not reduce any individual device's level count:
+each corner stays internally monotonic, so d2d shifts a device's whole ladder rather than
+merging its rungs, and per-device write-verify puts it back.
+
+### 6.4b The overlap statistic does not predict accuracy — figure K3c
+
+`fig_k3_variability.py ladder` decomposes each corner ladder into a rigid log-shift plus a
+residual shape error (no network evaluation, pure arithmetic on the ensemble):
+
+- mean shift from nominal: up to ±1.0 decade, median |shift| **0.51 decades**;
+- residual scatter about that shift: median **0.178 decades** s.d.
+
+The shift is what the gain trim removes. What is left is level misplacement, and **that**
+is what accuracy tracks: against the worst single-level residual, gain-trim accuracy has
+Spearman **−0.85** (vs −0.79 against the residual s.d. and −0.71 against the mean shift).
+It holds 0.78–0.83 out to ≈0.6 decades of misplacement and collapses to ≈0.25 at ≈0.9.
+Full write-verify is flat against the same axis, as it must be.
+
+The corollary matters for how RR-8 is reported. After a per-device gain trim, **13 of 14
+adjacent pairs still overlap** across the ensemble (half-spread ≈0.36 decades vs spacing
+≈0.28) — and yet several of those corners deliver nominal accuracy. Ensemble overlap says
+a shared grid cannot uniquely *address* a level; it does not say the deployed weight is
+wrong enough to matter. The quantity that predicts accuracy is the **per-device** residual.
+
+That turns RR-8 into a placement spec rather than a restatement, and it connects to RR-8's
+axis decomposition: level placement is set by **interface charge** (FixedCharge ±10 % →
+1.31 decades) and essentially not by ferroelectric thickness (T_fe ±0.3 nm → 0.07). If
+per-level write-verify is available, d2d is a non-issue on this device. If only a gain trim
+is affordable, interface-charge control has to hold worst-level placement inside ≈0.6
+decades.
+
+---
+
+## 6.5 Energy per inference — figure K4
+
+`fig_k4_energy.py` counts everything on the deployed network instead of assuming it, and
+the count immediately found a **second pre-existing error**.
+
+`energy_ledger.py` had `N_SYN = 3*100 + 100*100 + 100*4 = 10700`. That is wrong twice: the
+recurrent layer is 160 neurons (100 LIF + 60 ALIF), not 100, and **both** the input and
+recurrent layers are `DelayedLinear` with `max_delay = 10`, so every connection is ten
+independently programmed taps. From `model.named_parameters()`:
+
+```
+fc1.weight        (160, 3, 10)     4 800
+hidden.rc.weight  (160, 160, 10) 256 000
+fc2.weight        (4, 160)           640
+                            = 261 440 weights -> 522 880 FeFETs
+```
+
+24× the published count. Same class of error as the Areafactor one — a number that was
+never derived from the thing it describes.
+
+| component | energy |
+|---|---:|
+| device write, whole array, **one-time** | **69.6 pJ** |
+| device read, event-driven | 103.9 pJ / beat |
+| device read, fully clocked | 4.62 nJ / beat |
+| neuron membrane | 432.0 pJ / beat |
+| **core compute (event read + neuron)** | **535.8 pJ / beat** |
+| peripheral ADC *(assumed 1 pJ/conv × 164 col × 1116 steps)* | **183.0 nJ / beat** |
+
+Measured activity: 196.1 input spikes/beat (**5.86 %** line activity) and 3 455.7 hidden
+spikes/beat (**1.94 %**, 21.6 spikes/neuron).
+
+Two results are worth stating plainly:
+
+1. **Programming the entire array costs 0.13× a single inference.** Non-volatility means it
+   is paid once and never again — the concrete argument for a ferroelectric weight.
+2. **The assumed ADC term is 342× the core compute.** The FeFET array is not the bottleneck
+   of a real system. Reporting only the core number would overclaim, so the peripheral bar
+   is in the figure rather than in a caveat. The 1 pJ/conversion figure is the single
+   assumption in K4 and is labelled as such on the axis.
+
+The previously published "~0.6 nJ per beat" survives: the measured core is 0.536 nJ.
+
+---
+
+## Also fixed on the way past
+
+**`dev3_retention.png` was Phase-5 error #7 baked into a figure.** It plotted
+`leak_retention.csv` (17.5 → 100 µs) and captioned the −2.9 % across that window as
+retention drift. That window sits *inside* the post-write settling transient, which relaxes
+with τ_P = 10 µs. Rebuilt from `retention_long.csv` out to 10 ms on a log time axis: the
+transient — a 9× overshoot decaying away by 50 µs = 5 τ_P — is shaded and labelled as
+settling, and the retained plateau is **−0.62 % over 2.3 decades**. The figure is now the
+visual justification for the "read after settling" rule rather than a counterexample to it.
+
+`build_defense_pdf.py` captions, its robustness table and its energy paragraph follow. The
+**EEG** robustness paragraph still cites −2.9 % because that run genuinely used it; rather
+than leave one document asserting two values for the same measurement, it is annotated
+in place as pre-RR-4 and pessimistic. Nothing under `eeg detection/` was touched or re-run.
+
+**K3b's noise model was wrong before it ran.** Cycle-to-cycle was multiplying the *weight*.
+c2c is a property of each programmed conductance, so `G⁺` and `G⁻` must be perturbed
+independently — `kfig_common.paired_branches` now carries the branch provenance of every
+achievable weight. The weight-level form silently understates the noise for near-zero
+weights, where `G⁺ ≈ G⁻` and the difference is small but each branch's jitter is not.
+
+---
+
+## Reproducing
+
+```
+cd "PYTHON_Modelling_Fefet_Codes/ecg detection"
+python fefet_device.py                      # device export guard + span cross-check
+python post_quantize.py --ckpt REDESIGN/runs/paper150b/paper150b_best.ckpt --levels 15
+python robustness_eval.py --ckpt REDESIGN/runs/paper150b/paper150b_best.ckpt --tag robust_final
+python fig_k2_levels.py                     # K2   (+ --spread, --replot)
+python fig_k3_variability.py d2d            # K3a  (+ gain, replot)
+python fig_k3_variability.py c2c            # K3b  (needs raw/c2c_per_level.csv)
+python fig_k4_energy.py                     # K4   (+ --replot)
+cd "../Combined Figures" && python make_extra_figures.py ecg && python build_defense_pdf.py
+```
+
+Every figure writes its PNG, its reproducing CSV, and a JSON of the underlying sweep into
+`REDESIGN/runs/`, so all four can be re-plotted without re-evaluating the network.

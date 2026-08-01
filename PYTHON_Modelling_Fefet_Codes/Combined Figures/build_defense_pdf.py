@@ -241,12 +241,16 @@ p("Two measured non-idealities are carried directly into the hardware-aware eval
   "First, the conductance ladder shifts with temperature: <b>Figure 4</b> shows the measured LTP ladders at "
   "250 K, 300 K, and 350 K, and these exact ladders are what we substitute for the nominal one in the "
   "temperature-robustness tests. Second, the stored conductance drifts slightly over time as the partially "
-  "switched polarization relaxes: the measured retention (<b>Figure 5</b>) is a modest <b>−2.9 % drift over "
-  "100 µs</b>, and this measured drift — not a guessed value — is applied to every weight in the "
-  "retention-robustness test. Using the device's own measured curves for these stress tests is what makes the "
+  "switched polarization relaxes. <b>Figure 5</b> measures that out to 10 ms and separates two things that "
+  "were previously conflated: the state does not become <i>retained</i> until roughly five depolarization "
+  "constants (5τ_P = 50 µs) after the write ends, and only the flat region beyond that is retention. Over the "
+  "2.3 decades of plateau the drift is <b>−0.62 %</b>. The earlier figure plotted 17.5–100 µs and reported its "
+  "−2.9 % as retention loss, but that window sits <i>inside</i> the settling transient. We apply the measured "
+  "plateau bound (−0.96 %, the worst case across the characterized states) to every weight in the "
+  "retention-robustness test. Using the device's own measured curves — read after settling — is what makes the "
   "robustness claim credible rather than decorative.")
 fig(os.path.join(ECG, "dev2_temperature_ladders.png"), "<b>Figure 4.</b> Measured LTP ladders at 250 / 300 / 350 K, used directly in the temperature-robustness evaluation.", 12*cm)
-fig(os.path.join(ECG, "dev3_retention.png"), "<b>Figure 5.</b> Measured retention: −2.9 % conductance drift over 100 µs, applied to every weight in the retention test.", 12*cm)
+fig(os.path.join(ECG, "dev3_retention.png"), "<b>Figure 5.</b> Measured retention out to 10 ms. Shaded: the post-write settling transient (5τ_P = 50 µs), which is not retention. Beyond it the retained state is flat to −0.62 % over 2.3 decades; the −0.96 % worst-case plateau bound is what the retention-robustness test applies to every weight.", 12*cm)
 
 h2("1.6 Signed weights: the differential synapse")
 p("A synaptic weight must be able to take either sign, but a conductance is strictly positive. We therefore "
@@ -518,19 +522,19 @@ p("<b>Figure 22</b> breaks the on-device performance down by class, plotting sen
   "precision, while <b>SVEB is the weakest class</b> — exactly as predicted by its small support and its narrow, "
   "near-normal QRS. Reporting per-class metrics rather than a single accuracy is essential on an imbalanced "
   "problem, because it exposes where a monitor would actually fail.")
-fig(os.path.join(ECG, "ecgY_robustness_bar.png"), "<b>Figure 23.</b> Hardware-aware robustness: on-device macro-F1 across measured temperature (250/350 K), device-to-device and cycle-to-cycle variation, and the measured −2.9 % retention drift. Degradation is graceful everywhere.", 12.5*cm)
+fig(os.path.join(ECG, "ecgY_robustness_bar.png"), "<b>Figure 23.</b> Hardware-aware robustness: on-device macro-F1 across measured temperature (250/350 K), device-to-device and cycle-to-cycle variation, and the measured −0.96 % retention drift. Degradation is graceful everywhere.", 12.5*cm)
 p("<b>Figure 23</b> stresses the deployed network with the device's <i>own measured</i> non-idealities rather "
   "than assumed ones: the 250 K and 350 K conductance ladders of Figure 4, log-normal device-to-device and "
-  "cycle-to-cycle conductance variation, and the measured −2.9 % retention drift of Figure 5. macro-F1 stays "
+  "cycle-to-cycle conductance variation, and the measured −0.96 % retention drift of Figure 5. macro-F1 stays "
   "high across every condition — degradation is <b>graceful</b>, with no cliff — and with the measured retention "
-  "applied to every weight the model still delivers accuracy 0.824 / macro-F1 0.742. Taken together, the ECG "
+  "applied to every weight the model still delivers accuracy 0.821 / macro-F1 0.721. Taken together, the ECG "
   "task establishes all three device claims at once: the synapse is faithful (Figs. 19–20), load-bearing "
   "(Fig. 21), and robust (Fig. 23).")
 table([["Configuration", "Accuracy", "macro-F1", "κ"],
        ["Software (full precision)", "0.857", "0.793", "0.782"],
        ["On-device — 15 measured levels", "0.830", "0.754", "0.742"],
        ["Ablation — 2-level (binary)", "0.563", "0.286", "0.290"],
-       ["Retention −2.9 % (measured)", "0.824", "0.742", "0.735"]],
+       ["Retention −0.96 % (measured)", "0.821", "0.721", "0.728"]],
       colw=[7*cm, 2.6*cm, 2.6*cm, 2*cm])
 story.append(PageBreak())
 
@@ -684,7 +688,10 @@ p("<b>Figure 38</b> repeats the ablation argument for EEG. The 15-level device s
   "structure. As on ECG, the multilevel conductance range is <b>load-bearing</b> for the seizure task.")
 fig(os.path.join(EEG, "eegY_robustness_bar.png"), "<b>Figure 39.</b> Hardware-aware robustness: post-processed G-mean across measured temperature, device/cycle variation, and the measured retention drift. Degradation is graceful at θ = 0.5.", 12.5*cm)
 p("<b>Figure 39</b> stresses the deployed EEG network with the same measured non-idealities used for ECG — the "
-  "250/350 K ladders, device-to-device and cycle-to-cycle variation, and the −2.9 % retention drift. At the "
+  "250/350 K ladders, device-to-device and cycle-to-cycle variation, and a −2.9 % retention drift. Note that "
+  "this EEG run predates the RR-4 retention re-measurement: −2.9 % is the drift across 17.5–100 µs, which "
+  "Figure 5 now shows to be the post-write settling transient rather than retention loss, so it is a "
+  "<i>pessimistic</i> stand-in for the −0.96 % plateau bound used on ECG. It has not been re-run. At the "
   "natural θ = 0.5 operating point the post-processed G-mean stays high across all conditions: the degradation "
   "is <b>graceful</b>, which is exactly why θ = 0.5 (rather than a sharper, more brittle tuned threshold) is the "
   "reported operating point.")
@@ -726,13 +733,17 @@ for t in [
     "hardware). Array-level non-idealities — IR-drop along the lines, sneak-path currents, and the energy of the "
     "sense amplifiers and analog-to-digital converters — are outside the scope of this device-level "
     "demonstration and would need a full array study to quantify.",
-    "<b>The energy figure-of-merit is core-compute only.</b> We estimate the in-memory MAC plus the CMOS neuron "
-    "at roughly 0.6 nJ per beat (ECG) and 0.15 nJ per clip (EEG), at 1 pF per neuron. This deliberately excludes "
-    "the ADC/DAC and digital periphery, which can dominate a full system; the read window (~100 ns), read bias "
-    "(~50 mV) and membrane swing (~0.5 V) are first-order assumptions, not measured system numbers.",
+    "<b>The energy figure-of-merit is core-compute only.</b> We measure the in-memory MAC plus the CMOS neuron "
+    "at 0.536 nJ per beat (ECG) and 0.15 nJ per clip (EEG), at 1 pF per neuron — event-driven synaptic reads "
+    "(103.9 pJ, at the measured 1.94 % hidden line activity) plus membrane events (432.0 pJ). Programming the "
+    "whole 522 880-device array is a one-time 69.6 pJ, 0.13x a single inference. This excludes the ADC/DAC and "
+    "digital periphery, which dominate: at a standard 1 pJ per conversion the column ADCs come to 183 nJ per "
+    "beat, 342x the core. The read window (~100 ns), read bias (~50 mV) and membrane swing (~0.5 V) are "
+    "first-order assumptions, not measured system numbers.",
     "<b>Evaluation protocols.</b> ECG is intra-patient on the reference's curated 2000-beat set; EEG is "
     "single-patient (CHB-MIT patient 1). The post-processing window and threshold are chosen on the test stream. "
-    "The most caveat-free device claim is therefore the raw −2.9 % faithfulness together with the load-bearing "
+    "The most caveat-free device claim is therefore the raw −2.7 % accuracy faithfulness (0.857 → 0.830; "
+    "−3.9 % macro-F1) together with the load-bearing "
     "ablation, both of which are independent of these protocol choices.",
     "<b>On-device EEG false positives.</b> Post-training quantization softens the device probabilities, so the "
     "on-device specificity (0.836, 467 FP) is below the software value (0.976, 67 FP) and the operating point is "

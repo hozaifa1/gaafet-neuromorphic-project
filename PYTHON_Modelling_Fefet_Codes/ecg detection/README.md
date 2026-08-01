@@ -28,6 +28,14 @@ ablation collapses the model → **the multilevel polarization range is load-bea
 Robustness (measured 250/350 K ladders, device-to-device / cycle-to-cycle variation,
 retention drift) all degrade only gracefully — see METHODOLOGY.md §7.
 
+Phase 6 (2026-08-01) adds three figures, all reproducible from this folder:
+
+| script | figure | claim |
+|---|---|---|
+| `fig_k2_levels.py` | **K2** accuracy vs level count | ≥8 levels is a threshold, not a smooth trade-off; below it the classifier collapses and is non-monotonic in n |
+| `fig_k3_variability.py` | **K3a/K3b** accuracy vs variability | device-to-device shifts a device's ladder and per-device write-verify recovers it; cycle-to-cycle blurs the rungs and sets the usable level count |
+| `fig_k4_energy.py` | **K4** energy per inference | core compute 535.8 pJ/beat; whole-array programming 69.6 pJ **one-time**; the assumed column ADCs are 342× the core |
+
 Per-class on-device (Se / +P / F1): N 0.906/0.969/0.937 · F 0.868/0.589/0.702 ·
 SVEB 0.475/0.760/0.585 · VEB 0.828/0.758/0.791.
 
@@ -85,7 +93,7 @@ Environment: CPU-only, torch 2.x+cpu, spikingjelly 0.0.0.0.14, **numpy < 2** (1.
 | `utils.py` | Small helper utilities used by the model/training. |
 | `fefet_device.py` | **THE DEVICE MODEL — this is where our measured device enters.** Loads the measured 15-level LTP conductance ladder from `Device_Optimization/csv_export/raw/ltp_potentiation.csv`, plus the 250/300/350 K temperature variants. Conductance = read current / read voltage. |
 | `post_quantize.py` | **Deployment.** Snaps the trained weights onto the 15 measured differential FeFET conductance levels (post-training quantization) and reports software-vs-on-device faithfulness. `--levels 2` runs the binary-synapse ablation. |
-| `robustness_eval.py` | **Hardware-aware robustness.** Re-evaluates the deployed model under the measured 250/350 K conductance ladders, device-to-device and cycle-to-cycle conductance variation, and retention drift (measured −2.9 %). |
+| `robustness_eval.py` | **Hardware-aware robustness.** Re-evaluates the deployed model under the measured 250/350 K conductance ladders, device-to-device and cycle-to-cycle conductance variation, and retention drift (measured −0.96 %, RR-4). |
 | `make_ecg_figures.py` | **Figure generator.** Regenerates all ECG paper figures (input/LIF/ALIF rasters, adaptation Vg, output probability, training curves, software/device confusion matrices, per-class bars, faithfulness/ablation) in Origin style, writing each PNG + its reproducing CSV into `../Combined Figures/ecg figures/`. |
 
 ### Shared modules — `REDESIGN/code/`
@@ -101,12 +109,15 @@ Environment: CPU-only, torch 2.x+cpu, spikingjelly 0.0.0.0.14, **numpy < 2** (1.
 | Path | Contents |
 |---|---|
 | `data_ecg/{up,down}/` | The curated, delta-encoded MIT-BIH beat set — UP and DOWN spike-train CSVs per class (N/F/SVEB/VEB). These two subdirs are the only ones the 4-class loader reads. |
-| `Device_Optimization/csv_export/raw/` | The **measured device data**: `ltp_potentiation.csv` (the 15-level conductance ladder) and `ltp_vs_temperature.csv` (250/300/350 K variants). Bundled here so the folder is self-contained. |
+| `../../Device_Optimization/csv_export/raw/` | The **measured device data** (repo-level, single source of truth): `ltp_potentiation.csv` (the 15-level conductance ladder) and `ltp_vs_temperature.csv` (250/300/350 K variants). |
 | `REDESIGN/runs/paper150b/` | The **locked result**: `paper150b_best.ckpt` (the trained network, epoch 57) + `paper150b_history.json` (training curves). |
 | `REDESIGN/runs/robust_measured.json` | Saved output of the robustness evaluation. |
 | `METHODOLOGY.md` | Full device-physics + methods write-up (IEEE TED draft). |
 | `VO2_reference_paper.pdf` | The reference study (Yuan et al., *Nat. Commun.* 14:3695, 2023) whose LSNN architecture, neuron parameters and dataset we adopt; cited for those and for the CMOS-neuron parameters. |
 
-> Note: `fefet_device.py` prefers the bundled `Device_Optimization/` here and falls back to
-> the repo's top-level `../Device_Optimization/`, so this folder runs standalone. All other
-> files are copies of the winning pipeline.
+> Note: `fefet_device.py` resolves `Device_Optimization/csv_export/raw/` by walking up to the
+> repo root — **one** source of truth, no bundled copy. A bundled copy used to be preferred
+> here and went stale at the pre-Phase-1 normalization, making every absolute number
+> (g_min/g_max, R_on/R_off, energy) 1.578× too high while accuracy was unaffected (weights
+> normalize by `g_max`, so a global scale cancels). `measured_levels()` now refuses any
+> `ltp_potentiation.csv` whose top level is not 8.316845 µA/µm.

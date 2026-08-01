@@ -50,18 +50,44 @@ def fig_temperature():
                 ["pulse_n", "G_250K", "G_300K", "G_350K"], rowvals)
 
 
+TAU_P_S = 1e-5          # depolarization constant of the retained state (app.par)
+SETTLE_S = 5 * TAU_P_S  # the state is not "retained" until ~5 tau_P after the write ends
+
+
 def fig_retention():
-    d = pd.read_csv(os.path.join(RAW, "leak_retention.csv"))
-    t = d["t_us"].to_numpy(); g = d["G_uA_um"].to_numpy()
+    """RR-4 retention, out to 10 ms -- NOT the 100 us window.
+
+    This figure used to plot leak_retention.csv (17.5 -> 100 us) and label its -2.9 % as
+    retention drift. That window sits INSIDE the post-write settling transient, which
+    relaxes with tau_P = 10 us; reading it as retention is the same mistake that produced
+    three fabricated failures in Phase 5 (a retention collapse, a read-disturb collapse and
+    an endurance collapse). Measured out to 10 ms the state settles by ~5 tau_P and is then
+    flat, so the honest retention number is the PLATEAU drift and the transient is shaded
+    rather than fitted.
+    """
+    d = pd.read_csv(os.path.join(RAW, "retention_long.csv"))
+    d = d[(d.node == "t12_ret") & (d.seg == "hold")].sort_values("t_rel_s")
+    t = d["t_rel_s"].to_numpy(); g = d["G_uA_um"].to_numpy()
+    pl = t >= SETTLE_S
+    drift = 100 * (g[pl][-1] / g[pl][0] - 1)
+
     fig, ax = fs.new_ax()
-    ax.plot(t, g, "-o", color="#0b3d1e", mfc="#2e8b57", mec="black", ms=6, lw=2.3, mew=1.2)
-    peak = g[np.argmax(g)]
-    ax.axhline(peak, ls="--", color="gray", lw=1.6)
-    ax.text(t[-1]*0.55, peak*0.9, f"drift {100*(g[-1]-peak)/peak:.1f}% @100µs",
-            fontweight="bold", fontsize=11)
-    fs.bold_labels(ax, "Time (µs)", "Conductance (µA/µm @ Vread)")
+    m = t > 0
+    ax.axvspan(t[m].min() * 1e6, SETTLE_S * 1e6, color="#d9d9d9", alpha=0.55, lw=0)
+    ax.plot(t[m] * 1e6, g[m], "-o", color="#0b3d1e", mfc="#2e8b57", mec="black",
+            ms=5, lw=2.3, mew=1.0)
+    ax.axhline(g[pl][0], ls="--", color="gray", lw=1.6)
+    ax.set_xscale("log")
+    ax.text(SETTLE_S * 1e6 * 0.55, g.max() * 0.62, "post-write\nsettling\n(5 $\\tau_P$)",
+            ha="right", fontweight="bold", fontsize=11, color="#555555")
+    ax.text(t.max() * 1e6, g[pl][0] * 2.0, f"retained plateau: {drift:+.2f} % over "
+            f"{np.log10(t.max()/SETTLE_S):.1f} decades",
+            ha="right", fontweight="bold", fontsize=11)
+    fs.bold_labels(ax, "Time after write (µs)", "Conductance (µA/µm @ Vread)")
     fs.finish(fig, P("dev3_retention.png"))
-    fs.save_csv(P("dev3_retention.csv"), ["t_us", "G_uA_um"], list(zip(t, g)))
+    fs.save_csv(P("dev3_retention.csv"), ["t_us", "G_uA_um", "in_plateau"],
+                [[t[i] * 1e6, g[i], bool(pl[i])] for i in range(len(t))])
+    print(f"retention: settles by {SETTLE_S*1e6:.0f} us, plateau drift {drift:+.2f} %")
 
 
 def fig_transfer():

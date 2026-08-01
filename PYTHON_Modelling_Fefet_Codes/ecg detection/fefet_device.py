@@ -14,17 +14,39 @@ hardware-aware robustness.
 """
 from __future__ import annotations
 import os
+import sys
 import torch          # MUST precede numpy/pandas on Windows, else pandas' runtime DLLs
 import numpy as np    # break torch's c10.dll initialization (WinError 1114).
 import pandas as pd
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-# Prefer the device CSVs bundled inside this self-contained folder; fall back to the
-# original repo location (../Device_Optimization) so this file also works in-place.
-_LOCAL_RAW = os.path.join(_HERE, "Device_Optimization", "csv_export", "raw")
-_PARENT_RAW = os.path.join(_HERE, "..", "Device_Optimization", "csv_export", "raw")
-_RAW = _LOCAL_RAW if os.path.isdir(_LOCAL_RAW) else _PARENT_RAW
+# ONE source of truth: the repo's canonical raw export. A bundled copy used to be
+# preferred here and silently went stale -- it held the pre-Phase-1 currents, i.e.
+# every absolute number 1/0.6338 = 1.578x too high (the Areafactor correction).
+# Accuracy was unaffected (weights normalize by g_max) but g_min/g_max/R/energy
+# were not. Resolving to exactly one path makes a missing export fail loudly
+# instead of resolving to stale data.
+# (the old fallback pointed one level too shallow, which is why the bundle was never
+# bypassed; walk up to the repo root instead of hardcoding the depth.)
+def _find_raw(start: str) -> str:
+    d = start
+    while True:
+        cand = os.path.join(d, "Device_Optimization", "csv_export", "raw")
+        if os.path.isdir(cand):
+            return cand
+        parent = os.path.dirname(d)
+        if parent == d:
+            raise FileNotFoundError("Device_Optimization/csv_export/raw not found above " + start)
+        d = parent
+
+
+_RAW = _find_raw(_HERE)
+_DEVOPT = os.path.dirname(os.path.dirname(_RAW))
 V_READ = 0.05   # V, sub-threshold read bias (SNN_PARAMETERS / energy_ledger)
+
+# Provenance guard: post-Phase-1 LTP top level, Device_Optimization/norm.py convention.
+_P15_UA_UM = 8.316845
+_W_EFF_UM = 0.09        # gate perimeter TESW = 2*(W+T_si); norm.py Areafactor = W_eff/2
 
 
 def measured_levels(csv_path: str | None = None, v_read: float = V_READ):
@@ -38,6 +60,13 @@ def measured_levels(csv_path: str | None = None, v_read: float = V_READ):
         csv_path = os.path.join(_RAW, "ltp_potentiation.csv")
     df = pd.read_csv(csv_path)
     ide = df["Id_uA_per_um"].to_numpy(dtype=float) * 1e-6    # A/um
+    if csv_path.endswith("ltp_potentiation.csv"):
+        top = float(df["Id_uA_per_um"].max())
+        if abs(top / _P15_UA_UM - 1.0) > 1e-4:
+            raise ValueError(
+                f"{csv_path} top LTP level is {top:.6e} uA/um, expected {_P15_UA_UM:.6e}. "
+                f"ratio {top/_P15_UA_UM:.4f} (1.5778 = the pre-Phase-1 Areafactor). "
+                "Refusing stale device data.")
     g = np.sort(ide / v_read)                                 # S/um, ascending
     return torch.from_numpy(g).float(), float(g[0]), float(g[-1])
 
@@ -59,3 +88,12 @@ if __name__ == "__main__":
     steps = np.diff(np.log10(lv.numpy()))
     print(f"  log10 step per level: min={steps.min():.3f} max={steps.max():.3f} "
           f"mean={steps.mean():.3f}  (uniform-log would be constant)")
+    # cross-check the absolute top level against the device parameter file
+    sys.path.insert(0, _DEVOPT)
+    from gaafefet_params_optimized import LIF
+    g_p15_abs = gmax * _W_EFF_UM
+    print(f"  absolute (x W_eff={_W_EFF_UM*1e3:.0f} nm): g_p15 = {g_p15_abs:.4e} S "
+          f"vs params g_max_p15 = {LIF['g_max_p15']:.4e} S  "
+          f"(ratio {g_p15_abs/LIF['g_max_p15']:.6f})")
+    assert abs(g_p15_abs / LIF["g_max_p15"] - 1.0) < 1e-3, "LTP top level disagrees with params"
+    print("  OK: reads the canonical post-Phase-1 export.")
