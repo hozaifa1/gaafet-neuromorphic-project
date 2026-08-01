@@ -171,7 +171,12 @@ and belong in the methods section:
 ## 6. Still open
 
 **Running or queued**
-- RR-5: `t14_end10` / `t14_end100` requeued at the corrected protocol.
+- RR-5: `t14_end100` completed (2513 s). **`t14_end10` at the corrected protocol did NOT
+  complete** — killed by the worker's 2 h cap on 2026-08-01 (`END t14_end10 rc=137 7200s
+  plt=781`). It was progressing, not crawling: 781 `.plt` in 7200 s against `t14_end100`'s
+  422 in 2513 s. The corrected 5 µs write protocol is simply much more expensive per cycle
+  than the superseded single-pulse deck that finished in 307 s. **Reported as not run.**
+  (The kill was clean — `csh` exec'd `sdevice`, so no orphan held the shared license.)
 - RR-2: `t11_dibl` requeued with the sweep extended to −1.5 V.
 - `t14_end1000`: parked at the back of the queue. It needs ~8 h at the corrected
   5 µs write and will hit the 2 h job timeout. **If it does not complete it is
