@@ -120,6 +120,35 @@ python Device_Optimization/norm.py && python Device_Optimization/verify_norm.py
 > calibrated **memory window, V_t, SS, on/off ratio and turn-on shape**. It may
 > **not** claim that the absolute µA/µm is experimentally validated.
 
+## Canonical measurement protocol (fix ONE, quote the rest as protocol variants)
+
+The retained ON/OFF ratio is not a single number for this device — it depends on
+the write pulse width and on how long after the write the state is read. Every
+value below is real and reproducible; they differ only by protocol:
+
+| ON/OFF | node | write | settling before the V_G=0 read |
+|---|---|---|---|
+| 3137× | `mw_fe07` | ±2.0 V, 5 µs | 4 read points ≈ 0.24 µs |
+| **5410×** | **`iv_fe07b` (RR-0)** | **±2.0 V, 5 µs** | **20 read points ≈ 1.2 µs** |
+| 11650× | `t10_ltd` (RR-3) | 15 × 1 µs pulses | immediate |
+
+**Canonical choice: `iv_fe07b`, 5410×.** It is the densest grid (41 points vs 9),
+the widest range (−1.0…+1.0 V), and the longest-settled read, and it uses the
+same ±2.0 V / 5 µs write as every published window number. The others are quoted
+as protocol variants, never as competing values for the same quantity.
+
+Why they differ is itself a result, not noise. The retained state relaxes on the
+τ_E = 1 µs scale after the write ends, and the two states move **apart** as it
+settles — so a later read sees a larger window. RR-4 measures the same relaxation
+directly: the programmed state falls 9.0× from its immediate post-write value
+before reaching a plateau at ≈5 τ_P, and an intermediate analog level (LTP 8)
+falls **94×**. Any window number therefore has to state its read delay.
+
+**Rule that prevents the whole class of error found in this audit:** a ratio may
+only be formed from two measurements taken in the *same run*. The published
+`fire_ratio = 30.6×` violated it — pulse 9 from `t8_ltp` over a baseline from
+`mwfine` — and the correct self-consistent value is 18.4×.
+
 ## Two different "ON/OFF" numbers — never in the same sentence
 
 | Number | What it is | Protocol |
