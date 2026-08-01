@@ -262,6 +262,32 @@ piecewise, through discrete spike-count changes, not smoothly. Second, the D2D/C
 which is not a single σ, and for which the device-to-device and cycle-to-cycle halves must be handled
 differently — is figure K3.)*
 
+**How many levels, and where — figure K2.** Sweeping the deployment grid from 2 to 15
+levels in two constructions (a subset of the measured ladder, and a log-spaced grid over
+the same span) gives an accuracy that is **not monotonic in the level count** below 8
+levels, identically in both constructions. Re-drawing the interior levels at fixed n
+explains it: at n = 8 four random placements score 0.336–0.491 while the evenly-spaced
+placement scores 0.804. The cause is the differential encoding on a 4.11-decade ladder —
+$|G_i-G_j|$ is dominated by $\max(i,j)$, so the achievable weight set is roughly
+$\{0,\pm G_k/G_{\max}\}$, dense near zero and sparse near $\pm1$, and a grid that spends
+its levels low on the ladder buys almost no weight resolution. **Level count alone is
+therefore not the figure of merit**: with arbitrary placement the classifier needs ~10–12
+levels to reach the software neighbourhood reliably. This is the same conclusion the
+variability analysis reaches independently (K3c), where accuracy tracks per-device level
+*misplacement* rather than the ensemble level-overlap statistic.
+
+**Variability — figures K3a/K3c.** RR-8's 20 runs are box **corners**, a worst-case
+envelope rather than a σ, so they are never injected as a Gaussian. Deployed onto each
+corner, the locked network scores a median 0.243 with no per-device calibration, 0.777
+with a single readout-gain trim, and **0.830 — nominal to four decimals — with per-level
+write-verify**. Each corner ladder is a near-rigid log-shift of nominal (median |shift|
+0.51 decades) plus a residual; gain-trim accuracy tracks the worst residual level
+misplacement at Spearman −0.85, holding 0.78–0.83 out to ≈0.6 decades and collapsing at
+≈0.9. Note that after a gain trim 13 of 14 adjacent level pairs still overlap *across the
+ensemble* while several of those corners deliver nominal accuracy: ensemble overlap says a
+shared grid cannot uniquely address a level, not that the deployed weight is wrong enough
+to matter.
+
 Per-class on-device (Se / +P / F1): **N 0.906 / 0.969 / 0.937**, F 0.868 / 0.589 / 0.702,
 SVEB 0.475 / 0.760 / 0.585, VEB 0.828 / 0.758 / 0.791.
 

@@ -32,7 +32,7 @@ Phase 6 (2026-08-01) adds three figures, all reproducible from this folder:
 
 | script | figure | claim |
 |---|---|---|
-| `fig_k2_levels.py` | **K2** accuracy vs level count | ≥8 levels is a threshold, not a smooth trade-off; below it the classifier collapses and is non-monotonic in n |
+| `fig_k2_levels.py` | **K2** accuracy vs level count | level *count* is not the figure of merit — at fixed n, accuracy swings with where the levels sit (n=8: 0.34–0.80); ~10–12 levels are needed for placement-robust operation |
 | `fig_k3_variability.py` | **K3a/K3b** accuracy vs variability | device-to-device shifts a device's ladder and per-device write-verify recovers it; cycle-to-cycle blurs the rungs and sets the usable level count |
 | `fig_k4_energy.py` | **K4** energy per inference | core compute 535.8 pJ/beat; whole-array programming 69.6 pJ **one-time**; the assumed column ADCs are 342× the core |
 

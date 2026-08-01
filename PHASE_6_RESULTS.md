@@ -72,17 +72,36 @@ check that the correction was a normalization and not a physics change.
 | 15 | **0.8304 / 0.7536** | 0.8274 / 0.7372 |
 
 **Accuracy is not monotonic in n below 8 levels**, and the two constructions agree, so it is
-not an artifact of how the coarse grid was built. The mechanism is the differential
-encoding on a 4.11-decade ladder: `|G_i − G_j|` is dominated by `max(i, j)`, so the
-achievable weight set is approximately `{0, ±G_k/g_max}` — dense near 0, very sparse near
-±1. Which weights a coarse grid can represent therefore changes discontinuously with n, and
-post-training quantization gets no opportunity to compensate.
+not an artifact of how the coarse grid was built.
 
-The claim the figure supports is a **threshold, not a ranking**: below 8 levels the
-classifier collapses and behaves erratically; from 8 levels up it recovers to the
-neighbourhood of the measured 15-level device. `fig_k2_levels.py --spread` re-draws the
-interior levels at fixed n to bound how much of the residual jitter is grid choice, so the
-plateau is reported as a band rather than as nine independent point estimates.
+`fig_k2_levels.py --spread` then re-draws the **interior** levels at fixed n (endpoints
+kept, 4 draws each) and shows what is really going on:
+
+| n | random placement | evenly spaced |
+|---:|---|---:|
+| 4 | 0.298 – 0.562 | 0.363 |
+| 6 | 0.226 – 0.777 | 0.351 |
+| 8 | 0.336 – 0.491 | **0.804** |
+| 10 | 0.714 – 0.810 | 0.762 |
+| 12 | 0.804 – 0.851 | 0.845 |
+
+The mechanism is the differential encoding on a 4.11-decade ladder: `|G_i − G_j|` is
+dominated by `max(i, j)`, so the achievable weight set is approximately `{0, ±G_k/g_max}` —
+dense near 0, very sparse near ±1. A grid that spends its levels at the bottom of the
+ladder buys almost no usable weight resolution, and post-training quantization gets no
+opportunity to compensate.
+
+So the claim the figure supports is about **placement, not count**. *Level count alone is
+not the figure of merit.* With arbitrary placement the classifier needs ~10–12 levels to
+reach the software neighbourhood reliably; the evenly-spaced 8-level grid that scores 0.804
+is a good placement, not a typical one — all four random 8-level draws scored below 0.50.
+
+I had written the opposite ("≥8 levels is a threshold") before the spread run existed. The
+spread data does not support it, and the figure now plots the individual draws as whiskers
+rather than a filled envelope, since four draws per n do not justify a continuous band.
+
+This is the same conclusion K3c reaches from the variability side, which is the reason to
+trust it: **what matters is where the levels sit, not how many there are.**
 
 ---
 
@@ -255,6 +274,22 @@ visual justification for the "read after settling" rule rather than a counterexa
 **EEG** robustness paragraph still cites −2.9 % because that run genuinely used it; rather
 than leave one document asserting two values for the same measurement, it is annotated
 in place as pre-RR-4 and pessimistic. Nothing under `eeg detection/` was touched or re-run.
+
+**The `cal_n16` memory-window discrepancy is resolved, and it was not a fabrication.**
+`metrics.py` reported MW = 1.218 V where the calibration docs and the publication figure
+said 1.30 V. Both are correct constant-current extractions on the same data, one decade
+apart in criterion:
+
+| extraction | criterion | V_t,ERS | V_t,PGM | MW |
+|---|---|---:|---:|---:|
+| `pub_figure.py` (the published overlay) | 1e-8 A / nanosheet | +0.362 | −0.934 | **1.296 V** |
+| `autocal/metrics.py` (the calibration loss) | 1e-7 A/µm ≈ 1e-9 A/sheet | −0.556 | −1.774 | **1.218 V** |
+
+The figure's annotation reproduced its own data to three decimals — but it was a
+**hardcoded string**, so it could not have caught a drift, and neither document said which
+criterion it meant. `pub_figure.py` now computes MW, both V_t, I_on and I_on/I_off from the
+plotted curves and prints the criterion on the figure. The rule generalizes the Phase-5
+one: *a window number must state its extraction criterion as well as its read delay.*
 
 **K3b's noise model was wrong before it ran.** Cycle-to-cycle was multiplying the *weight*.
 c2c is a property of each programmed conductance, so `G⁺` and `G⁻` must be perturbed

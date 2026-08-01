@@ -13,21 +13,30 @@ Two grid constructions, because they answer different questions and they do not 
                    (fefet_synapse.log_levels) -- an idealized designed grid, and the
                    construction the previously published 2-level ablation used.
 
-They coincide at n = 2 and n = 15. The two constructions track each other closely
-everywhere else too, which is the point of plotting both: the striking feature of this
-sweep -- accuracy is NOT monotonic in n below 8 levels -- is not an artifact of how the
-coarse grid was built.
+They coincide at n = 2 and n = 15 and track each other closely in between, so the striking
+feature of the sweep -- accuracy is NOT monotonic in n below 8 levels -- is not an artifact
+of either construction.
 
-The mechanism is the differential encoding on a 4.11-decade ladder. Because
-|G_i - G_j| is dominated by max(i,j), the achievable weight set is approximately
-{0, +-G_k/g_max}, i.e. geometrically spaced: dense near 0 and very sparse near +-1. Which
-weights the coarse grid can and cannot represent therefore changes discontinuously with n,
-and post-training quantization has no opportunity to compensate. `--spread` quantifies
-that sensitivity by re-drawing the interior levels.
+`--spread` then shows why, by re-drawing the INTERIOR levels at fixed n (endpoints kept,
+4 draws). Accuracy at fixed n varies enormously with WHERE the levels sit:
 
-The claim the figure supports is a threshold, not a point-by-point ranking: below 8 levels
-the classifier collapses and behaves erratically; from 8 levels up it recovers to within
-the grid-choice spread of the measured 15-level device.
+    n = 4    0.298 - 0.562      (evenly spaced: 0.363)
+    n = 6    0.226 - 0.777      (evenly spaced: 0.351)
+    n = 8    0.336 - 0.491      (evenly spaced: 0.804)
+    n = 10   0.714 - 0.810      (evenly spaced: 0.762)
+    n = 12   0.804 - 0.851      (evenly spaced: 0.845)
+
+The mechanism is the differential encoding on a 4.11-decade ladder. |G_i - G_j| is
+dominated by max(i, j), so the achievable weight set is approximately {0, +-G_k/g_max}:
+dense near 0, very sparse near +-1. A grid that spends its levels at the bottom of the
+ladder buys almost no usable weight resolution, and post-training quantization gets no
+opportunity to compensate.
+
+So the honest claim is about placement, not count. **Level count alone is not the figure of
+merit.** With arbitrary placement the classifier needs ~10-12 levels to reach the software
+neighbourhood reliably; the evenly-spaced 8-level grid reaching 0.804 is a good placement,
+not a typical one -- all four random 8-level draws scored below 0.50. This is the same
+conclusion K3c reaches from the variability side: what matters is where the levels are.
 
     python fig_k2_levels.py            # the sweep
     python fig_k2_levels.py --spread   # grid-choice spread at fixed n (adds the band)
@@ -117,11 +126,14 @@ def plot(rep_fp, rows, spread_rows=None):
 
     fig, ax = fs.new_ax()
     if spread_rows:
+        # Individual random level placements at each n, NOT a continuous band -- four
+        # draws per n, so a filled envelope would imply more than was measured.
         ns = sorted({r[0] for r in spread_rows})
-        lo = [min(r[3] for r in spread_rows if r[0] == n) for n in ns]
-        hi = [max(r[3] for r in spread_rows if r[0] == n) for n in ns]
-        ax.fill_between(ns, lo, hi, color="#0b3d1e", alpha=0.16, lw=0, zorder=0,
-                        label="Accuracy — grid-choice spread")
+        for k, n in enumerate(ns):
+            y = [r[3] for r in spread_rows if r[0] == n]
+            ax.vlines(n, min(y), max(y), color="#7f7f7f", lw=2.0, zorder=1)
+            ax.plot([n] * len(y), y, "_", ms=13, mew=2.2, color="#7f7f7f", zorder=1,
+                    label="Accuracy — random level placement" if k == 0 else None)
     ax.axhline(rep_fp["accuracy"], ls="--", lw=2.0, color="#2e8b57")
     ax.axhline(rep_fp["macro_f1"], ls=":", lw=2.0, color="#b8860b")
     x, y = series("measured_subset", 3); ax.plot(x, y, "-o", ms=8, lw=2.6, color="#0b3d1e",

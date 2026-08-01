@@ -186,9 +186,14 @@ and belong in the methods section:
 - **Cycle-to-cycle variability is not measured.** RR-8 is device-to-device only.
   C2C is the variation that would actually destroy analog depth, and RR-3's
   3-cycle run is the only evidence (it shows the floor moving, not levels blurring).
-- **`metrics.py` MW = 1.218 V vs the documented 1.30 V** for `cal_n16` — two
-  different extractions, both predating this work. Reconcile before the methods
-  section.
+- ~~**`metrics.py` MW = 1.218 V vs the documented 1.30 V** for `cal_n16`~~ —
+  **RESOLVED (Phase 6).** Both are correct constant-current extractions on the same
+  data, one decade apart in criterion: `pub_figure.py` uses 1e-8 A per nanosheet
+  (MW = 1.296 V, V_t = −0.934 / +0.362), `metrics.py` uses 1e-7 A/µm ≈ 1e-9 A/sheet
+  (MW = 1.218 V). `pub_figure.py` now **computes** its annotation from the plotted
+  curves instead of asserting it, and prints the criterion on the figure. The rule
+  generalizes the Phase-5 one: a window number must state its **extraction criterion**
+  as well as its read delay.
 - **RR-5 can never measure endurance.** The model has no fatigue, wake-up or
   imprint term. The run shows write repeatability and numerical cycle-stability;
   real endurance is a measurement, and the caption must say so.
