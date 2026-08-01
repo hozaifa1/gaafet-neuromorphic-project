@@ -80,6 +80,14 @@ def paired_branches(levels: torch.Tensor, g_max: float):
     absolute jitter is not. Where several (i, j) realize the same weight the lowest-index
     pair is kept -- the lowest-current pair that hits the target, which is what a real
     compiler would program.
+
+    Measured on this device's 15-level ladder, the noise amplification (G+ + G-)/|w| is
+    1.03 at the median -- most weights are one large conductance minus a negligible one --
+    but reaches 2.2 at p90 and 4.8 at worst. The measured ladder's top levels are widely
+    spaced (0.197, 0.381, 0.656, 1.000 normalized), so mid-upper weights have no
+    low-conductance representation: w = +-0.344 can ONLY be built as 1.000 - 0.656, and
+    independent jitter on each branch hits that weight ~5x harder than it hits either
+    conductance. A weight-level noise model hides this entirely.
     """
     n = levels.numel()
     ln = (levels / g_max).numpy()
