@@ -775,9 +775,26 @@ def rr8b(node="t17_c2c", n_ltp=15):
     if not rows:
         return
     out = pd.DataFrame(rows)
+    # Drop any repeat that did not finish all n_ltp pulses. The worker caps a job at 2 h,
+    # so a long c2c run can be killed mid-train; a partial repeat would leave NaNs in the
+    # pivot below and silently turn every sigma into NaN. A short-but-complete ensemble is
+    # a usable sigma; a ragged one is not.
+    full = out.groupby("repeat")["level"].nunique()
+    keep = set(full[full == n_ltp].index)
+    dropped = sorted(set(out.repeat) - keep)
+    if dropped:
+        print(f"rr8b: dropping {len(dropped)} incomplete repeat(s) {dropped} "
+              f"(fewer than {n_ltp} pulses -- job was cut short)")
+        out = out[out.repeat.isin(keep)]
+    if out.empty:
+        print("rr8b: no complete repeats; nothing to analyse")
+        return
     _emit(out, RAW / "c2c_ensemble.csv", "RR-8b cycle-to-cycle")
 
     g = out.pivot_table(index="level", columns="repeat", values="G_uA_um")
+    if g.shape[1] < 3:
+        print(f"rr8b: only {g.shape[1]} complete repeat(s) -- too few for a sigma; "
+              "reporting the ensemble but NOT a separability verdict")
     lg = np.log10(np.maximum(g.values, 1e-30))
     sp = pd.DataFrame({
         "level": g.index,
