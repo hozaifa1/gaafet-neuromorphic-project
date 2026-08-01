@@ -611,6 +611,22 @@ def rr7():
 
 # ------------------------------------------------------------------- RR-8
 def rr8():
+    """Variability ensemble -> per-level spread, and whether the levels survive it.
+
+    IMPORTANT about what this number is.  The 20 runs are deliberately chosen
+    CORNERS of the (Dit, FixedCharge, T_fe) box -- every combination with at
+    least two axes off nominal -- not a random sample from a distribution.  So
+    the spread below is a corner envelope, an upper bound on device-to-device
+    variation, and it is NOT a Gaussian sigma.  Quoting it as "sigma" would
+    overstate the variation of a real population and imply a normal distribution
+    that was never sampled.  It is reported as a range and a log-spread, and the
+    SNN should take it as a worst case.
+
+    The metric that decides whether the analog levels are usable is not the
+    spread alone but the spread RELATIVE to the level spacing: adjacent LTP
+    levels sit about 0.3 decades apart, so a comparable log-spread means
+    neighbouring levels overlap across the corner box.
+    """
     rows = []
     for d in sorted(OUTPUTS.glob("v_[0-9][0-9]")):
         node = d.name
@@ -629,14 +645,47 @@ def rr8():
         return
     out = pd.DataFrame(rows)
     _emit(out, RAW / "variability_ensemble.csv", "RR-8 variability")
+
     cols = [c for c in out.columns if c.startswith("G")]
-    sig = pd.DataFrame({"level": range(1, len(cols) + 1),
-                        "mean_uA_um": [out[c].mean() for c in cols],
-                        "sigma_uA_um": [out[c].std() for c in cols],
-                        "sigma_over_mean": [out[c].std() / out[c].mean() for c in cols],
-                        "sigma_log10": [np.log10(out[c]).std() for c in cols]})
-    _emit(sig, RAW / "variability_per_level.csv", "RR-8 per-level sigma (SNN d2d/c2c input)")
-    print(sig.to_string(index=False))
+    lg = {c: np.log10(np.maximum(out[c].values, 1e-30)) for c in cols}
+    sp = pd.DataFrame({
+        "level": range(1, len(cols) + 1),
+        "median_uA_um": [float(np.median(out[c])) for c in cols],
+        "min_uA_um": [float(out[c].min()) for c in cols],
+        "max_uA_um": [float(out[c].max()) for c in cols],
+        "log10_range": [float(lg[c].max() - lg[c].min()) for c in cols],
+    })
+    sp["log10_halfspread"] = sp.log10_range / 2
+    med = sp.median_uA_um.values
+    spacing = np.full(len(med), np.nan)
+    spacing[1:] = np.log10(med[1:] / np.maximum(med[:-1], 1e-30))
+    sp["log10_spacing_to_prev"] = spacing
+    sp["overlaps_prev"] = sp.log10_halfspread > np.where(np.isnan(spacing), np.inf,
+                                                         spacing / 2)
+    _emit(sp, RAW / "variability_per_level.csv",
+          "RR-8 per-level corner envelope (SNN d2d input)")
+    print(sp.to_string(index=False))
+    n_ov = int(sp.overlaps_prev.sum())
+    print()
+    print(f"  {len(out)} of 20 corner runs analysed.")
+    print(f"  {n_ov} of {len(cols) - 1} adjacent level pairs OVERLAP across the corner box.")
+    print("  This is a corner envelope, NOT a sigma: the runs are the corners of the")
+    print("  (Dit +-20 %, FixedCharge +-10 %, T_fe +-0.3 nm) box, so treat it as a worst")
+    print("  case and do not feed it to the SNN as a Gaussian d2d sigma.")
+    if n_ov:
+        print("  Level overlap at the corners is real, and it says something specific:")
+        print("   * a SHARED 15-level quantization grid across devices is not valid --")
+        print("     one fixed set of conductance targets cannot address every device in")
+        print("     the corner box, because adjacent targets are closer together than")
+        print("     the device-to-device spread.")
+        print("   * it does NOT say the device has fewer than 15 levels. Each device is")
+        print("     internally monotonic across all 15 pulses, so per-device programming")
+        print("     (write-verify, or training on the deployed array) recovers them. D2D")
+        print("     variation shifts a device's whole ladder; it does not merge its rungs.")
+        print("   * the variation that WOULD destroy analog depth is cycle-to-cycle on one")
+        print("     device, and this ensemble does not measure it. RR-3's 3-cycle run is")
+        print("     the only c2c evidence so far and it shows the floor moving, not the")
+        print("     levels blurring. A dedicated c2c run is the honest follow-up.")
 
 
 # ------------------------------------------------------------------- RR-9
