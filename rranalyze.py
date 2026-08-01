@@ -215,8 +215,16 @@ def rr0(node="iv_fe07b"):
 
 
 # ------------------------------------------------------------------- RR-1
-def rr1(nodes=("mfm_pe196", "mfm_pe300")):
-    """Saturated MFM P-E loop -> the real P_r / P_s / F_c."""
+def rr1(nodes=("mfm_pe196", "mfm_pe300", "mfm_pe500")):
+    """MFM P-E loop amplitude series -> the real P_r / P_s / F_c.
+
+    Three amplitudes, because 2*F_c*T_fe does NOT saturate a Preisach loop --
+    it approaches P_s asymptotically, so +-1.96 V returns a large minor loop
+    (P_s 32.8 against a nominal 40) and would have looked like a calibration
+    failure. Driving to ~5 F_c reproduces the locked par to four significant
+    figures. The series is kept, not just the saturated point: it is the
+    evidence that the loop IS saturated rather than an assertion that it is.
+    """
     frames = []
     for node in nodes:
         if not have(node, "down_", "up_"):
@@ -251,8 +259,8 @@ def rr1(nodes=("mfm_pe196", "mfm_pe300")):
                 f_c = float(e[k - 1] + (0 - p[k - 1]) * (e[k] - e[k - 1]) / (p[k] - p[k - 1]))
                 break
         print(f"  {node:11s} {branch:6s} {np.abs(p).max():8.2f}   {p_r:+8.2f}   {f_c:+8.3f}")
-    print("  targets: P_s 40, |P_r| 32 uC/cm2, |F_c| 1.4 MV/cm.  If any is off, do NOT")
-    print("  tune the par -- the par is the locked calibration result; report the gap.")
+    print("  targets: P_s 40, |P_r| 32 uC/cm2, |F_c| 1.4 MV/cm (the locked cal_n16 par).")
+    print("  The par is never tuned to match this run -- the run validates the par.")
 
 
 # ------------------------------------------------------------------- RR-2
