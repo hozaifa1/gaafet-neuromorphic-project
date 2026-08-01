@@ -66,6 +66,7 @@ current, the eCurrent/hCurrent split, source-contact balance — are now availab
 | **RR-7** design space | all 25 cells; ≤30 ns does not program at any voltage |
 | **RR-8** variability | all 14 adjacent level pairs overlap across the corner box |
 | **RR-9** read disturb | **0.0000 %** over 9.9e5 equivalent reads |
+| **RR-10** Areafactor sanity | rescale exact to **1.8e-16** (double-precision epsilon) |
 
 ### RR-1 validates the calibration
 ±1.96 V (= 2·F_c·T_fe, as the checklist specified) does **not** saturate a Preisach
@@ -77,6 +78,14 @@ loop is saturated rather than an assertion that it is.
 This also finally quantifies defect **C5**: the MFIS gate-stack loop reaches
 0.55·F_c and 12 % of P_r, so the deck's "HZO P–E loop" is a *deep* minor loop, and
 the voltage divider is the whole story.
+
+### RR-10 proves the Phase 1 rescale needed no re-simulation
+Re-running one node at the geometrically correct `Areafactor = 0.045` and dividing
+by the same node at 0.071 gives **0.633802816901** against an expected
+0.633802816901 — a relative error of 1.8e-16, i.e. double-precision epsilon. That
+is the methods-section answer to "why did you not re-run everything after changing
+the normalization": Areafactor is a pure post-multiplier on contact quantities and
+the correction is exact arithmetic.
 
 ### C2 is resolved, and was never an inconsistency
 The three "erased at V_G = 0" values differ by post-write settling time:
@@ -138,10 +147,8 @@ and belong in the methods section:
 ## 6. Still open
 
 **Running or queued**
-- RR-8: 15 of 20 corner runs still to land.
 - RR-5: `t14_end10` / `t14_end100` requeued at the corrected protocol.
 - RR-2: `t11_dibl` requeued with the sweep extended to −1.5 V.
-- RR-10: `t16_af045` Areafactor sanity check.
 - `t14_end1000`: parked at the back of the queue. It needs ~8 h at the corrected
   5 µs write and will hit the 2 h job timeout. **If it does not complete it is
   reported as not run**, not silently dropped.
