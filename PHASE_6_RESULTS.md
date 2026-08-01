@@ -21,7 +21,7 @@ turned out to be wrong:
 | `dev1/2/4/5` figures | still pre-Phase-1 **and** pre-RR-0; the published memory-window figure was the superseded sweep |
 | `dev3_retention` | plotted the 17.5–100 µs settling transient and captioned it as retention drift — Phase-5 error #7 baked into a figure |
 | K3b noise model | mine: c2c was multiplying the weight instead of each conductance branch |
-| handoff §6.4 point 3 | "quantize to the separable-level count, not 15" costs **0.42–0.48 accuracy**; the measured c2c costs 0.002 (§6.4c) |
+| handoff §6.4 point 3 | "quantize to the separable-level count, not 15" costs **0.036 accuracy**, and the criterion's own output is unstable (6 levels on 4 repeats, 8 on 11); the measured c2c itself costs 0.001 (§6.4c) |
 
 And `cal_n16`'s MW = 1.218 vs 1.30 V was resolved as a **criterion** mismatch, not a
 fabrication (§"Also fixed on the way past").
@@ -246,57 +246,61 @@ decades.
 
 RR-8b repeats the **same** 15-pulse train on **one** device, so unlike RR-8 it is a genuine
 σ and is the legitimate stochastic input. The run was **capped, not completed**: the worker
-killed it at 7200 s (`END t17_c2c rc=137 7200s plt=1270`) after 4 complete repeats of the
-20 queued, plus a partial fifth that `rr8b` dropped by name. Reported as 4 repeats, not 20.
+killed it at 7200 s (`END t17_c2c rc=137 7200s plt=1270`), and `rr8b` kept the **11 complete
+repeats** of the 20 queued, dropping the partial ones by name.
 
 | | |
 |---|---|
-| median σ | **0.0358 decades** |
-| complete repeats | **4** of 20 → relative s.e. of σ ≈ **41 %** |
-| usable levels at 3σ | **6** of 15 (band 5–8 across the σ uncertainty) |
+| median σ | **0.0215 decades** |
+| complete repeats | **11** of 20 → relative s.e. of σ ≈ **22 %** |
+| usable levels at 3σ | **8** of 15 (band 7–9 across the σ uncertainty) |
 
-| injected σ (dec) | 0 | **0.0358** | 0.05 | 0.10 | 0.20 | 0.30 |
+| injected σ (dec) | 0 | **0.0215** | 0.05 | 0.10 | 0.20 | 0.30 |
 |---|---:|---:|---:|---:|---:|---:|
-| 15-level grid | 0.8304 | **0.8284** | 0.8175 | 0.7728 | 0.3919 | 0.1657 |
-| 6-level "usable" grid | 0.3512 | 0.4077 | 0.3879 | 0.4395 | 0.4435 | 0.3165 |
+| 15-level grid | 0.8304 | **0.8294** | 0.8175 | 0.7728 | 0.3919 | 0.1657 |
+| 8-level "usable" grid | 0.8036 | 0.7937 | 0.7837 | 0.7312 | 0.4415 | 0.1637 |
 
-**At the measured σ the full 15-level grid loses 0.002 accuracy.** The knee is at
-σ ≈ 0.1–0.2 decades, so the device sits 3–6× below it. That conclusion survives the thin
-statistics: at 0.05 (≈ +1 s.e. on σ) accuracy is still 0.8175, and it only collapses at
-0.20, which is ≈4.4 s.e. above the measurement.
+**At the measured σ the deployed 15-level network loses 0.001 accuracy.** The knee is at
+σ ≈ 0.1–0.2 decades, so the device sits 5–9× below it, and the conclusion is robust to the
+σ uncertainty: even at 0.05 (≈ +2 s.e.) accuracy is still 0.8175.
 
-### The handoff's prescription for this figure is wrong, and the data says so
+### On the handoff's instruction for this figure
 
-The handoff instructed: *"`c2c_per_level.csv` carries a `separable_from_prev` column at a
-3-sigma criterion and the analysis prints the usable level count — **that count, not 15, is
-what K3 should quantize to**."*
+The handoff said: *"`c2c_per_level.csv` carries a `separable_from_prev` column at a 3-sigma
+criterion and the analysis prints the usable level count — **that count, not 15, is what K3
+should quantize to**."*
 
-Quantizing to that count costs **0.42–0.48 accuracy** (0.8304 → 0.3512 at σ = 0; 0.8284 →
-0.4077 at the measured σ). Keeping all 15 levels under the measured noise costs 0.002.
-Following the instruction would have made the reported result dramatically worse and would
-have blamed the device for it.
+Quantizing to that count costs **0.036 accuracy** (0.8294 → 0.7937 at the measured σ), so it
+is still the wrong call — but modestly, not catastrophically. **This number is the one place
+in Phase 6 where more data moved a conclusion, and it is worth recording why.** An earlier
+pass on a partial download saw only 4 complete repeats, put σ at 0.0358 and the usable count
+at **6**, and gave a penalty of 0.42–0.48. Six levels lands in the catastrophic regime K2
+mapped; eight lands on K2's good-placement point. The accuracy consequence of the criterion
+therefore swung by an order of magnitude on which integer it happened to return.
 
-The reason is that separability and accuracy are different questions. A 3σ criterion asks
-whether a level can be **told apart from its neighbour on readout**. The network never asks
-that: it needs the realized weight to sit near the target, and levels that overlap under
-noise are still monotonic and still carry weight information. Discarding nine of them
-throws away resolution the classifier was using, and the noise that "justified" discarding
-them costs almost nothing.
+**That instability is the real argument against the instruction.** A design rule whose output
+is an integer derived from a 3σ test on a σ that is itself known to ±22 % — and whose cost
+swings from −0.04 to −0.45 depending on whether that integer is 8 or 6 — is not a rule to
+quantize a network by. The robust statement is the direct one: at the measured σ, keeping
+all 15 levels costs 0.001, so keep them.
 
-This is the **third** time in Phase 6 that a level-distinguishability statistic failed to
-predict accuracy — after RR-8's ensemble overlap (§6.4a) and the post-gain-trim overlap
-(§6.4b). The consistent finding across all three: **overlap and separability describe
-readout addressing, not deployed-weight error, and only the latter moves the classifier.**
+The underlying reason separability is the wrong test is unchanged. It asks whether a level
+can be distinguished from its neighbour **on readout**; the network only requires the
+realized weight to sit near its target, and levels that overlap under noise remain monotonic
+and still carry weight information. This is the **third** independent case in Phase 6 of a
+level-distinguishability statistic failing to predict accuracy — after RR-8's ensemble
+overlap (§6.4a) and the post-gain-trim overlap (§6.4b). Consistently: **overlap and
+separability describe readout addressing, not deployed-weight error, and only the latter
+moves the classifier.**
 
-One detail worth not over-reading: the 6-level series is *non-monotonic* in σ (0.351 →
-0.408 → 0.388 → 0.440 → 0.444). Noise dithers a grid too coarse to represent the weights,
-which occasionally helps — the same erratic sub-8-level behaviour K2 found, and not a
-result to build on.
+One detail not to over-read: deep in the collapse (σ = 0.2) the 8-level grid slightly beats
+the 15-level one (0.4415 vs 0.3919). A coarser grid is more noise-robust once noise exceeds
+level spacing — but both are far below usable accuracy there, so it is not a design argument.
 
-**Caveat carried into the paper:** 4 repeats is thin, and σ is known only to ±41 %. The
-claim being made is bounded — *at and around the measured σ, cycle-to-cycle costs
-essentially nothing* — not a precise σ. A completed 20-repeat run would tighten σ but
-cannot change that conclusion unless the true σ is ~3× the measured one.
+**Caveat carried into the paper:** 11 repeats, not the 20 queued, and σ is known to ±22 %.
+The claim is bounded — *at and around the measured σ, cycle-to-cycle costs essentially
+nothing* — not a precise σ. A completed run would tighten σ but cannot change that unless the
+true σ is ~5× the measured one.
 
 ---
 

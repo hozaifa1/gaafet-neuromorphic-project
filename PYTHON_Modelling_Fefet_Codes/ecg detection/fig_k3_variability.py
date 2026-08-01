@@ -49,14 +49,21 @@ K3b  cycle-to-cycle (RR-8b, `raw/c2c_per_level.csv`).
      kfig_common.paired_branches. On this ladder that matters -- (G+ + G-)/|w| reaches 4.8
      for weights like +-0.344 that can only be built as 1.000 - 0.656.
 
-     RESULT (t17_c2c, capped at 4 complete repeats, median sigma 0.0358 dec): the 15-level
-     grid loses 0.002 accuracy at the measured sigma (0.8304 -> 0.8284) and does not knee
-     until sigma ~ 0.1-0.2. Quantizing to the 6 levels that pass the 3-sigma criterion
-     costs 0.42-0.48 instead. So do NOT quantize to the separable-level count: separability
+     RESULT (t17_c2c, capped at 11 complete repeats of 20, median sigma 0.0215 dec, s.e.
+     ~22 %): the 15-level grid loses 0.001 accuracy at the measured sigma (0.8304 ->
+     0.8294) and does not knee until sigma ~ 0.1-0.2, i.e. 5-9x the measurement.
+     Quantizing to the 8 levels that pass the 3-sigma criterion costs 0.036 instead.
+
+     Do NOT quantize to the separable-level count, for two reasons. First, separability
      asks whether a level can be told apart from its neighbour on READOUT, while the
      network only needs the realized weight near the target, and levels that overlap under
-     noise are still monotonic and still carry weight information. This is the third place
-     in Phase 6 where a level-distinguishability statistic fails to predict accuracy.
+     noise are still monotonic and still carry weight information -- the third place in
+     Phase 6 where a level-distinguishability statistic fails to predict accuracy. Second,
+     and more practically, the criterion's OUTPUT IS UNSTABLE: an earlier pass on a partial
+     download saw 4 repeats, put sigma at 0.0358 and the count at 6, and 6 lands in the
+     catastrophic regime K2 mapped -- so the same rule would have cost 0.42 instead of
+     0.036. A design rule whose penalty swings an order of magnitude on which integer a
+     3-sigma test returns, from a sigma known to +-22 %, is not one to quantize by.
 
     python fig_k3_variability.py d2d     # K3a: 20 corners, no calibration vs write-verify
     python fig_k3_variability.py gain    # K3a: adds the gain-trim condition

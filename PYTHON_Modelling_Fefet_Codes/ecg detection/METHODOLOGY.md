@@ -289,12 +289,13 @@ shared grid cannot uniquely address a level, not that the deployed weight is wro
 to matter.
 
 **Cycle-to-cycle — figure K3b.** RR-8b repeats the same 15-pulse train on one device, which
-*is* a σ. The run was capped by the 2 h worker limit after 4 complete repeats of 20, giving
-a median σ = **0.0358 decades** known to ≈±41 %. At that σ the deployed 15-level network
-loses **0.002 accuracy** (0.8304 → 0.8284) and does not knee until σ ≈ 0.1–0.2, i.e. 3–6×
-the measured value; the conclusion survives the thin statistics, since even at σ = 0.05
-(≈ +1 s.e.) accuracy is 0.8175. Restricting the grid instead to the **6 levels that pass the
-3σ separability criterion costs 0.42–0.48 accuracy**. Separability asks whether a level can
+*is* a σ. The run was capped by the 2 h worker limit after **11 complete repeats** of 20,
+giving a median σ = **0.0215 decades** known to ≈±22 %. At that σ the deployed 15-level
+network loses **0.001 accuracy** (0.8304 → 0.8294) and does not knee until σ ≈ 0.1–0.2, i.e.
+5–9× the measured value; even at σ = 0.05 (≈ +2 s.e.) accuracy is still 0.8175. Restricting
+the grid instead to the **8 levels that pass the 3σ separability criterion costs 0.036**
+(0.8294 → 0.7937) — and that criterion's output is itself unstable, having returned 6 levels
+on a partial 4-repeat pass where the same rule would have cost 0.42. Separability asks whether a level can
 be distinguished from its neighbour on readout; the network only requires the realized
 weight to sit near its target, and levels that overlap under noise remain monotonic and
 still carry weight information. Across K3a, K3c and K3b alike, level-distinguishability
