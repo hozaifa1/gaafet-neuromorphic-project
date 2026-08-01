@@ -665,6 +665,34 @@ def rr8():
     _emit(sp, RAW / "variability_per_level.csv",
           "RR-8 per-level corner envelope (SNN d2d input)")
     print(sp.to_string(index=False))
+    # Which axis dominates?  The ensemble is a 3x3x3 corner design, so the effect
+    # of each parameter can be read off directly by grouping.  This is the
+    # actionable part: if one axis carries the spread, the manufacturing spec has
+    # one line in it rather than three.
+    import itertools
+    dits = [3.2e12, 4.0e12, 4.8e12]
+    fixqs = [6.3e12, 7.0e12, 7.7e12]
+    tfes = [6.7, 7.0, 7.3]
+    combos = [c for c in itertools.product(range(3), repeat=3) if c != (1, 1, 1)]
+    combos = [c for c in combos if sum(1 for x in c if x != 1) >= 2][:20]
+    lbl = {f"v_{i:02d}": c for i, c in enumerate(combos, start=1)}
+    if set(out.node) <= set(lbl):
+        mid = cols[len(cols) // 2]                     # a representative mid level
+        o = out.copy()
+        o["Dit"] = [dits[lbl[n][0]] for n in o.node]
+        o["Qf"] = [fixqs[lbl[n][1]] for n in o.node]
+        o["T_fe_nm"] = [tfes[lbl[n][2]] for n in o.node]
+        print()
+        print(f"  dominant-axis decomposition at level {mid[1:].split('_')[0]} "
+              f"(log10 spread of the group medians):")
+        for ax in ("Dit", "Qf", "T_fe_nm"):
+            med = o.groupby(ax)[mid].median()
+            rng = float(np.log10(med.max() / med.min()))
+            detail = "  ".join(f"{k:g}:{v:.3g}" for k, v in med.items())
+            print(f"    {ax:8s} {rng:5.2f} dec   {detail}")
+        print("    (compare with the full corner half-spread "
+              f"{float(sp.log10_halfspread.iloc[len(cols) // 2]):.2f} dec)")
+
     n_ov = int(sp.overlaps_prev.sum())
     print()
     print(f"  {len(out)} of 20 corner runs analysed.")

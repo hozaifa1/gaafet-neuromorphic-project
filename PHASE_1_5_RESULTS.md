@@ -64,7 +64,7 @@ current, the eCurrent/hCurrent split, source-contact balance — are now availab
 | **RR-4** retention | settles in ~5 τ_P then flat to 0.62–0.96 % over 2.3 decades |
 | **RR-6** 2D maps | 104 CSVs; window visible as 4.4 decades of channel carrier density |
 | **RR-7** design space | all 25 cells; ≤30 ns does not program at any voltage |
-| **RR-8** variability | all 14 adjacent level pairs overlap across the corner box |
+| **RR-8** variability | all 14 level pairs overlap; **FixedCharge dominates, T_fe is negligible** |
 | **RR-9** read disturb | **0.0000 %** over 9.9e5 equivalent reads |
 | **RR-10** Areafactor sanity | rescale exact to **1.8e-16** (double-precision epsilon) |
 
@@ -86,6 +86,30 @@ by the same node at 0.071 gives **0.633802816901** against an expected
 is the methods-section answer to "why did you not re-run everything after changing
 the normalization": Areafactor is a pure post-multiplier on contact quantities and
 the correction is exact arithmetic.
+
+### RR-8 — the variability is an interface-charge problem, not a thickness problem
+All 20 corners in. At LTP level 8 the corner spread decomposes as:
+
+| axis | perturbation | spread of group medians |
+|---|---|---|
+| **FixedCharge** | ±10 % | **1.31 decades** |
+| Dit | ±20 % | 0.85 decades |
+| T_fe | ±0.3 nm | **0.07 decades** |
+
+This was the opposite of the expectation — HZO thickness sets the coercive
+voltage, so it looked like the obvious lever — and it is the most directly
+actionable result in the whole set: **analog level placement is set by interface
+charge control, not by ferroelectric thickness control.** A ±0.3 nm HZO tolerance
+costs 0.07 decades; ±10 % of fixed interface charge costs 1.31. An
+order-of-magnitude check agrees: ΔQ_f = 0.7e12 cm⁻² over C_ox(1 nm) is ~32 mV of
+V_t shift, roughly half a decade at 63 mV/dec, rising once the FE divider is
+included.
+
+What the overlap does and does not mean is in §5 of the analysis output: it
+invalidates a *shared* quantization grid across devices, but each device stays
+internally monotonic, so per-device write-verify recovers the levels. The
+variation that would actually destroy analog depth is cycle-to-cycle, which this
+ensemble does not measure.
 
 ### C2 is resolved, and was never an inconsistency
 The three "erased at V_G = 0" values differ by post-write settling time:
