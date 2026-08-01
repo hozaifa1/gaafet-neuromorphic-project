@@ -17,6 +17,7 @@ Where a fast voltage ramp is involved the CONDUCTION current (eCurrent +
 hCurrent) is used, not TotalCurrent, so the dV/dt displacement term through the
 gate-drain overlap is removed exactly instead of being argued away.
 """
+import re
 import sys
 from pathlib import Path
 
@@ -167,6 +168,19 @@ def pulse_span(g, lo=0.1, hi=0.9):
         gn = gn[::-1]
     n = np.arange(1, len(gn) + 1)
     return float(np.interp(hi, gn, n) - np.interp(lo, gn, n))
+
+
+def _is_train(d):
+    """True if an endurance node was produced by the 15-pulse TRAIN deck.
+
+    Two superseded versions cycled with ONE pulse per polarity (prefixes c<N>p_,
+    c<N>ph_, c<N>e_, c<N>eh_) and neither actually switched the device -- erase is
+    opposed by the depolarization field, and RR-3 measures the first -2 V pulse
+    moving the state only 18 %. Their window numbers are incomplete switching, not
+    endurance, and analysing them resurrects exactly the fabricated degradation
+    curve this guard exists to prevent. The train deck writes c<N>p00_ .. c<N>p14_.
+    """
+    return any(re.match(r"c\d+p\d\d_", f.name) for f in d.glob("*.plt"))
 
 
 def _emit(df, path, label):
@@ -558,6 +572,13 @@ def rr5(nodes=("t14_end10", "t14_end100", "t14_end1000")):
         d = OUTPUTS / node
         if not d.exists():
             print(f"rr5: no data for {node} yet")
+            continue
+        if not _is_train(d):
+            print(f"  SKIP {node}: single-pulse deck (superseded). One pulse per")
+            print("       polarity does not switch this device -- erase is opposed by")
+            print("       the depolarization field (RR-3: the first -2 V pulse moves")
+            print("       the state only 18 %). Its window numbers are incomplete")
+            print("       switching, not endurance. Re-run the 15-pulse train deck.")
             continue
         for f in sorted(d.glob(f"w*_ers_{node}_des.plt")):
             c = int(f.name.split("_")[0][1:])
