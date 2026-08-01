@@ -274,18 +274,30 @@ def ret_levels(node="t12_ret15", n_lvl=15, t_hold=1e-3, V_pgm=2.0, V_ers=-2.0,
 
 
 # ---------------------------------------------------------------- RR-5: endurance
-def endurance(node="t14_end10", n_cycles=10, V_pgm=2.0, V_ers=-2.0, t_p=1e-6,
-              VREAD=0.0, read_at=(1, 10, 100, 1000, 10000), **kw):
+def endurance(node="t14_end10", n_cycles=10, V_pgm=2.0, V_ers=-2.0, t_p=5e-6,
+              t_settle=200e-6, VREAD=0.0, read_at=(1, 10, 100, 1000, 10000), **kw):
     """n_cycles of +-2.0 V / 1 us program-erase, with a retained window read at
     each decade.
 
-    HONEST CAVEAT, and it must go in the caption: the Sentaurus Preisach model
-    has no fatigue, no wake-up and no imprint term.  Cycling it cannot produce
-    window closure -- any flatness here is a property of the model, not evidence
-    that the device is immune to degradation.  What this run legitimately shows
-    is that the *numerics* are cycle-stable (no drift, no accumulation of solver
-    error) and that the switched charge per cycle is reproducible.  Real
-    endurance is a measurement, not a TCAD result.
+    Each cycle is a FULL write (5 us per polarity, the same write every published
+    window number uses), and each window read is taken after a 200 us settle.
+    Both matter, and the first version of this deck got both wrong:
+
+      * with a single 1 us pulse per polarity the device does not fully switch,
+        so residual state ratchets up cycle on cycle. The erased floor climbed
+        0.042 -> 22.1 uA/um in ten cycles and the window "collapsed" 539x ->
+        1.5x. That is incomplete switching, not fatigue, and presenting it as an
+        endurance curve would have been a fabricated degradation result.
+      * reading immediately after the write measures the tau_P transient rather
+        than the retained state (see RR-4 and RR-9, where the same mistake
+        produced a 9x fall and a fake -84.7 % "read disturb").
+
+    HONEST CAVEAT for the caption regardless: the Sentaurus Preisach model has
+    no fatigue, no wake-up and no imprint term. Cycling it cannot produce
+    intrinsic window closure -- flatness here is a property of the model, not
+    evidence the device is immune to degradation. What this run legitimately
+    shows is that a full-strength write is cycle-repeatable and that the
+    switched charge per cycle is stable. Real endurance is a measurement.
     """
     s = head(node, VREAD=VREAD, **kw)
     t = 0.0
@@ -298,13 +310,19 @@ def endurance(node="t14_end10", n_cycles=10, V_pgm=2.0, V_ers=-2.0, t_p=1e-6,
         s += _hold(f"c{c}eh_", t3, t4, intervals=0, maxstep=t_p / 4)
         t = t4
         if c in read_at:
-            # window read: erased level, then program, then programmed level
+            # window read: settle, read the erased level, program, settle, read on
             s += _goal(f"w{c}_g0a_", t, t + 1e-9, "gate_contact", VREAD)
             t += 1e-9
+            s += _hold(f"w{c}_settle_e_", t, t + t_settle, intervals=0,
+                       maxstep=t_settle / 20)
+            t += t_settle
             s += _hold(f"w{c}_ers_", t, t + 100e-9, intervals=8)
             t += 100e-9
-            a, t = _write(f"w{c}_pgm_", t, V_pgm, t_p * 5, VREAD)
+            a, t = _write(f"w{c}_pgm_", t, V_pgm, t_p, VREAD)
             s += a
+            s += _hold(f"w{c}_settle_p_", t, t + t_settle, intervals=0,
+                       maxstep=t_settle / 20)
+            t += t_settle
             s += _hold(f"w{c}_on_", t, t + 100e-9, intervals=8)
             t += 100e-9
     return s + "}\n"
