@@ -31,11 +31,22 @@ K3c  what the gain trim leaves. Each corner ladder is a near-rigid log-shift of 
      a level-placement spec rather than a restatement of "the levels overlap".
 
 K3b  cycle-to-cycle (RR-8b, `raw/c2c_per_level.csv`).
-     The SAME device, the SAME 15-pulse train, 20 repeats. That IS a sigma, so it is the
+     The SAME device, the SAME 15-pulse train, repeated. That IS a sigma, so it is the
      legitimate stochastic input. Accuracy vs injected c2c sigma, with the MEASURED sigma
      marked, and a second series quantized only to the levels that pass the 3-sigma
      separability criterion -- levels failing it cannot be rescued by write-verify,
      because c2c blurs the rungs instead of shifting the ladder.
+
+     The repeat count is READ FROM THE DATA, not assumed to be the 20 that were queued: the
+     worker caps a job at 2 h and rr8b drops any repeat that did not finish all 15 pulses.
+     Sigma from n repeats has a relative standard error of 1/sqrt(2(n-1)) -- 20 % at n = 13
+     -- and the usable-level count comes from a 3-sigma criterion, so that uncertainty
+     propagates into it. The count is therefore reported with the range it spans when sigma
+     is scaled by (1 +- that s.e.), not as a bare integer.
+
+     Note on the noise model: c2c is applied to each CONDUCTANCE, not to the weight, via
+     kfig_common.paired_branches. On this ladder that matters -- (G+ + G-)/|w| reaches 4.8
+     for weights like +-0.344 that can only be built as 1.000 - 0.656.
 
     python fig_k3_variability.py d2d     # K3a: 20 corners, no calibration vs write-verify
     python fig_k3_variability.py gain    # K3a: adds the gain-trim condition
@@ -275,8 +286,23 @@ def c2c():
     per = pd.read_csv(p)
     sigma_meas = float(np.median(per["sigma_log10"]))          # log10 units
     n_usable = int(per["separable_from_prev"].iloc[1:].sum()) + 1
-    print(f"[K3b] measured c2c: median sigma = {sigma_meas:.4f} decades, "
-          f"usable levels at 3-sigma = {n_usable}/{len(per)}", flush=True)
+
+    # How many repeats is that sigma built from, and how well is sigma itself known?
+    # For a normal sample the relative standard error of the sample s.d. is
+    # 1/sqrt(2(n-1)) -- 20 % at n = 13. The usable-level count comes from a 3-sigma
+    # criterion, so that uncertainty propagates straight into it and the count has to be
+    # quoted with its sensitivity rather than as a single integer.
+    ens_p = os.path.join(RAW, "c2c_ensemble.csv")
+    n_rep = int(pd.read_csv(ens_p)["repeat"].nunique()) if os.path.exists(ens_p) else 0
+    rse = 1.0 / np.sqrt(2 * (n_rep - 1)) if n_rep > 1 else float("nan")
+    sp, sd = per["spacing_log10"].to_numpy(), per["sigma_log10"].to_numpy()
+    band = {}
+    for tag, k in (("pessimistic", 1 + rse), ("nominal", 1.0), ("optimistic", 1 - rse)):
+        band[tag] = int(np.nansum(sp[1:] > 3 * k * sd[1:])) + 1 if n_rep > 1 else n_usable
+    print(f"[K3b] measured c2c: median sigma = {sigma_meas:.4f} decades from {n_rep} "
+          f"complete repeats (relative s.e. of sigma ~{rse*100:.0f} %)", flush=True)
+    print(f"[K3b] usable levels at 3 sigma = {n_usable}/{len(per)}; sensitivity to the "
+          f"sigma uncertainty: {band['pessimistic']} - {band['optimistic']}", flush=True)
 
     model, fp_state, ev = kc.setup()
     lv_nom, _, gmax_nom = measured_levels()
@@ -330,7 +356,9 @@ def c2c():
                 ["grid", "sigma_log10", "accuracy_mean", "accuracy_std",
                  "macro_f1_mean", "macro_f1_std"], rows)
     json.dump({"sigma_measured_log10": sigma_meas, "n_usable_levels": n_usable,
-               "rows": rows}, open(os.path.join(kc.RUNS, "k3b_c2c.json"), "w"), indent=2)
+               "n_complete_repeats": n_rep, "sigma_relative_se": rse,
+               "usable_levels_sensitivity": band, "rows": rows},
+              open(os.path.join(kc.RUNS, "k3b_c2c.json"), "w"), indent=2)
     print("[K3b] wrote", kc.OUT)
 
 
