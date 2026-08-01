@@ -10,6 +10,12 @@ figure is measured with exactly the physics that produced the existing deck.
   ret_levels  RR-4  15 LTP levels each held 1 ms (multi-level retention)
   endurance   RR-5  N program/erase cycles with a window read after each decade
   disturb     RR-9  continuous read bias equivalent to 1e6 back-to-back reads
+
+TIME PRECISION: timestamps are written with 12 significant digits, not 6.  With
+`%.6e` a 1 ns rise added to an absolute time of 10 ms rounds away entirely --
+1.0015e-2 + 1e-9 prints as 1.001500e-02, identical to the previous stamp -- and
+sdevice aborts with "Non-increasing time specification detected".  That killed
+t12_ret15 (15 x 1 ms holds) and would have killed every endurance deck.
 """
 import norm
 from lifgen import BASE, ERASE, HEAD
@@ -26,7 +32,7 @@ def head(node, tdr="fe07_msh.tdr", par="app_opt.par", WF=4.35, VREAD=0.0,
 
 def _goal(prefix, t0, t1, electrode, v, extra=""):
     return (f'  NewCurrentPrefix="{prefix}"\n'
-            f'  Transient ( InitialTime={t0:.6e} FinalTime={t1:.6e} {RAMP} Increment=1.4'
+            f'  Transient ( InitialTime={t0:.12e} FinalTime={t1:.12e} {RAMP} Increment=1.4'
             f' Goal {{ Name="{electrode}" Voltage= {v} }} ) {{'
             f' Coupled (Iterations=100) {{Poisson Electron Hole}}{extra} }}\n')
 
@@ -43,10 +49,10 @@ def _hold(prefix, t0, t1, intervals=0, maxstep=None):
     converge at that floor it fails loudly instead of crawling for two hours.
     """
     ms = maxstep if maxstep is not None else max((t1 - t0) / 10, 1e-12)
-    plot = (f'\n      CurrentPlot( Time = (Range=({t0:.6e} {t1:.6e}) Intervals={intervals}) )'
+    plot = (f'\n      CurrentPlot( Time = (Range=({t0:.12e} {t1:.12e}) Intervals={intervals}) )'
             if intervals else "")
     return (f'  NewCurrentPrefix="{prefix}"\n'
-            f'  Transient ( InitialTime={t0:.6e} FinalTime={t1:.6e}'
+            f'  Transient ( InitialTime={t0:.12e} FinalTime={t1:.12e}'
             f' InitialStep={ms / 100:.3e} MaxStep={ms:.3e} MinStep={ms / 1e4:.3e}'
             f' Increment=2.0 ) {{'
             f' Coupled (Iterations=100) {{Poisson Electron Hole}}{plot} }}\n')
@@ -68,15 +74,15 @@ def _ptsweep(prefix, t0, electrode, values, t_hold=50e-9, hop=1e-8):
     s, t = "", t0
     for i, v in enumerate(values):
         s += (f'  NewCurrentPrefix="{prefix}s{i:03d}_"\n'
-              f'  Transient ( InitialTime={t:.6e} FinalTime={t + hop:.6e} {RAMP}'
+              f'  Transient ( InitialTime={t:.12e} FinalTime={t + hop:.12e} {RAMP}'
               f' Increment=1.4 Goal {{ Name="{electrode}" Voltage= {v} }} ) {{'
               f' Coupled (Iterations=100) {{Poisson Electron Hole}} }}\n')
         t += hop
         s += (f'  NewCurrentPrefix="{prefix}{i:03d}_"\n'
-              f'  Transient ( InitialTime={t:.6e} FinalTime={t + t_hold:.6e}'
+              f'  Transient ( InitialTime={t:.12e} FinalTime={t + t_hold:.12e}'
               f' InitialStep=1e-11 MaxStep={t_hold / 10:.3e} MinStep=1e-15 Increment=1.4 ) {{'
               f' Coupled (Iterations=100) {{Poisson Electron Hole}}\n'
-              f'      CurrentPlot( Time = (Range=({t:.6e} {t + t_hold:.6e}) Intervals=5) ) }}\n')
+              f'      CurrentPlot( Time = (Range=({t:.12e} {t + t_hold:.12e}) Intervals=5) ) }}\n')
         t += t_hold
     return s, t
 

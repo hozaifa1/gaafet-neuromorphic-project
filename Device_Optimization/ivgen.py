@@ -63,7 +63,7 @@ if __name__ == "__main__":
     c = gen("fe07", 0.007, node="iv_fe07b", par="app_iv_fe07b.par")
     assert "@" not in c, "stray @ would break SWB token substitution"
     assert "app_frozen" not in c
-    assert c.count("Save ( FilePrefix") == 2
+    assert c.count("Plot ( FilePrefix") == 2   # Plot, not Save: Save writes .sav, not .tdr
     # 1 drain_bias_ + per state (w_rise, w_hold) + per state per read point (rset, read)
     assert c.count("NewCurrentPrefix") == 1 + 2 * (2 + 2 * len(VGS)), c.count("NewCurrentPrefix")
     # no fine-stepped Goal ramp may survive: every gate transition is instant

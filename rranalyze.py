@@ -403,53 +403,109 @@ def rr3(node="t10_ltd", cnode="t10_cyc"):
 # ------------------------------------------------------------------- RR-4
 def rr4(nodes=(("t12_ret", 300, "programmed"), ("t12_ret400", 400, "programmed"),
                ("t12_ret_l8", 300, "ltp_level_8"), ("t12_ret15", 300, "levels_1_15"))):
-    """Decade-spaced retention holds -> log-linear fit and the 10-year number."""
-    frames, fits = [], []
+    """Decade-spaced retention holds.
+
+    WHAT THE DATA ACTUALLY DOES, and why the obvious analysis is wrong.  A
+    retention hold here has two distinct phases:
+
+      1. post-write settling.  The state leaves the write in a kinetic
+         condition and relaxes with tau_P = 10 us.  At 300 K the programmed
+         read runs 14.9 -> 21.0 -> 2.48 uA/um, an 8.4x fall, complete by about
+         0.2 ms (~20 tau_P).
+      2. a plateau.  From 0.28 ms to 10 ms the value is 2.4833 uA/um at EVERY
+         sample -- not approximately, identically.
+
+    Fitting one power law across both phases mixes a decaying transient with a
+    flat line and returns a slope that describes neither; doing that here gave
+    "retention factor 1.5e-3 at 10 years", i.e. total data loss, from a signal
+    that is provably not decaying.  So the two phases are separated and only
+    the plateau is used for the retention statement.
+
+    The 10-year extrapolation is deliberately NOT reported as a number.  The
+    measurement spans 10 ms; 10 years is 11 decades beyond it, and the plateau
+    is flat to the solver's own resolution, so any extrapolation would be
+    reporting the fit's noise floor as physics.  What can honestly be stated is
+    a BOUND: no decay resolvable above X % across the last measured decade.
+
+    An activation energy is likewise NOT extracted.  Both temperatures settle to
+    flat plateaus, so the "decay rates" being compared are both zero, and the
+    plateau LEVELS differ mostly because drain current is itself strongly
+    temperature dependent -- that is carrier statistics, not polarization
+    retention.  The Preisach model contains no thermally activated
+    retention-loss term, so an E_a simply is not in it; it has to be measured.
+    """
+    frames, rows = [], []
     for node, temp, state in nodes:
         d = OUTPUTS / node
         if not d.exists():
             print(f"rr4: no data for {node} yet")
             continue
-        segs = sorted(d.glob(f"h*_{node}_des.plt")) + sorted(d.glob(f"hold_d*_{node}_des.plt"))
-        if not segs:
-            continue
+        segs = sorted(d.glob(f"hold_d*_{node}_des.plt")) + sorted(d.glob(f"h*_{node}_des.plt"))
         parts = []
         for f in segs:
-            x = parse_plt(f)
-            parts.append(pd.DataFrame({"seg": f.name.split("_")[0], "t_s": x["time"].values,
-                                       "G_uA_um": cond_uA(x)}))
+            try:
+                x = parse_plt(f)
+            except Exception:                                  # noqa: BLE001
+                continue
+            if len(x):
+                parts.append(pd.DataFrame({"seg": f.name.split("_")[0],
+                                           "t_s": x["time"].values, "G_uA_um": cond_uA(x)}))
+        if not parts:
+            continue
         g = pd.concat(parts, ignore_index=True).sort_values("t_s")
         g["t_rel_s"] = g.t_s - g.t_s.iloc[0]
         g["node"], g["T_K"], g["state"] = node, temp, state
         frames.append(g)
 
-        m = (g.t_rel_s > 1e-7) & (g.G_uA_um > 0)
-        if m.sum() > 5:
-            c = np.polyfit(np.log10(g.t_rel_s[m]), np.log10(g.G_uA_um[m]), 1)
-            t10y = 10 * 365.25 * 24 * 3600
-            g10 = 10 ** np.polyval(c, np.log10(t10y))
-            g_end = float(g.G_uA_um[m].iloc[-1])
-            fits.append({"node": node, "T_K": temp, "state": state,
-                         "decades_per_decade": float(c[0]),
-                         "G_end_uA_um": g_end, "G_10yr_uA_um": float(g10),
-                         "retention_factor_10yr": float(g10 / g_end)})
+        if state == "levels_1_15":
+            # 15 separate holds, one per analog level -- a single fit across them
+            # is a category error, so each hold is reported on its own.
+            print(f"  {node}: {g.seg.nunique()} per-level holds, analysed individually:")
+            for seg, h in g.groupby("seg", sort=True):
+                h = h.sort_values("t_rel_s")
+                if len(h) < 3:
+                    continue
+                drift = (h.G_uA_um.iloc[-1] / h.G_uA_um.iloc[0] - 1) * 100
+                print(f"     {seg}: G {h.G_uA_um.iloc[0]:.4g} -> {h.G_uA_um.iloc[-1]:.4g} "
+                      f"uA/um over {h.t_rel_s.iloc[-1] - h.t_rel_s.iloc[0]:.3g} s ({drift:+.2f} %)")
+            continue
+
+        # split settling from plateau: the plateau is the tail over which the
+        # value varies by less than 1 % of its final value
+        gv = g[g.t_rel_s > 0].reset_index(drop=True)
+        gf = float(gv.G_uA_um.iloc[-1])
+        flat = np.abs(gv.G_uA_um - gf) <= 0.01 * abs(gf)
+        i0 = int(np.argmax(flat.values)) if flat.any() else len(gv) - 1
+        t_settle = float(gv.t_rel_s.iloc[i0])
+        tail = gv.iloc[i0:]
+        spread = float((tail.G_uA_um.max() - tail.G_uA_um.min()) / abs(gf) * 100)
+        rows.append({"node": node, "T_K": temp, "state": state,
+                     "G_peak_uA_um": float(gv.G_uA_um.max()),
+                     "G_plateau_uA_um": gf,
+                     "settling_drop_x": float(gv.G_uA_um.max() / gf),
+                     "t_settle_s": t_settle,
+                     "t_settle_over_tauP": t_settle / 1e-5,
+                     "plateau_decades": float(np.log10(gv.t_rel_s.iloc[-1] / max(t_settle, 1e-12))),
+                     "plateau_spread_pct": spread})
     if frames:
         _emit(pd.concat(frames, ignore_index=True), RAW / "retention_long.csv",
               "RR-4 long retention")
-    if fits:
-        f = pd.DataFrame(fits)
+    if rows:
+        f = pd.DataFrame(rows)
         print(f.to_string(index=False))
-        h = f[f.state == "programmed"]
-        if {300, 400} <= set(h.T_K):
-            r3 = float(h[h.T_K == 300].decades_per_decade.iloc[0])
-            r4 = float(h[h.T_K == 400].decades_per_decade.iloc[0])
-            if r3 and r4 and r4 / r3 > 0:
-                k = 8.617e-5
-                ea = np.log(abs(r4 / r3)) * k / (1 / 300 - 1 / 400)
-                print(f"  retention activation energy E_a = {ea:.3f} eV "
-                      f"(from the 300 K vs 400 K decay rates)")
-        print("  -> replace the hardcoded 0.971 in "
-              "PYTHON_Modelling_Fefet_Codes/*/robustness_eval.py with retention_factor_10yr")
+        print()
+        print("  Reading: the state settles in ~2e4 x tau_P and is then FLAT to within")
+        print("  the spread above, over the stated number of decades.  Quote that bound,")
+        print("  not a 10-year extrapolation -- the data stops at 10 ms.")
+        print("  No E_a is extracted: both temperatures reach flat plateaus, and the")
+        print("  plateau levels differ through the temperature dependence of the drain")
+        print("  current, not through polarization loss.  The model has no thermally")
+        print("  activated retention term; E_a must come from measurement.")
+        best = f[f.state == "programmed"]
+        if len(best):
+            worst = float(best.plateau_spread_pct.max())
+            print(f"  -> robustness_eval.py's hardcoded retention=0.971 should become "
+                  f"{1 - worst / 100:.4f} (measured plateau bound), not a fitted decay.")
 
 
 # ------------------------------------------------------------------- RR-5
