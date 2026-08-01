@@ -564,7 +564,7 @@ but the node needs `plt2csv.py` first; `RR-n` = needs the re-run in Part IV;
 | K2 | SNN accuracy vs number of conductance levels (2…15), two grid constructions + grid-choice band | `ecg detection/fig_k2_levels.py` | **DONE** — `K2_accuracy_vs_levels.{png,csv}` |
 | K3a | SNN accuracy vs **per-device calibration** across the 20 RR-8 corner devices (none 0.243 / gain trim 0.777 / full write-verify 0.830) | `fig_k3_variability.py d2d`, `gain` | **DONE** — `K3a_accuracy_vs_calibration.{png,csv}` |
 | K3c | SNN accuracy vs the level misplacement a gain trim leaves — the placement spec (Spearman −0.85) | `fig_k3_variability.py ladder`, `shape` | **DONE** — `K3c_accuracy_vs_shape_error.{png,csv}`, `K3a_ladder_shift.csv`, `K3a_overlap_after_gain_trim.csv` |
-| K3b | SNN accuracy vs **measured cycle-to-cycle σ** (RR-8b), 15-level vs usable-level grid | `fig_k3_variability.py c2c` + `raw/c2c_per_level.csv` | needs `t17_c2c` |
+| K3b | SNN accuracy vs **measured cycle-to-cycle σ** (RR-8b), 15-level vs usable-level grid | `fig_k3_variability.py c2c` + `raw/c2c_per_level.csv` | **DONE** — `K3b_accuracy_vs_c2c.{png,csv}`; σ=0.0358 dec costs 0.002 accuracy, the 6-level "usable" grid costs 0.42–0.48 |
 | K4 | Energy per inference breakdown — device write vs read vs peripheral, all counts measured | `fig_k4_energy.py` | **DONE** — `K4_energy_per_inference.{png,csv}` |
 
 K3 split into two panels in Phase 6: RR-8 is a **corner envelope** (worst case, never a

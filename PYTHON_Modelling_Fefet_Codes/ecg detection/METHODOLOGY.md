@@ -288,6 +288,20 @@ ensemble* while several of those corners deliver nominal accuracy: ensemble over
 shared grid cannot uniquely address a level, not that the deployed weight is wrong enough
 to matter.
 
+**Cycle-to-cycle — figure K3b.** RR-8b repeats the same 15-pulse train on one device, which
+*is* a σ. The run was capped by the 2 h worker limit after 4 complete repeats of 20, giving
+a median σ = **0.0358 decades** known to ≈±41 %. At that σ the deployed 15-level network
+loses **0.002 accuracy** (0.8304 → 0.8284) and does not knee until σ ≈ 0.1–0.2, i.e. 3–6×
+the measured value; the conclusion survives the thin statistics, since even at σ = 0.05
+(≈ +1 s.e.) accuracy is 0.8175. Restricting the grid instead to the **6 levels that pass the
+3σ separability criterion costs 0.42–0.48 accuracy**. Separability asks whether a level can
+be distinguished from its neighbour on readout; the network only requires the realized
+weight to sit near its target, and levels that overlap under noise remain monotonic and
+still carry weight information. Across K3a, K3c and K3b alike, level-distinguishability
+statistics do not predict accuracy — deployed-weight error does. Noise is applied to each
+conductance rather than to the weight, which matters here because (G⁺+G⁻)/|w| reaches 4.8
+for weights that can only be formed as the difference of two large conductances.
+
 Per-class on-device (Se / +P / F1): **N 0.906 / 0.969 / 0.937**, F 0.868 / 0.589 / 0.702,
 SVEB 0.475 / 0.760 / 0.585, VEB 0.828 / 0.758 / 0.791.
 

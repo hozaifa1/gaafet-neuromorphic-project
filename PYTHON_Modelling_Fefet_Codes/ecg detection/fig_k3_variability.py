@@ -34,8 +34,9 @@ K3b  cycle-to-cycle (RR-8b, `raw/c2c_per_level.csv`).
      The SAME device, the SAME 15-pulse train, repeated. That IS a sigma, so it is the
      legitimate stochastic input. Accuracy vs injected c2c sigma, with the MEASURED sigma
      marked, and a second series quantized only to the levels that pass the 3-sigma
-     separability criterion -- levels failing it cannot be rescued by write-verify,
-     because c2c blurs the rungs instead of shifting the ladder.
+     separability criterion. Unlike d2d, c2c blurs the rungs of one device rather than
+     shifting its ladder, so write-verify cannot recover a level that fails the criterion
+     -- but see the RESULT below for why failing that criterion turns out not to matter.
 
      The repeat count is READ FROM THE DATA, not assumed to be the 20 that were queued: the
      worker caps a job at 2 h and rr8b drops any repeat that did not finish all 15 pulses.
@@ -47,6 +48,15 @@ K3b  cycle-to-cycle (RR-8b, `raw/c2c_per_level.csv`).
      Note on the noise model: c2c is applied to each CONDUCTANCE, not to the weight, via
      kfig_common.paired_branches. On this ladder that matters -- (G+ + G-)/|w| reaches 4.8
      for weights like +-0.344 that can only be built as 1.000 - 0.656.
+
+     RESULT (t17_c2c, capped at 4 complete repeats, median sigma 0.0358 dec): the 15-level
+     grid loses 0.002 accuracy at the measured sigma (0.8304 -> 0.8284) and does not knee
+     until sigma ~ 0.1-0.2. Quantizing to the 6 levels that pass the 3-sigma criterion
+     costs 0.42-0.48 instead. So do NOT quantize to the separable-level count: separability
+     asks whether a level can be told apart from its neighbour on READOUT, while the
+     network only needs the realized weight near the target, and levels that overlap under
+     noise are still monotonic and still carry weight information. This is the third place
+     in Phase 6 where a level-distinguishability statistic fails to predict accuracy.
 
     python fig_k3_variability.py d2d     # K3a: 20 corners, no calibration vs write-verify
     python fig_k3_variability.py gain    # K3a: adds the gain-trim condition
@@ -346,8 +356,9 @@ def c2c():
         ax.errorbar(x, y, yerr=e, fmt=f"-{m}", ms=8, lw=2.6, capsize=5, color=c,
                     label=kind.replace("_", " "))
     ax.axvline(sigma_meas, ls="--", lw=2.2, color="#1f4e79")
-    ax.text(sigma_meas, 0.06, f" measured c2c\n {sigma_meas:.3f} dec",
-            fontweight="bold", fontsize=11, color="#1f4e79")
+    ax.text(sigma_meas, 0.965, f"  measured c2c {sigma_meas:.3f} dec\n"
+                               f"  ({n_rep} complete repeats, s.e. ~{rse*100:.0f} %)",
+            va="top", ha="left", fontweight="bold", fontsize=11, color="#1f4e79")
     ax.set_ylim(0, 1.0)
     ax.legend(prop={"weight": "bold", "size": 11}, loc="lower left")
     fs.bold_labels(ax, "Injected cycle-to-cycle sigma (decades of G)", "Test accuracy")

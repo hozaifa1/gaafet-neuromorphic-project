@@ -4,8 +4,6 @@ Branch `paper/gap-fix`. Session of 2026-08-01, following
 [PHASE_1_5_RESULTS.md](PHASE_1_5_RESULTS.md) and [PHASE_6_HANDOFF.md](PHASE_6_HANDOFF.md).
 The EEG task is dropped and was not touched.
 
-*(in progress — sections are filled as each run lands)*
-
 ---
 
 ## 6.1 The stale device bundle
@@ -186,7 +184,7 @@ what the SNN previously assumed. It does not reduce any individual device's leve
 each corner stays internally monotonic, so d2d shifts a device's whole ladder rather than
 merging its rungs, and per-device write-verify puts it back.
 
-### 6.4b The overlap statistic does not predict accuracy — figure K3c
+## 6.4b The overlap statistic does not predict accuracy — figure K3c
 
 `fig_k3_variability.py ladder` decomposes each corner ladder into a rigid log-shift plus a
 residual shape error (no network evaluation, pure arithmetic on the ensemble):
@@ -212,6 +210,64 @@ axis decomposition: level placement is set by **interface charge** (FixedCharge 
 per-level write-verify is available, d2d is a non-issue on this device. If only a gain trim
 is affordable, interface-charge control has to hold worst-level placement inside ≈0.6
 decades.
+
+---
+
+## 6.4c Cycle-to-cycle variability — figure K3b
+
+RR-8b repeats the **same** 15-pulse train on **one** device, so unlike RR-8 it is a genuine
+σ and is the legitimate stochastic input. The run was **capped, not completed**: the worker
+killed it at 7200 s (`END t17_c2c rc=137 7200s plt=1270`) after 4 complete repeats of the
+20 queued, plus a partial fifth that `rr8b` dropped by name. Reported as 4 repeats, not 20.
+
+| | |
+|---|---|
+| median σ | **0.0358 decades** |
+| complete repeats | **4** of 20 → relative s.e. of σ ≈ **41 %** |
+| usable levels at 3σ | **6** of 15 (band 5–8 across the σ uncertainty) |
+
+| injected σ (dec) | 0 | **0.0358** | 0.05 | 0.10 | 0.20 | 0.30 |
+|---|---:|---:|---:|---:|---:|---:|
+| 15-level grid | 0.8304 | **0.8284** | 0.8175 | 0.7728 | 0.3919 | 0.1657 |
+| 6-level "usable" grid | 0.3512 | 0.4077 | 0.3879 | 0.4395 | 0.4435 | 0.3165 |
+
+**At the measured σ the full 15-level grid loses 0.002 accuracy.** The knee is at
+σ ≈ 0.1–0.2 decades, so the device sits 3–6× below it. That conclusion survives the thin
+statistics: at 0.05 (≈ +1 s.e. on σ) accuracy is still 0.8175, and it only collapses at
+0.20, which is ≈4.4 s.e. above the measurement.
+
+### The handoff's prescription for this figure is wrong, and the data says so
+
+The handoff instructed: *"`c2c_per_level.csv` carries a `separable_from_prev` column at a
+3-sigma criterion and the analysis prints the usable level count — **that count, not 15, is
+what K3 should quantize to**."*
+
+Quantizing to that count costs **0.42–0.48 accuracy** (0.8304 → 0.3512 at σ = 0; 0.8284 →
+0.4077 at the measured σ). Keeping all 15 levels under the measured noise costs 0.002.
+Following the instruction would have made the reported result dramatically worse and would
+have blamed the device for it.
+
+The reason is that separability and accuracy are different questions. A 3σ criterion asks
+whether a level can be **told apart from its neighbour on readout**. The network never asks
+that: it needs the realized weight to sit near the target, and levels that overlap under
+noise are still monotonic and still carry weight information. Discarding nine of them
+throws away resolution the classifier was using, and the noise that "justified" discarding
+them costs almost nothing.
+
+This is the **third** time in Phase 6 that a level-distinguishability statistic failed to
+predict accuracy — after RR-8's ensemble overlap (§6.4a) and the post-gain-trim overlap
+(§6.4b). The consistent finding across all three: **overlap and separability describe
+readout addressing, not deployed-weight error, and only the latter moves the classifier.**
+
+One detail worth not over-reading: the 6-level series is *non-monotonic* in σ (0.351 →
+0.408 → 0.388 → 0.440 → 0.444). Noise dithers a grid too coarse to represent the weights,
+which occasionally helps — the same erratic sub-8-level behaviour K2 found, and not a
+result to build on.
+
+**Caveat carried into the paper:** 4 repeats is thin, and σ is known only to ±41 %. The
+claim being made is bounded — *at and around the measured σ, cycle-to-cycle costs
+essentially nothing* — not a precise σ. A completed 20-repeat run would tighten σ but
+cannot change that conclusion unless the true σ is ~3× the measured one.
 
 ---
 
