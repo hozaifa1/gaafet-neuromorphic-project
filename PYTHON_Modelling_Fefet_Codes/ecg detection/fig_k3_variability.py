@@ -283,14 +283,21 @@ def c2c():
     # branch-resolved: c2c is a property of each programmed conductance, so G+ and G- are
     # perturbed independently (see kfig_common.paired_branches).
     full = kc.paired_branches(lv_nom, gmax_nom)
-    usable = kc.paired_branches(kc.subsample_measured(lv_nom, n_usable), gmax_nom)
+    grids = [(f"{lv_nom.numel()}_level", full)]
+    if n_usable < lv_nom.numel():
+        grids.append((f"{n_usable}_level_usable",
+                      kc.paired_branches(kc.subsample_measured(lv_nom, n_usable), gmax_nom)))
+    else:
+        # Every level cleared the 3-sigma criterion, so the "usable" grid IS the full grid.
+        # Plotting it twice would invite a comparison between a series and itself.
+        print(f"[K3b] all {n_usable} levels are separable at 3 sigma -- c2c does not "
+              "reduce the usable level count on this device; plotting one series")
 
     sig = sorted(set(C2C_SIGMAS + [round(sigma_meas, 4)]))
     rows = []
     for s in sig:
         s_ln = s * np.log(10.0)                                 # decades -> natural log
-        for kind, (tgt, gp, gn) in (("15_level", full),
-                                    (f"{n_usable}_level_usable", usable)):
+        for kind, (tgt, gp, gn) in grids:
             accs, f1s = [], []
             for seed in range(3):                               # 3 noise draws per point
                 kc.deploy(model, fp_state, tgt, c2c=s_ln, seed=seed, branches=(gp, gn))
@@ -304,8 +311,10 @@ def c2c():
                   f"+-{np.std(accs):.4f}  F1={np.mean(f1s):.4f}", flush=True)
 
     fig, ax = fs.new_ax()
-    for kind, c, m in ((f"{n_usable}_level_usable", "#0b3d1e", "o"),
-                       ("15_level", "#8b1a1a", "s")):
+    style = {grids[0][0]: ("#8b1a1a", "s")}
+    if len(grids) > 1:
+        style[grids[1][0]] = ("#0b3d1e", "o")
+    for kind, (c, m) in style.items():
         sub = [r for r in rows if r[0] == kind]
         x = [r[1] for r in sub]; y = [r[2] for r in sub]; e = [r[3] for r in sub]
         ax.errorbar(x, y, yerr=e, fmt=f"-{m}", ms=8, lw=2.6, capsize=5, color=c,
