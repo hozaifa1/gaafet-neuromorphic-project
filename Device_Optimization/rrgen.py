@@ -291,20 +291,27 @@ def ret_levels(node="t12_ret15", n_lvl=15, t_hold=200e-6, V_pgm=2.0, V_ers=-2.0,
 
 
 # ---------------------------------------------------------------- RR-5: endurance
-def endurance(node="t14_end10", n_cycles=10, V_pgm=2.0, V_ers=-2.0, t_p=5e-6,
-              t_settle=200e-6, VREAD=0.0, read_at=(1, 10, 100, 1000, 10000), **kw):
+def endurance(node="t14_end10", n_cycles=10, V_pgm=2.0, V_ers=-2.0, t_p=1e-6,
+              n_pulse=15, t_settle=200e-6, VREAD=0.0,
+              read_at=(1, 10, 100, 1000, 10000), **kw):
     """n_cycles of +-2.0 V / 1 us program-erase, with a retained window read at
     each decade.
 
-    Each cycle is a FULL write (5 us per polarity, the same write every published
-    window number uses), and each window read is taken after a 200 us settle.
-    Both matter, and the first version of this deck got both wrong:
+    Each half-cycle is a 15-pulse TRAIN at 1 us, the same write RR-3 uses, and
+    each window read is taken after a 200 us settle. Three versions of this deck
+    were needed to get there, and the two failures are the point:
 
       * with a single 1 us pulse per polarity the device does not fully switch,
         so residual state ratchets up cycle on cycle. The erased floor climbed
         0.042 -> 22.1 uA/um in ten cycles and the window "collapsed" 539x ->
         1.5x. That is incomplete switching, not fatigue, and presenting it as an
         endurance curve would have been a fabricated degradation result.
+      * a single 5 us pulse per polarity is no better. It reads the programmed
+        plateau (2.44 uA/um) as the "erased" level at cycle 1 and inverts by
+        cycle 10, on < off. Erase is much slower than program here because the
+        depolarization field opposes it -- RR-3 measures the first -2 V pulse
+        moving the state only 18 % (44.3 -> 36.5 uA/um). One pulse never erases
+        a programmed device, whatever its width; only a train does.
       * reading immediately after the write measures the tau_P transient rather
         than the retained state (see RR-4 and RR-9, where the same mistake
         produced a 9x fall and a fake -84.7 % "read disturb").
@@ -318,24 +325,26 @@ def endurance(node="t14_end10", n_cycles=10, V_pgm=2.0, V_ers=-2.0, t_p=5e-6,
     """
     s = head(node, VREAD=VREAD, **kw)
     t = 0.0
+
+    def train(tag, v, t):
+        out = ""
+        for j in range(n_pulse):
+            a, t = _write(f"{tag}{j:02d}_", t, v, t_p, VREAD)
+            out += a
+        return out, t
+
     for c in range(1, n_cycles + 1):
-        t1, t2 = t + 1e-9, t + 1e-9 + t_p
-        s += _goal(f"c{c}p_", t, t1, "gate_contact", V_pgm)
-        s += _hold(f"c{c}ph_", t1, t2, intervals=0, maxstep=t_p / 4)
-        t3, t4 = t2 + 1e-9, t2 + 1e-9 + t_p
-        s += _goal(f"c{c}e_", t2, t3, "gate_contact", V_ers)
-        s += _hold(f"c{c}eh_", t3, t4, intervals=0, maxstep=t_p / 4)
-        t = t4
+        a, t = train(f"c{c}p", V_pgm, t)
+        s += a
+        b, t = train(f"c{c}e", V_ers, t)
+        s += b
         if c in read_at:
-            # window read: settle, read the erased level, program, settle, read on
-            s += _goal(f"w{c}_g0a_", t, t + 1e-9, "gate_contact", VREAD)
-            t += 1e-9
             s += _hold(f"w{c}_settle_e_", t, t + t_settle, intervals=0,
                        maxstep=t_settle / 20)
             t += t_settle
             s += _hold(f"w{c}_ers_", t, t + 100e-9, intervals=8)
             t += 100e-9
-            a, t = _write(f"w{c}_pgm_", t, V_pgm, t_p, VREAD)
+            a, t = train(f"w{c}p", V_pgm, t)
             s += a
             s += _hold(f"w{c}_settle_p_", t, t + t_settle, intervals=0,
                        maxstep=t_settle / 20)
