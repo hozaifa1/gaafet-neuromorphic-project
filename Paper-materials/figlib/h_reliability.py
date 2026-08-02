@@ -136,10 +136,18 @@ def H4():
                                   "plateau_spread_pct": spread}))
 
     ax.axhspan(0.99, 1.01, color=ACC, alpha=0.25, lw=0)
-    ax.set_ylim(0, 3.6)
+    # the post-write overshoot runs to roughly 9x the plateau; on a linear
+    # axis it is clipped off the top, and the overshoot is the point of the
+    # figure -- it is what makes reading too early look like data loss
+    ax.set_yscale("log")
+    decade_ticks(ax)
     bold_labels(ax, "Hold time (ms)", "I$_D$ / plateau value")
     note(ax, "\n".join(notes), xy=(0.03, 0.97), fontsize=11)
-    ax.legend(loc="upper right", fontsize=11)
+    # the retention traces run flat across the top of the axes, so an
+    # upper-corner legend sits on them
+    # on a log axis the settled plateau runs along the bottom and the
+    # overshoot along the left, leaving the upper right clear
+    ax.legend(loc="upper right", fontsize=10)
 
     return fig, pd.concat(rows, ignore_index=True)
 

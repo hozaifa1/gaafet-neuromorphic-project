@@ -347,12 +347,10 @@ it is the same conclusion the unusable count-to-fire runs reach from the other d
 \caption{Comparison and benchmark. (a) The nanosheet against a planar ablation of the
 identical stack, on the axes a synapse is judged by; each axis is normalized to the better
 of the two devices and the level axis uses one shared separation criterion. The planar
-device wins the raw window and loses the application-relevant axes. (b) Analog levels
-against energy per programming pulse for fifteen published ferroelectric devices, with
-this work marked at both its open-loop and its write-verify level counts. Devices that
-report a level count but no energy appear as a marginal rug; open markers are points whose
-source number could not be confirmed in the paper text. Computed values: \fignote{J1};
-\fignote{J5}.}
+device wins the raw window and loses the application-relevant axes. (b) Analog level count
+across a survey of fifteen recent published ferroelectric analog memories, with this work
+marked at both its open-loop and its write-verify count. Open markers are counts that
+could not be confirmed in the paper text. Computed values: \fignote{J1}; \fignote{J5}.}
 \label{fig:panel10}
 \end{figure*}
 
@@ -370,16 +368,27 @@ numbers do not measure the same thing.
 
 \subsection{Benchmark against published devices}
 
-Figure~\ref{fig:panel10}(b) places this device on a survey of fifteen recent ferroelectric analog-memory
-devices, plotting analog levels against energy per programming pulse. This work sits at
-the low-energy end of what is reported, at \SI{8.2}{\atto\joule} per pulse with eight
-open-loop levels and about sixteen under write-verify.
+Figure~\ref{fig:panel10}(b) places this device on a survey of fifteen recent ferroelectric
+analog-memory papers. The comparison we wanted to draw --- analog levels against energy per
+programming pulse --- cannot be drawn: only two of the fifteen state an energy per
+programming pulse at all. Plotting it anyway would have put a single comparable marker on
+the page and let an empty axis imply a lead that was never measured, so the figure is drawn
+on the quantity the field does report, and the energy comparison is made here, in text,
+where two points can be quoted as two points. This device switches at
+\SI{8.2}{\atto\joule} per pulse at \SI{2.0}{\volt}; the two published values we could
+verify are \SI{48}{\atto\joule} and \SI{0.8}{\femto\joule}.
 
-The figure also reports something about the field. Only two of the fifteen surveyed
-devices state an energy per programming pulse at all; the rest give a level count and no
-energy, and they appear on the figure as a marginal rug rather than being dropped. The
-comparison a reader most wants to make is, for most published devices, not possible from
-what is published. Every point is traceable through
-\texttt{literature\_benchmark.csv}, which carries the digital object identifier and the
-sentence each number was read from, and points whose source could not be confirmed in the
-paper text are drawn as open markers.
+On level count this device is not the leader and the figure says so. Ten of the fifteen
+papers state a count, and those run from sixteen to a hundred and twenty-eight against this
+work's eight open-loop and about sixteen under write-verify. Two things qualify that gap.
+The counts are not measured under a common criterion --- each is whatever its own paper
+called distinguishable, and this work's eight is a conservative open-loop count under its
+own measured cycle-to-cycle noise rather than a best case. More importantly, the network
+results in Section~\ref{sec:network} show that level count does not predict accuracy:
+placement does. A device reporting a hundred and twenty-eight levels has not thereby shown
+that a classifier deployed on it will work.
+
+Every point is traceable through \texttt{literature\_benchmark.csv}, which carries the
+digital object identifier and the sentence each number was read from. Counts that could not
+be confirmed in the paper text are drawn as open markers; six of the fifteen rows carry
+that caveat and are listed in \texttt{literature\_benchmark\_notes.md}.

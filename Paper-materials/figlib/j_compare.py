@@ -108,18 +108,18 @@ def J1():
     ax.set_xticks(ang)
     ax.set_xticklabels([lab.replace(" ", "\n", 1) for lab in labels],
                        fontweight="bold", fontsize=11)
-    ax.tick_params(axis="x", pad=26)          # keep labels clear of the outer ring
+    ax.tick_params(axis="x", pad=44)          # keep labels clear of the outer ring
     ax.set_ylim(0, 1.02)
     ax.set_yticks([0.25, 0.5, 0.75, 1.0])
     ax.set_yticklabels(["0.25", "0.50", "0.75", "1.0"], fontweight="bold", fontsize=10)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.13), ncol=2, fontsize=12,
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.13), ncol=2, fontsize=12,
               frameon=False)
     note(ax, "Each axis is normalized to the better of the two devices, so "
              "outward is better. The level axis uses one shared "
              f"readout-separation rule ($\\geq${SEP:g}$\\times$) so the two "
              "devices are comparable; this device's headline open-loop count "
              "under its own measured cycle-to-cycle noise is smaller (see F1).")
-    fig.subplots_adjust(bottom=0.08, top=0.84, left=0.17, right=0.83)
+    fig.subplots_adjust(bottom=0.13, top=0.80, left=0.23, right=0.77)
 
     df["GAA_normalized"] = ga
     df["planar_normalized"] = pa
@@ -128,10 +128,11 @@ def J1():
 
 @figure(
     "J5",
-    claim="Against a survey of recent ferroelectric analog-memory devices this device sits at "
-          "the low-energy end of what is reported, and the survey also shows how rarely "
-          "energy per programming pulse is reported at all: most papers state a level count "
-          "and no energy, so the comparison a reader wants cannot be made for most of them.",
+    claim="Recent ferroelectric analog memories report level counts from 16 to 128, and this "
+          "device's open-loop count sits at the low end of that range -- but the counts are "
+          "not measured under a common criterion, and only two of fifteen surveyed papers "
+          "report energy per programming pulse at all, so the comparison a reader wants "
+          "cannot be made from the published record.",
     source="Paper-materials/literature_benchmark.csv -- 15 published ferroelectric devices, "
            "each row carrying its DOI and the sentence the number was read from; weak rows "
            "are listed in literature_benchmark_notes.md. This work's point is computed here "
@@ -164,47 +165,55 @@ def J5():
             break
         n_ver += 1
 
-    both = lit.dropna(subset=["n_levels", "energy_per_pulse_pJ"])
-    only_n = lit[lit["n_levels"].notna() & lit["energy_per_pulse_pJ"].isna()]
+    # A levels-against-energy scatter is the figure this comparison wants, and the
+    # survey will not support one: only 2 of 15 recent papers report energy per
+    # programming pulse at all.  Plotting it anyway would put a single comparable
+    # marker on the page and let the empty axis imply a lead that was never
+    # measured.  So the figure is drawn on the quantity the field does report --
+    # the level count -- and the energy comparison is made in the text, where two
+    # points can be quoted as two points.
+    n_energy = int(lit["energy_per_pulse_pJ"].notna().sum())
+    d = lit.dropna(subset=["n_levels"]).sort_values("n_levels").reset_index(drop=True)
 
-    fig, ax = new_ax(figsize=(8.8, 5.8))
+    fig, ax = new_ax(figsize=(9.0, 6.4))
     ax.set_xscale("log")
-    ax.set_yscale("log")
 
-    for _, r in both.iterrows():
+    y = np.arange(len(d), dtype=float)
+    for k, r in d.iterrows():
         hi = str(r["confidence"]).strip() == "high"
-        ax.plot([r["energy_per_pulse_pJ"]], [r["n_levels"]], "o", ms=12,
-                color=GREY, mfc=GREY if hi else "white", mew=2.0, mec=GREY, zorder=3)
-        ax.annotate(str(r["label"]).split("_")[0], xy=(r["energy_per_pulse_pJ"], r["n_levels"]),
-                    xytext=(0, 14), textcoords="offset points", ha="center",
-                    fontsize=10, fontweight="bold", color=GREY)
+        ax.plot([1, r["n_levels"]], [y[k]] * 2, "-", color=GREY, lw=1.6, alpha=0.55,
+                zorder=1)
+        ax.plot([r["n_levels"]], [y[k]], "o", ms=12, mfc=GREY if hi else "white",
+                mew=2.0, mec=GREY, zorder=3)
 
-    # devices that report a level count but no energy: a rug along the top
-    y_rug = float(lit["n_levels"].max()) * 2.2
-    for _, r in only_n.iterrows():
-        hi = str(r["confidence"]).strip() == "high"
-        ax.plot([e_pj * 40], [r["n_levels"]], "<", ms=10, color=GREY,
-                mfc=GREY if hi else "white", mew=1.8, mec=GREY, alpha=0.85, zorder=2)
+    y_open, y_ver = len(d) + 0.6, len(d) + 1.6
+    for yy, n_lev, colour, fill, lab in (
+            (y_open, n_open, PGM, PGM, f"this work, open loop ({n_open})"),
+            (y_ver, n_ver, ACC, "white", f"this work, write-verify ({n_ver})")):
+        ax.plot([1, n_lev], [yy] * 2, "-", color=colour, lw=2.4, zorder=2)
+        ax.plot([n_lev], [yy], "*", ms=24, mfc=fill, mec=colour, mew=2.4, zorder=5)
 
-    ax.plot([e_pj], [n_open], "*", ms=26, color=PGM, mec="black", mew=1.6, zorder=6)
-    ax.plot([e_pj], [n_ver], "*", ms=20, color=ACC, mfc="white", mec=ACC, mew=2.6, zorder=6)
-    ax.annotate("", xy=(e_pj, n_ver), xytext=(e_pj, n_open),
-                arrowprops=dict(arrowstyle="->", lw=2.6, color=ACC))
-    ax.annotate(f"this work, open loop\n{n_open} levels, {e_pj * 1e6:.1f} aJ/pulse "
-                f"at {v_pgm:g} V",
-                xy=(e_pj, n_open), xytext=(16, -30), textcoords="offset points",
-                fontsize=11, fontweight="bold", color=PGM)
-    ax.annotate(f"with write-verify: {n_ver}", xy=(e_pj, n_ver), xytext=(16, 6),
-                textcoords="offset points", fontsize=11, fontweight="bold", color=ACC)
-
+    ax.set_yticks(np.r_[y, y_open, y_ver])
+    ax.set_yticklabels([str(s).replace("_", " ") for s in d["label"]]
+                       + ["THIS WORK, open loop", "THIS WORK, write-verify"],
+                       fontsize=10)
+    for lbl, colour in zip(ax.get_yticklabels(), [GREY] * len(d) + [PGM, ACC]):
+        lbl.set_color(colour)
+        lbl.set_fontweight("bold")
+    ax.set_ylim(-0.8, y_ver + 0.8)
+    ax.set_xlim(4, float(d["n_levels"].max()) * 2.4)
     decade_ticks(ax, "x")
-    decade_ticks(ax, "y")
-    ax.set_ylim(min(n_open, float(lit["n_levels"].min())) / 2.2, y_rug)
-    bold_labels(ax, "Energy per programming pulse (pJ)", "Analog levels reported")
-    note(ax, f"{len(both)} of {len(lit)} surveyed devices report both quantities; "
-             f"{len(only_n)} report a level count only and are drawn as "
-             f"left-pointing markers at an arbitrary energy. Open markers are "
-             f"points whose source number could not be confirmed in the paper text.")
+    bold_labels(ax, "Analog levels reported", None)
+    note(ax, f"Devices reporting a level count, from a survey of {len(lit)} recent "
+             f"ferroelectric analog memories; {len(d)} of them state one. Open markers "
+             f"are counts that could not be confirmed in the paper text. Only "
+             f"{n_energy} of {len(lit)} report energy per programming pulse, which is "
+             f"why the comparison is drawn on level count; this device switches at "
+             f"{e_pj * 1e6:.1f} aJ per pulse at {v_pgm:g} V. The counts here are "
+             f"reported values under each paper's own criterion, which is the point: "
+             f"this work's {n_open} is an open-loop count under its own measured "
+             f"cycle-to-cycle noise, and Section V shows level count does not predict "
+             f"network accuracy.")
 
     out = pd.concat([
         lit.assign(series="literature"),

@@ -131,7 +131,7 @@ def D2():
 
     ax.set_xlim(0, float(s_all.Vds_V.max()) * 1.02)
     bold_labels(ax, "V$_{DS}$ (V)", "I$_D$ ($\\mu$A/$\\mu$m)")
-    ax.legend(loc="upper left", fontsize=10, ncol=2)
+    ax.legend(loc="lower right", fontsize=10, ncol=2)
     note(ax, f"read at V$_G$ = {vg_show:g} V\n"
              f"linear-region correlation r = {min(rvals):.3f}$-${max(rvals):.3f} "
              f"over V$_{{DS}}$ $\\leq$ 0.1 V",

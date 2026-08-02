@@ -104,7 +104,9 @@ REGISTRY: dict[str, Fig] = {}
 # fatigue term, so more cycling cannot produce an endurance result.  H8 (read
 # disturb, 0.0000 % over 9.9e5 equivalent reads) is evidence about the device.
 PANELS: dict[int, tuple[str, list[str], tuple[int, int]]] = {
-    1: ("Structure and 2D-to-nanosheet mapping", ["A1", "A5"], (1, 2)),
+    # A1 and A5 are both wide drawings; side by side they compose into a strip too
+    # short to read at column width, so this one panel stacks.
+    1: ("Structure and 2D-to-nanosheet mapping", ["A1", "A5"], (2, 1)),
     2: ("Calibration against Liao 2022", ["B1", "B3", "B5"], (1, 3)),
     3: ("Ferroelectric material and electrostatics", ["C1", "C2"], (1, 2)),
     4: ("DC device characteristics", ["D1", "D2"], (1, 2)),
@@ -191,12 +193,14 @@ def compose_panel(n: int) -> Path:
         raise FileNotFoundError(f"panel {n} needs {missing}; draw them first")
 
     imgs = [plt.imread(OUTDIR / f"{f}.png") for f in fids]
-    # normalize every sub-figure to the same displayed height
-    heights = [im.shape[0] for im in imgs]
-    widths = [im.shape[1] * min(heights) / im.shape[0] for im in imgs]
-    cell_w = max(widths) / min(heights)          # aspect of the widest cell
+    # Give every cell its OWN width, proportional to that sub-figure's aspect, and
+    # a common height.  Sizing every cell to the widest one left the narrow figures
+    # swimming in white space and stretched panel 1 into a 5:1 strip.
+    asp = [im.shape[1] / im.shape[0] for im in imgs]
+    col_asp = [max(asp[c::ncol] or [1.0]) for c in range(ncol)]
 
-    fig, axes = plt.subplots(nrow, ncol, figsize=(5.0 * cell_w * ncol, 5.0 * nrow))
+    fig, axes = plt.subplots(nrow, ncol, figsize=(4.6 * sum(col_asp), 4.6 * nrow),
+                             gridspec_kw={"width_ratios": col_asp})
     axes = [axes] if nrow * ncol == 1 else list(axes.ravel())
     for ax, im, fid, letter in zip(axes, imgs, fids, "abcdefgh"):
         ax.imshow(im)

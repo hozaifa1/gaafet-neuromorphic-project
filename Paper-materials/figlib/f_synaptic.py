@@ -136,7 +136,9 @@ def F2():
              f"{int(np.sum(resid < 0))} of {len(n)} points below the fit",
          xy=(0.30, 0.40), fontsize=12)
 
-    ins = ax.inset_axes([0.60, 0.13, 0.34, 0.26])
+    # the ladder is flat until pulse ~11 then shoots up, so the only region
+    # that is genuinely empty is mid-left
+    ins = ax.inset_axes([0.15, 0.42, 0.36, 0.30])
     ins.axhline(0, color="black", lw=1.6)
     ins.bar(n, resid, color=ACC, edgecolor="black", lw=1.0)
     ins.set_xlabel("n", fontweight="bold", fontsize=11)
