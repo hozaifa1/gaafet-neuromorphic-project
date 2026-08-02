@@ -1,0 +1,1 @@
+15 pulses, 3.79 decades 8 separable open-loop (3.0 bit) $\approx$16 with write-verify (4.0 bit)

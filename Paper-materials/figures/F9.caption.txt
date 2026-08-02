@@ -1,0 +1,1 @@
+At the top level 350 K is 5.9$\times$ below 300 K while 250 K is 1.10$\times$ it -- the ladder is not monotonic in temperature, so no activation energy is extracted.

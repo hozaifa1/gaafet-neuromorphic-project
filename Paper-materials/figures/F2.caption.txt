@@ -1,0 +1,1 @@
+A$_{LTP}$ = -0.516, R$^2$ = 0.994 10--90 % span = 3.6 pulses max residual 0.059, 12 of 15 points below the fit

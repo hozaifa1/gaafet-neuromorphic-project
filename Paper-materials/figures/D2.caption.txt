@@ -1,0 +1,1 @@
+read at V$_G$ = 0.2 V linear-region correlation r = 0.940$-$1.000 over V$_{DS}$ $\leq$ 0.1 V

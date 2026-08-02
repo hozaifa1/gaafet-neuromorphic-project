@@ -48,10 +48,8 @@ def I1():
     ax.set_xticks(turn)
     ax.set_ylim(win.min() / 6, win.max() * 40)
     bold_labels(ax, "Coordinate-descent turn", "Retained ON/OFF window ($\\times$)")
-    fig.text(0.5, -0.02,
-             f"window improves {span:,.0f}$\\times$ over {len(turn)} turns;  "
-             f"turns {int(turn[-2])} and {int(turn[-1])} change nothing",
-             ha="center", fontweight="bold", fontsize=12)
+    note(ax, f"The window improves {span:,.0f}$\\times$ over {len(turn)} turns; "
+             f"turns {int(turn[-2])} and {int(turn[-1])} change nothing.")
 
     return fig, d
 
@@ -100,8 +98,7 @@ def I2():
                    labelpad=10, color=ERS)
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
-    ax.legend(h1 + h2, l1 + l2, loc="upper center", bbox_to_anchor=(0.5, -0.18),
-              ncol=2, fontsize=10)
+    ax.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=9)
 
     sub = d[d["eval"] == "subcoercive"].sort_values("t_ox_nm")
     penalty = float(sub[sub.t_ox_nm == 1.0].window.iloc[0] / sub[sub.t_ox_nm == 1.5].window.iloc[0])
@@ -202,8 +199,10 @@ def I5():
     i0 = int(np.argmin(np.abs(vg)))
     ax.plot([vg[i0]], [window[i0]], "o", color=ACC, ms=14, mec="black", mew=2.0, zorder=5)
     ax.annotate(f"V$_{{read}}$ = 0: {window[i0]:,.0f}$\\times$",
-                xy=(vg[i0], window[i0]), xytext=(10, 16), textcoords="offset points",
-                fontsize=13, fontweight="bold", color=ACC)
+                xy=(vg[i0], window[i0]), xytext=(-96, -52),
+                textcoords="offset points", fontsize=13, fontweight="bold",
+                color=ACC,
+                arrowprops=dict(arrowstyle="->", lw=2.0, color=ACC))
     decade_ticks(ax)
 
     bold_labels(ax, "Read gate bias V$_{read}$ (V)", "Retained ON/OFF window ($\\times$)")

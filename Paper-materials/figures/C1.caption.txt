@@ -1,0 +1,1 @@
+saturated loop ($\pm$5.00 V): P$_s$ = 39.99, |P$_r$| = 35.99 $\mu$C/cm$^2$, F$_c$ = 1.400 MV/cm

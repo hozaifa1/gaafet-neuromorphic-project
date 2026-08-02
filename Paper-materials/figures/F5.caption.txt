@@ -1,0 +1,1 @@
+window per cycle: 11,650$\times$, 4,185$\times$, 3,577$\times$ ceiling moves 0.93$\times$, floor moves 3.0$\times$

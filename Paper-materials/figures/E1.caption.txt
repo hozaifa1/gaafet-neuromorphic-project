@@ -1,0 +1,2 @@
+$\Delta$P over the train = -1.858 $\mu$C/cm$^2$; shaded bands are the V$_G$ = 2 V write windows.
+Median gate conduction between pulses: 26.7 pA.

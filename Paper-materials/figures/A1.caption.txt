@@ -1,0 +1,1 @@
+The vertical axis is exaggerated 4$\times$ relative to the horizontal, so that the 1 nm interfacial oxide is visible; both scale bars are drawn. Total gate stack 31 nm. N$_{sub}$ = 1e+16 cm$^{-3}$, N$_{sd}$ = 5e+19 cm$^{-3}$, gate work function 4.35 eV. Dashed lines are the metallurgical junctions, which sit 15 nm inside each gate edge.

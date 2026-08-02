@@ -1,0 +1,1 @@
+measured from 1e+04 reads onward +0.0000 % over 9.9e+05 reads apparent loss if read unsettled: -89.1 % ($\tau_P$ transient, not disturb)

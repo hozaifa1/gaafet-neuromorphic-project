@@ -1,0 +1,1 @@
+Each axis is normalized to the better of the two devices, so outward is better. The level axis uses one shared readout-separation rule ($\geq$1.5$\times$) so the two devices are comparable; this device's headline open-loop count under its own measured cycle-to-cycle noise is smaller (see F1).

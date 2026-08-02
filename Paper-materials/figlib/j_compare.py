@@ -112,17 +112,14 @@ def J1():
     ax.set_ylim(0, 1.02)
     ax.set_yticks([0.25, 0.5, 0.75, 1.0])
     ax.set_yticklabels(["0.25", "0.50", "0.75", "1.0"], fontweight="bold", fontsize=10)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.10), ncol=2, fontsize=12)
-    fig.text(0.5, 0.075,
-             "each axis normalized to the better of the two devices; outward is better",
-             ha="center", fontweight="bold", fontsize=11)
-    fig.text(0.5, 0.005,
-             f"the level axis uses one shared readout-separation rule "
-             f"($\\geq${SEP:g}$\\times$) so the two devices are comparable;\n"
-             f"this device's headline open-loop count under its own measured "
-             f"cycle-to-cycle noise is smaller (figure F1)",
-             ha="center", va="bottom", fontsize=10, fontweight="bold")
-    fig.subplots_adjust(bottom=0.26, top=0.90, left=0.16, right=0.84)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.13), ncol=2, fontsize=12,
+              frameon=False)
+    note(ax, "Each axis is normalized to the better of the two devices, so "
+             "outward is better. The level axis uses one shared "
+             f"readout-separation rule ($\\geq${SEP:g}$\\times$) so the two "
+             "devices are comparable; this device's headline open-loop count "
+             "under its own measured cycle-to-cycle noise is smaller (see F1).")
+    fig.subplots_adjust(bottom=0.08, top=0.84, left=0.17, right=0.83)
 
     df["GAA_normalized"] = ga
     df["planar_normalized"] = pa
@@ -204,12 +201,10 @@ def J5():
     decade_ticks(ax, "y")
     ax.set_ylim(min(n_open, float(lit["n_levels"].min())) / 2.2, y_rug)
     bold_labels(ax, "Energy per programming pulse (pJ)", "Analog levels reported")
-    fig.text(0.5, -0.10,
-             f"{len(both)} of {len(lit)} surveyed devices report both quantities; "
-             f"{len(only_n)} report a level count only (left-pointing markers, placed at an "
-             f"arbitrary energy).\nOpen markers: the source number could not be confirmed "
-             f"in the paper text.",
-             ha="center", fontweight="bold", fontsize=10)
+    note(ax, f"{len(both)} of {len(lit)} surveyed devices report both quantities; "
+             f"{len(only_n)} report a level count only and are drawn as "
+             f"left-pointing markers at an arbitrary energy. Open markers are "
+             f"points whose source number could not be confirmed in the paper text.")
 
     out = pd.concat([
         lit.assign(series="literature"),

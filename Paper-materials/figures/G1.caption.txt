@@ -1,0 +1,1 @@
+V$_{pgm}$ = 2 V, 100 ns pulses rest current 0.00821 $\mu$A/$\mu$m (dotted) threshold 0.1 $\mu$A/$\mu$m (dashed), a design choice contrast at fire: 18.4$\times$ rest

@@ -1,0 +1,1 @@
+erased: RMS 0.478 dec, median -0.026, n = 12 programmed: RMS 0.295 dec, median -0.011, n = 8 shaded: $\pm$0.3 decade

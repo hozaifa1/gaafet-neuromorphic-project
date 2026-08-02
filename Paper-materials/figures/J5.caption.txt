@@ -1,0 +1,1 @@
+1 of 15 surveyed devices report both quantities; 9 report a level count only and are drawn as left-pointing markers at an arbitrary energy. Open markers are points whose source number could not be confirmed in the paper text.

@@ -88,15 +88,13 @@ def E1():
     axes[0].plot(t_us, py, "-", color=PGM, lw=2.6)
     axes[0].set_ylabel("P$_y$ ($\\mu$C/cm$^2$)", fontweight="bold", fontsize=16, labelpad=8)
     dP = py[-1] - py[0]
-    axes[0].text(0.03, 0.10, f"$\\Delta$P over the train = {dP:+.3f} $\\mu$C/cm$^2$\n"
-                             f"shaded: V$_G$ = {vg.max():g} V write windows",
-                 transform=axes[0].transAxes, fontweight="bold", fontsize=12, va="bottom")
+    note(axes[0], f"$\\Delta$P over the train = {dP:+.3f} $\\mu$C/cm$^2$; "
+                  f"shaded bands are the V$_G$ = {vg.max():g} V write windows.")
 
     axes[1].plot(t_us, qg, "-", color=ERS, lw=2.6)
     bold_labels(axes[1], "Time ($\\mu$s)", "Q$_G$ (fC / nanosheet)")
     leak = float(np.median(ig[~writing]))
-    fig.text(0.5, -0.01, f"gate conduction between pulses: {leak * 1e12:.1f} pA median",
-             ha="center", fontweight="bold", fontsize=12)
+    note(axes[1], f"Median gate conduction between pulses: {leak * 1e12:.1f} pA.")
 
     fig.subplots_adjust(hspace=0.08)
     out = pd.DataFrame({"t_us": t_us, "phase": d["phase"], "pulse": d["pulse"],
@@ -154,10 +152,8 @@ def E2():
     bold_labels(axes[1], "Pulse number",
                 "|$\\Delta$P$_y$| per pulse ($\\mu$C/cm$^2$)")
     peak = int(idx[np.argmax(np.abs(dps))])
-    fig.text(0.5, -0.02,
-             f"switching per pulse peaks at pulse {peak}, then falls to "
-             f"{np.abs(dps)[-1] / np.abs(dps).max():.2f} of the peak by pulse {n}",
-             ha="center", fontweight="bold", fontsize=12)
+    note(axes[1], f"Switching per pulse peaks at pulse {peak}, then falls to "
+                  f"{np.abs(dps)[-1] / np.abs(dps).max():.2f} of the peak by pulse {n}.")
 
     out = pd.concat(rows, ignore_index=True)
     out = out.merge(pd.DataFrame({"pulse": idx, "dPy_total_uC_cm2": dps}), on="pulse")

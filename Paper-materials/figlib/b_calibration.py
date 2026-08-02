@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from ._common import (ACC, ERS, GREY, PGM, ROOT, bold_labels, decade_ticks,
-                      figure, load_cal, new_ax, note, plt)
+                      figure, load_cal, new_ax, norm, note, plt)
 
 sys.path.insert(0, str(ROOT))
 from rranalyze import vth_cc                      # noqa: E402  the one extraction rule
@@ -30,7 +30,8 @@ from rranalyze import vth_cc                      # noqa: E402  the one extracti
 LIAO_SAT_A = 4.8e-6      # measured saturation current per nanosheet, Liao 2022 Fig. 7
 FIT_FROM_V = 2.5         # the overdrive above which saturation is averaged for the fit
 I_CC_SHEET = 1e-8        # constant-current criterion, per nanosheet
-VT_CC_SHEET = 1e-7 * 0.090   # 100 nA/um on the per-sheet axis, for the B3 alignment
+VT_CC_UA_UM = 1e-1       # 100 nA/um: the constant-current criterion B3 aligns on
+VT_CC_SHEET = VT_CC_UA_UM * 1e-6 * norm.W_EFF_UM   # the same criterion per nanosheet
 
 
 def _tcad() -> tuple[pd.DataFrame, pd.DataFrame, float]:
@@ -160,7 +161,7 @@ def B3():
     ax.set_ylim(1e-4, 1e2)
     decade_ticks(ax)
     bold_labels(ax, "Gate overdrive V$_G$ $-$ V$_t$ (V)", "I$_D$ / I$_{on}$")
-    note(ax, f"V$_t$ at {VT_CC_SHEET / 0.090 * 1e9:.0f} nA/$\\mu$m; "
+    note(ax, f"V$_t$ at {VT_CC_UA_UM * 1e3:.0f} nA/$\\mu$m; "
              f"I$_{{on}}$ at {OVERDRIVE:g} V overdrive",
          xy=(0.03, 0.97), fontsize=12)
     ax.legend(loc="lower right", fontsize=10)

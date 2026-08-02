@@ -129,14 +129,14 @@ def F2():
     lo = float(np.interp(0.1, gn, n))
     hi = float(np.interp(0.9, gn, n))
     ax.set_ylim(-0.10, 1.28)
-    ax.legend(loc="lower right")
+    ax.legend(loc="upper left", fontsize=11)
     note(ax, f"A$_{{LTP}}$ = {A:.3f},  R$^2$ = {ss:.3f}\n"
              f"10--90 % span = {hi - lo:.1f} pulses\n"
              f"max residual {np.abs(resid).max():.3f}, "
              f"{int(np.sum(resid < 0))} of {len(n)} points below the fit",
          xy=(0.30, 0.40), fontsize=12)
 
-    ins = ax.inset_axes([0.10, 0.56, 0.31, 0.28])
+    ins = ax.inset_axes([0.60, 0.13, 0.34, 0.26])
     ins.axhline(0, color="black", lw=1.6)
     ins.bar(n, resid, color=ACC, edgecolor="black", lw=1.0)
     ins.set_xlabel("n", fontweight="bold", fontsize=11)
@@ -274,13 +274,12 @@ def F9():
     bold_labels(ax, "Pulse number", "I$_D$ / I$_D$(300 K)")
     ax.legend(loc="lower left", fontsize=12)
     top = d.iloc[-1]
-    fig.text(0.5, -0.03,
-             f"at the top level 350 K is "
+    note(ax,
+             f"At the top level 350 K is "
              f"{ref[-1] / top['G_350K_uA_um']:.1f}$\\times$ below 300 K while "
              f"250 K is {top['G_250K_uA_um'] / ref[-1]:.2f}$\\times$ it "
              f"-- the ladder is not monotonic in temperature, so no activation energy "
-             f"is extracted",
-             ha="center", fontweight="bold", fontsize=11)
+             f"is extracted.")
 
     out = d.copy()
     out["ratio_250_over_300"] = d["G_250K_uA_um"] / ref

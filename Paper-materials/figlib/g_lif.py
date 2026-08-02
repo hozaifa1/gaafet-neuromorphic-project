@@ -138,7 +138,7 @@ def G2():
         segs.setdefault(_amp(f.name), []).append(f)
     amps = sorted(segs)
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.0, 5.6))
+    fig, axes = plt.subplots(1, 2, figsize=(13.0, 5.8))
     for ax in axes:
         for sp in ax.spines.values():
             sp.set_linewidth(2.0)
@@ -172,9 +172,7 @@ def G2():
                 "|$\\Delta$P$_y$| since the start of the train ($\\mu$C/cm$^2$)")
     axes[0].legend(loc="upper left", fontsize=11, title="V$_{pgm}$",
                    title_fontproperties={"weight": "bold", "size": 11})
-    axes[0].text(0.97, 0.05, f"threshold {DP_FIRE:g} $\\mu$C/cm$^2$ (dashed)",
-                 transform=axes[0].transAxes, ha="right", va="bottom",
-                 fontweight="bold", fontsize=11)
+    note(axes[0], f"Dashed line: the {DP_FIRE:g} $\\mu$C/cm$^2$ state threshold.")
 
     ax = axes[1]
     n_max = max(r[2] for r in reach)
@@ -189,9 +187,8 @@ def G2():
                     arrowprops=dict(arrowstyle="->", lw=2.2, color=PGM))
     ax.set_ylim(0, n_max + 3.0)
     bold_labels(ax, "Programming amplitude V$_{pgm}$ (V)", "Pulses to reach threshold")
-    ax.text(0.03, 0.96,
-            "open marker with an arrow:\nthreshold not reached within\nthe pulses that were run",
-            transform=ax.transAxes, va="top", fontweight="bold", fontsize=11)
+    note(ax, "An open marker with an arrow means the threshold was not reached "
+             "within the pulses that were run.")
 
     out = pd.concat(rows, ignore_index=True)
     out = out.merge(pd.DataFrame({"V_pgm_V": [r[0] for r in reach],
@@ -256,13 +253,12 @@ def G3():
     axes[2].axhline(I_FIRE_UA_UM, color=ACC, lw=2.4, ls="--")
     decade_ticks(axes[2])
     bold_labels(axes[2], "Time ($\\mu$s)", "I$_D$ ($\\mu$A/$\\mu$m)")
-    fig.text(0.5, 0.045,
-             (f"crosses threshold on pulse {n_fire}" if n_fire else "does not fire")
-             + f" at V$_{{pgm}}$ = {a:g} V; dashed line is the "
-               f"{I_FIRE_UA_UM:g} $\mu$A/$\mu$m read threshold",
-             ha="center", fontweight="bold", fontsize=12)
+    note(axes[2],
+         (f"Crosses threshold on pulse {n_fire}" if n_fire else "Does not fire")
+         + f" at V$_{{pgm}}$ = {a:g} V; the dashed line is the "
+           f"{I_FIRE_UA_UM:g} $\\mu$A/$\\mu$m read threshold.")
 
-    fig.subplots_adjust(hspace=0.08, bottom=0.14)
+    fig.subplots_adjust(hspace=0.08)
     out = pd.DataFrame({"t_us": t_us, "phase": d["phase"], "pulse": d["pulse"],
                         "Vg_V": vg, "Py_uC_cm2": py, "Id_uA_um": idd,
                         "V_pgm_V": a, "threshold_uA_um": I_FIRE_UA_UM})

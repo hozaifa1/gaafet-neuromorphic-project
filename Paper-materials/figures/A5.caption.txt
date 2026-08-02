@@ -1,0 +1,1 @@
+every run executed at A = 0.071; the correction to 0.045 is a pure post-multiplier on contact quantities, an exact rescale of 0.6338$\times$ verified against a re-simulated node to a relative error of 1.8e-16

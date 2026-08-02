@@ -54,14 +54,15 @@ def C1():
     for k, v in enumerate(amps):
         s = d[d["vmax_V"] == v]
         saturated = np.isclose(v, sat)
-        colour = PGM if saturated else GREY
+        colour = PGM if saturated else ("#4d4d4d" if k == 0 else "#a6a6a6")
+        dash = "-" if saturated else (":" if k == 0 else "--")
         for br in ("up", "down"):
             b = s[s["branch"] == br].sort_values("t_s")
             if b.empty:
                 continue
-            ax.plot(b.E_MV_cm, b.P_uC_cm2, "-", color=colour,
-                    lw=3.2 if saturated else 1.8,
-                    alpha=1.0 if saturated else 0.45 + 0.12 * k,
+            ax.plot(b.E_MV_cm, b.P_uC_cm2, dash, color=colour,
+                    lw=3.2 if saturated else 2.2,
+                    alpha=1.0,
                     label=(f"$\\pm${v:.2f} V" if br == "up" else None))
             rows.append(b)
             if saturated:
@@ -146,11 +147,9 @@ def C2():
     ax.set_xlim(-1.25 * f_c, 1.25 * f_c)
     bold_labels(ax, "Field in the HZO, E$_{FE}$ (MV/cm)",
                 "Polarization P ($\\mu$C/cm$^2$)")
-    ax.text(0.03, 0.97,
-            f"$\\pm$4 V gate sweep reaches {reach:.3f} MV/cm\n"
-            f"= {reach / f_c:.2f} of F$_c$ = {f_c:.3f} MV/cm\n"
-            f"(material loop, figure C1)",
-            transform=ax.transAxes, ha="left", va="top", fontweight="bold", fontsize=12)
+    note(ax, f"The $\\pm$4 V gate sweep reaches {reach:.3f} MV/cm, "
+             f"{reach / f_c:.2f} of the material coercive field "
+             f"F$_c$ = {f_c:.3f} MV/cm measured in C1.")
     ax.annotate("F$_c$", xy=(f_c, ax.get_ylim()[1] * 0.75), xytext=(6, 0),
                 textcoords="offset points", fontweight="bold", fontsize=14, color=ACC)
 

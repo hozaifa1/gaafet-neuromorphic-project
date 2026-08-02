@@ -44,75 +44,104 @@ STACK = [("gate metal", "TiN", T_METAL, "#8c8c8c"),
     convention="geometry only -- no current is normalized in this figure",
 )
 def A1():
-    """Device cross-section, drawn to scale, with the polarization probe marked."""
+    """Device cross-section, with the polarization probe and the dimensions marked.
+
+    Horizontal and vertical are drawn on DIFFERENT scales, and both scale bars are
+    on the figure.  At a common scale the structure is 200 nm wide and 31 nm tall,
+    so the 1 nm interfacial oxide -- the layer the whole voltage-divider argument
+    turns on -- is a hairline.  The exaggeration is stated rather than hidden.
+    """
     half_len = L_GATE / 2 + L_SD
     y_body = T_SI / 2
+    stack_h = T_OX + T_FE + T_METAL
+    vx = 4.0                                  # vertical exaggeration, stated on the figure
 
-    y_dim = -y_body - T_OX - T_FE - T_METAL - 16     # the dimension-bar row
+    def Y(y_nm: float) -> float:
+        return y_nm * vx
 
-    fig, ax = plt.subplots(figsize=(11.0, 4.6))
-    ax.set_aspect("equal")
+    y_dim = Y(-y_body - stack_h) - 26         # the dimension-bar row
+    x_j = L_GATE / 2 - L_OV                   # metallurgical junction, under the gate
 
-    def stack(sign: int, label: bool) -> None:
+    fig, ax = plt.subplots(figsize=(10.5, 5.4))
+
+    # --- silicon body, then the n+ source and drain that overlap the gate edges ---
+    ax.add_patch(Rectangle((-half_len, Y(-y_body)), 2 * half_len, Y(T_SI),
+                           fc=STACK[-1][3], ec="black", lw=1.6, zorder=2))
+    for sgn in (-1, +1):
+        x0 = x_j if sgn > 0 else -half_len
+        ax.add_patch(Rectangle((x0, Y(-y_body)), half_len - x_j, Y(T_SI),
+                               fc="#548235", ec="black", lw=1.6, zorder=3))
+        ax.plot([sgn * x_j] * 2, [Y(-y_body), Y(y_body)], "-", color="black",
+                lw=1.4, ls="--", zorder=4)
+
+    # --- the two gate stacks, drawn outward from the channel -------------------
+    labels = []
+    for sign in (+1, -1):
         y = sign * y_body
-        for name, mat, t, colour in reversed(STACK[:-1]):
+        for _, mat, t, colour in reversed(STACK[:-1]):
             y0 = y if sign > 0 else y - t
-            ax.add_patch(Rectangle((-L_GATE / 2, y0), L_GATE, t, fc=colour, ec="black",
-                                   lw=1.6, zorder=2))
-            if label:                       # only the top stack; the bottom is its mirror
-                ax.plot([L_GATE / 2, L_GATE / 2 + 10], [y0 + t / 2] * 2, "-",
-                        color="black", lw=1.0)
-                ax.text(L_GATE / 2 + 12, y0 + t / 2, f"{mat}  {t:g} nm",
-                        va="center", fontweight="bold", fontsize=11)
+            ax.add_patch(Rectangle((-L_GATE / 2, Y(y0)), L_GATE, Y(t), fc=colour,
+                                   ec="black", lw=1.6, zorder=2))
+            if sign > 0:
+                labels.append((Y(y0 + t / 2), f"{mat}  {t:g} nm"))
             y += sign * t
 
-    ax.add_patch(Rectangle((-half_len, -y_body), 2 * half_len, T_SI,
-                           fc=STACK[-1][3], ec="black", lw=1.6, zorder=2))
-    stack(+1, True)
-    stack(-1, False)
-    ax.text(L_GATE / 2 + 12, -(y_body + T_OX + T_FE + T_METAL) / 2,
-            "mirrored below", va="center", fontweight="bold", fontsize=10, color=GREY)
-    ax.text(-half_len - 2, 0, f"Si  {T_SI:g} nm", ha="right", va="center",
-            fontweight="bold", fontsize=11)
-
-    # source and drain, extending under the gate by L_ov on each side
-    x_j = L_GATE / 2 - L_OV
+    # Leader lines fan OUTWARD in the same order as the layers, so they cannot
+    # cross.  `labels` runs inner -> outer, so the label rows must too.
+    x_lead, x_text = L_GATE / 2 + 14, L_GATE / 2 + 34
+    y_rows = np.linspace(Y(y_body) + 6, Y(y_body + stack_h) + 26, len(labels))
+    for (y_src, text), y_lab in zip(labels, y_rows):
+        ax.plot([L_GATE / 2, x_lead, x_text - 3], [y_src, y_src, y_lab], "-",
+                color="black", lw=1.1)
+        ax.text(x_text, y_lab, text, va="center", fontweight="bold", fontsize=12)
+    ax.text(x_lead, Y(-y_body - stack_h / 2), "same stack,\nmirrored", va="center",
+            ha="left", fontweight="bold", fontsize=11, color=GREY)
+    ax.text(-half_len - 6, 0, f"Si\n{T_SI:g} nm", ha="right", va="center",
+            fontweight="bold", fontsize=12)
     for sgn, lab in ((-1, "n$^+$ source"), (+1, "n$^+$ drain")):
-        w = half_len - x_j
-        ax.add_patch(Rectangle((x_j if sgn > 0 else -half_len, -y_body), w, T_SI,
-                               fc="#548235", ec="black", lw=1.6, alpha=0.85, zorder=3))
-        ax.text(sgn * (half_len + x_j) / 2, y_dim + 6, lab, ha="center", va="center",
-                fontweight="bold", fontsize=11, color="#375623")
+        # inside the doped region itself -- floated above the stack these collided
+        # with the layer leader lines
+        ax.text(sgn * (half_len + L_GATE / 2) / 2, 0, lab, ha="center", va="center",
+                fontweight="bold", fontsize=11, color="white", zorder=5)
 
-    # the probe every polarization and field figure reads from
-    ax.plot([0], [PROBE_Y_NM], "o", ms=11, color=ACC, mec="black", mew=1.8, zorder=6)
-    ax.annotate(f"P, E probe  (0, {PROBE_Y_NM:g} nm)", xy=(0, PROBE_Y_NM),
-                xytext=(-118, -34), textcoords="offset points", fontsize=11,
-                fontweight="bold", color=ACC, ha="left",
-                arrowprops=dict(arrowstyle="->", lw=2.0, color=ACC,
-                                connectionstyle="arc3,rad=0.2"))
+    # --- the probe every polarization and field figure reads from --------------
+    ax.plot([0], [Y(PROBE_Y_NM)], "o", ms=12, color=ACC, mec="black", mew=1.8, zorder=6)
+    ax.annotate(f"P, E probe  (0, {PROBE_Y_NM:g} nm)", xy=(0, Y(PROBE_Y_NM)),
+                xytext=(-half_len - 4, Y(y_body + stack_h) + 22),
+                textcoords="data", fontsize=12, fontweight="bold", color=ACC,
+                ha="left", va="bottom",
+                arrowprops=dict(arrowstyle="->", lw=2.2, color=ACC,
+                                connectionstyle="arc3,rad=-0.25"))
 
-    # dimension bars
+    # --- dimension bars, and one scale bar per axis ----------------------------
     ax.add_patch(FancyArrowPatch((-L_GATE / 2, y_dim), (L_GATE / 2, y_dim),
                                  arrowstyle="<->", mutation_scale=16, lw=2.0,
                                  color="black"))
-    ax.text(0, y_dim - 5, f"L$_{{gate}}$ = {L_GATE:g} nm", ha="center", va="top",
-            fontweight="bold", fontsize=12)
-    ax.add_patch(FancyArrowPatch((x_j, y_dim + 8), (L_GATE / 2, y_dim + 8),
-                                 arrowstyle="<->", mutation_scale=12, lw=1.8,
-                                 color="black"))
-    ax.text((x_j + L_GATE / 2) / 2, y_dim + 11, f"L$_{{ov}}$ = {L_OV:g}",
-            ha="center", va="bottom", fontweight="bold", fontsize=10)
+    ax.text(0, y_dim - 6, f"L$_{{gate}}$ = {L_GATE:g} nm", ha="center", va="top",
+            fontweight="bold", fontsize=13)
+    # L_ov is 15 nm on a 200 nm axis: a double-headed arrow renders as a blob and a
+    # callout has nowhere to go that is not already occupied.  The dashed junction
+    # lines are drawn; the caption states what they are and how far in they sit.
 
-    total = T_SI + 2 * (T_OX + T_FE + T_METAL)
-    ax.set_xlim(-half_len - 34, half_len + 96)
-    ax.set_ylim(y_dim - 18, y_body + T_OX + T_FE + T_METAL + 30)
+    x_sb = -half_len - 34
+    ax.plot([x_sb, x_sb], [y_dim + 4, y_dim + 4 + Y(10)], "-", color="black", lw=2.6)
+    ax.text(x_sb - 4, y_dim + 4 + Y(5), "10 nm\nvertical", ha="right", va="center",
+            fontweight="bold", fontsize=10)
+    ax.plot([x_sb, x_sb + 50], [y_dim - 22, y_dim - 22], "-", color="black", lw=2.6)
+    ax.text(x_sb + 25, y_dim - 26, "50 nm horizontal", ha="center", va="top",
+            fontweight="bold", fontsize=10)
+
+    total = T_SI + 2 * stack_h
+    ax.set_xlim(-half_len - 96, half_len + 138)
+    ax.set_ylim(y_dim - 46, Y(y_body + stack_h) + 62)
     ax.set_axis_off()
-    fig.text(0.5, 0.955,
-             f"drawn to scale;  total stack {total:g} nm,  "
-             f"N$_{{sub}}$ = {N_SUB:.0e} cm$^{{-3}}$,  N$_{{sd}}$ = {N_SD:.0e} cm$^{{-3}}$,  "
-             f"gate work function {WF_EV:g} eV",
-             ha="center", fontweight="bold", fontsize=12)
+    note(ax,
+         f"The vertical axis is exaggerated {vx:g}$\\times$ relative to the "
+         f"horizontal, so that the {T_OX:g} nm interfacial oxide is visible; both "
+         f"scale bars are drawn. Total gate stack {total:g} nm. "
+         f"N$_{{sub}}$ = {N_SUB:.0e} cm$^{{-3}}$, N$_{{sd}}$ = {N_SD:.0e} cm$^{{-3}}$, "
+         f"gate work function {WF_EV:g} eV. Dashed lines are the metallurgical "
+         f"junctions, which sit {L_OV:g} nm inside each gate edge.")
 
     rows = [{"layer": n, "material": m, "thickness_nm": t, "source": "sde_opt.cmd"}
             for n, m, t, _ in STACK]
@@ -210,12 +239,12 @@ def A5():
     ax.set_xlim(-sw / 2 - 14, sw / 2 + dx2 + 62)
     ax.set_ylim(-sh / 2 - 30, sh / 2 + dy2 + 40)
 
-    fig.text(0.5, 0.06,
+    note(axes[0],
              f"every run executed at A = {norm.AREAFACTOR_USED:g}; the correction to "
              f"{norm.AREAFACTOR_CORRECT:g} is a pure post-multiplier on contact quantities, "
              f"an exact rescale of {norm.CORR:.4f}$\\times$\n"
              f"verified against a re-simulated node to a relative error of 1.8e-16",
-             ha="center", fontweight="bold", fontsize=11)
+             )
 
     rows = [
         {"symbol": "W", "value": w, "units": "nm", "from": "norm.W_SHEET_NM"},
