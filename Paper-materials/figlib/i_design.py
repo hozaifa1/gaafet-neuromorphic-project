@@ -87,8 +87,10 @@ def I2():
 
     chosen = d[(d["eval"] == "subcoercive") & (d["t_ox_nm"] == 1.0)].iloc[0]
     ax.axvline(chosen.t_ox_nm, color=ACC, lw=2.2, ls=":")
+    # the window peaks at the chosen thickness, so a callout placed at the peak
+    # lands under the legend; hang it off the bottom of the marker line instead
     ax.annotate(f"chosen: {chosen.t_ox_nm:g} nm",
-                xy=(chosen.t_ox_nm, chosen.window), xytext=(14, -6),
+                xy=(chosen.t_ox_nm, ax.get_ylim()[0]), xytext=(10, 26),
                 textcoords="offset points", fontsize=12, fontweight="bold", color=ACC)
 
     bold_labels(ax, "Interfacial oxide thickness T$_{ox}$ (nm)",
@@ -144,8 +146,8 @@ def I3():
     chosen = d.iloc[best]
     worst_v = d[d.v_op_V > chosen.v_op_V]
     gain = float(chosen.window / worst_v.window.max()) if len(worst_v) else float("nan")
-    ax.set_xlim(d.v_op_V.min() - 0.75, d.v_op_V.max() + 0.75)
-    ax.set_ylim(d.window.min() / 4, d.window.max() * 12)
+    ax.set_xlim(d.v_op_V.min() - 0.45, d.v_op_V.max() + 0.45)
+    ax.set_ylim(d.window.min() / 1.8, d.window.max() * 2.2)
     bold_labels(ax, "Operating voltage V$_{op}$ (V)", "Retained ON/OFF window ($\\times$)")
     note(ax, f"marker area $\\propto$ gate charge\n"
              f"{chosen.t_fe_nm:g} nm: {gain:.1f}$\\times$ the window of the best "
