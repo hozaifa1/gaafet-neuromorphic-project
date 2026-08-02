@@ -48,43 +48,51 @@ def A1():
     half_len = L_GATE / 2 + L_SD
     y_body = T_SI / 2
 
+    y_dim = -y_body - T_OX - T_FE - T_METAL - 16     # the dimension-bar row
+
     fig, ax = plt.subplots(figsize=(11.0, 4.6))
     ax.set_aspect("equal")
 
-    def stack(sign: int) -> None:
+    def stack(sign: int, label: bool) -> None:
         y = sign * y_body
         for name, mat, t, colour in reversed(STACK[:-1]):
             y0 = y if sign > 0 else y - t
             ax.add_patch(Rectangle((-L_GATE / 2, y0), L_GATE, t, fc=colour, ec="black",
                                    lw=1.6, zorder=2))
-            ax.text(L_GATE / 2 + 6, y0 + t / 2, f"{mat}  {t:g} nm",
-                    va="center", fontweight="bold", fontsize=11)
+            if label:                       # only the top stack; the bottom is its mirror
+                ax.plot([L_GATE / 2, L_GATE / 2 + 10], [y0 + t / 2] * 2, "-",
+                        color="black", lw=1.0)
+                ax.text(L_GATE / 2 + 12, y0 + t / 2, f"{mat}  {t:g} nm",
+                        va="center", fontweight="bold", fontsize=11)
             y += sign * t
 
     ax.add_patch(Rectangle((-half_len, -y_body), 2 * half_len, T_SI,
                            fc=STACK[-1][3], ec="black", lw=1.6, zorder=2))
-    stack(+1)
-    stack(-1)
+    stack(+1, True)
+    stack(-1, False)
+    ax.text(L_GATE / 2 + 12, -(y_body + T_OX + T_FE + T_METAL) / 2,
+            "mirrored below", va="center", fontweight="bold", fontsize=10, color=GREY)
+    ax.text(-half_len - 2, 0, f"Si  {T_SI:g} nm", ha="right", va="center",
+            fontweight="bold", fontsize=11)
 
     # source and drain, extending under the gate by L_ov on each side
     x_j = L_GATE / 2 - L_OV
     for sgn, lab in ((-1, "n$^+$ source"), (+1, "n$^+$ drain")):
-        x0 = sgn * x_j if sgn > 0 else -half_len
         w = half_len - x_j
-        ax.add_patch(Rectangle((x0 if sgn > 0 else -half_len, -y_body), w, T_SI,
+        ax.add_patch(Rectangle((x_j if sgn > 0 else -half_len, -y_body), w, T_SI,
                                fc="#548235", ec="black", lw=1.6, alpha=0.85, zorder=3))
-        ax.text(sgn * (half_len + x_j) / 2, -y_body - 9, lab, ha="center",
+        ax.text(sgn * (half_len + x_j) / 2, y_dim + 6, lab, ha="center", va="center",
                 fontweight="bold", fontsize=11, color="#375623")
 
     # the probe every polarization and field figure reads from
     ax.plot([0], [PROBE_Y_NM], "o", ms=11, color=ACC, mec="black", mew=1.8, zorder=6)
-    ax.annotate(f"P, E probe\n(0, {PROBE_Y_NM:g} nm)", xy=(0, PROBE_Y_NM),
-                xytext=(-46, 26), textcoords="offset points", fontsize=11,
-                fontweight="bold", color=ACC,
-                arrowprops=dict(arrowstyle="->", lw=2.0, color=ACC))
+    ax.annotate(f"P, E probe  (0, {PROBE_Y_NM:g} nm)", xy=(0, PROBE_Y_NM),
+                xytext=(-118, -34), textcoords="offset points", fontsize=11,
+                fontweight="bold", color=ACC, ha="left",
+                arrowprops=dict(arrowstyle="->", lw=2.0, color=ACC,
+                                connectionstyle="arc3,rad=0.2"))
 
     # dimension bars
-    y_dim = -y_body - T_OX - T_FE - T_METAL - 16
     ax.add_patch(FancyArrowPatch((-L_GATE / 2, y_dim), (L_GATE / 2, y_dim),
                                  arrowstyle="<->", mutation_scale=16, lw=2.0,
                                  color="black"))
@@ -97,15 +105,14 @@ def A1():
             ha="center", va="bottom", fontweight="bold", fontsize=10)
 
     total = T_SI + 2 * (T_OX + T_FE + T_METAL)
-    ax.text(-half_len, y_body + T_OX + T_FE + T_METAL + 8,
-            f"drawn to scale;  total stack {total:g} nm,  "
-            f"N$_{{sub}}$ = {N_SUB:.0e} cm$^{{-3}}$,  N$_{{sd}}$ = {N_SD:.0e} cm$^{{-3}}$,  "
-            f"gate work function {WF_EV:g} eV",
-            fontweight="bold", fontsize=11, va="bottom")
-
-    ax.set_xlim(-half_len - 8, half_len + 78)
-    ax.set_ylim(y_dim - 16, y_body + T_OX + T_FE + T_METAL + 22)
+    ax.set_xlim(-half_len - 34, half_len + 96)
+    ax.set_ylim(y_dim - 18, y_body + T_OX + T_FE + T_METAL + 30)
     ax.set_axis_off()
+    fig.text(0.5, 0.955,
+             f"drawn to scale;  total stack {total:g} nm,  "
+             f"N$_{{sub}}$ = {N_SUB:.0e} cm$^{{-3}}$,  N$_{{sd}}$ = {N_SD:.0e} cm$^{{-3}}$,  "
+             f"gate work function {WF_EV:g} eV",
+             ha="center", fontweight="bold", fontsize=12)
 
     rows = [{"layer": n, "material": m, "thickness_nm": t, "source": "sde_opt.cmd"}
             for n, m, t, _ in STACK]
@@ -158,8 +165,10 @@ def A5():
                 arrowprops=dict(arrowstyle="<->", lw=2.0))
     ax.text(0, -t / 2 - 12, f"W = {w:g} nm", ha="center", va="top", fontweight="bold",
             fontsize=13)
-    ax.annotate("", xy=(-w / 2 - 8, -t / 2), xytext=(-w / 2 - 8, t / 2),
-                arrowprops=dict(arrowstyle="<->", lw=2.0))
+    ax.annotate("", xy=(-w / 2 - 8, -t / 2 - 6), xytext=(-w / 2 - 8, t / 2 + 6),
+                arrowprops=dict(arrowstyle="-", lw=2.0))
+    ax.plot([-w / 2 - 12, -w / 2 - 4], [t / 2] * 2, "-", color="black", lw=1.6)
+    ax.plot([-w / 2 - 12, -w / 2 - 4], [-t / 2] * 2, "-", color="black", lw=1.6)
     ax.text(-w / 2 - 11, 0, f"T$_{{si}}$ = {t:g} nm", ha="right", va="center",
             fontweight="bold", fontsize=13, rotation=90)
     ax.text(0, t / 2 + dy + 8,
@@ -186,14 +195,12 @@ def A5():
                                        [-sw / 2 + dx2, y0 + dy2]]),
                              closed=True, fc=PGM, ec="black", lw=2.0, alpha=0.85,
                              zorder=2))
-    ax.text(sw / 2 + dx2 + 4, sh / 2 + dy2 / 2, "gated face", fontweight="bold",
-            fontsize=12, color=PGM, va="center")
-    ax.text(sw / 2 + dx2 + 4, -sh / 2 + dy2 / 2, "gated face", fontweight="bold",
-            fontsize=12, color=PGM, va="center")
+    ax.text(sw / 2 + dx2 + 6, sh / 2 + dy2 / 2, "both faces\ngated",
+            fontweight="bold", fontsize=12, color=PGM, va="center")
 
-    ax.annotate("", xy=(sw / 2 + 3, -sh / 2 - 2), xytext=(sw / 2 + dx2 + 3, -sh / 2 + dy2 - 2),
+    ax.annotate("", xy=(sw / 2 + 3, -sh / 2 - 10), xytext=(sw / 2 + dx2 + 3, -sh / 2 + dy2 - 10),
                 arrowprops=dict(arrowstyle="<->", lw=2.2, color=ACC))
-    ax.text(sw / 2 + dx2 / 2 + 12, -sh / 2 + dy2 / 2 - 8,
+    ax.text(sw / 2 + dx2 / 2 + 14, -sh / 2 + dy2 / 2 - 18,
             f"z-depth A = {area:g} $\\mu$m", fontweight="bold", fontsize=13, color=ACC)
     ax.text(0, sh / 2 + dy2 + 12,
             f"double-gated slab: width = 2A\n"

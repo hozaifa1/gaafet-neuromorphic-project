@@ -14,5 +14,5 @@ Li2024_NatComms,ITO-channel HZO FeFET,,,,,2.78,2024.0,Nat. Commun.,https://doi.o
 Wang2025_AdvElecMater,ITO-channel HZO FeFET,,,,,1.73,2025.0,Adv. Electron. Mater.,https://doi.org/10.1002/aelm.202500078,The device has a great on/off ratio ~10^8 with a memory window of 1.73 V.,high,literature
 Kong2023_TED,ZnO fin-gate FeFET,,,,,1.5,2023.0,IEEE TED,https://doi.org/10.1109/TED.2023.3242852,"our ZnO Fe-FETs show excellent electrical characteristics, including memory windows (MWs) of 1.9 and 1.5 V with the channel length (Lch) of 1 um and 50 nm, respectively.",high,literature
 Bohuslavskyi2024_AdvElecMater,Planar HZO FeFET,20.0,,,,,2024.0,Adv. Electron. Mater.,https://doi.org/10.1002/aelm.202300879,At least 20 reproducible analog states for temperatures below 100 K with almost ideal linearity of intermediate polarization states in both pulse directions is observed.,medium,literature
-This work (open loop),GAA HZO FeFET,8.0,8.208897927787947e-07,0.2,,,,,,,computed,this work
-This work (write-verify),GAA HZO FeFET,16.0,8.208897927787947e-07,0.2,,,,,,,computed,this work
+This work (open loop),GAA HZO FeFET,8.0,8.208897927787946e-06,2.0,,,,,,,computed,this work
+This work (write-verify),GAA HZO FeFET,16.0,8.208897927787946e-06,2.0,,,,,,,computed,this work

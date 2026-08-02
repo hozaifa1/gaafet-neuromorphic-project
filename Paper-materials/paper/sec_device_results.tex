@@ -1,0 +1,266 @@
+\section{Device Results}
+\label{sec:device}
+
+\subsection{Calibration quality}
+
+Panel~2 shows the calibrated deck against the measurement. On the overlay
+(panel~2(a)) the simulated branches follow the measured points through turn-on and into
+saturation on both polarization states, and the memory window extracted from the plotted
+curves at a constant current of \SI{1e-8}{\ampere} per nanosheet is \SI{1.296}{\volt},
+with threshold voltages of \SI{+0.362}{\volt} erased and \SI{-0.934}{\volt} programmed.
+Panel~2(b) removes both the window and the absolute current level by plotting each curve
+against its own gate overdrive and normalized to its own on-current: the turn-on shape
+still tracks the measurement, which is the part of the agreement that the fitted width
+scalar cannot manufacture. Panel~2(c) gives the residual, which stays inside
+\num{0.3} decades over most of the operating region; the RMS residual is
+\num{0.30} decades on the programmed branch and \num{0.48} on the erased branch,
+the larger erased value coming from the deep subthreshold points where the measurement
+itself is near its noise floor.
+
+\subsection{The ferroelectric, and what the gate stack actually sees}
+
+Panel~3 contains the paper's clearest single correction. Panel~3(a) is a standalone
+metal--ferroelectric--metal capacitor swept at three amplitudes. At
+\SI{\pm1.96}{\volt}, which is twice the coercive voltage
+$2 F_c T_\mathrm{fe}$ and the amplitude a reader would reasonably choose, the loop is
+\emph{not} saturated. Saturation needs roughly five times the coercive field, and there
+the extracted parameters are $P_s=\SI{39.99}{\micro\coulomb\per\square\centi\metre}$,
+$|P_r|=\SI{31.99}{\micro\coulomb\per\square\centi\metre}$ and
+$F_c=\SI{1.400}{\mega\volt\per\centi\metre}$, against the calibration targets of
+\num{40}, \num{32} and \num{1.4}. The unsaturated amplitudes are kept in the figure as
+the control: they are what makes the saturated loop evidence rather than an assertion.
+
+Panel~3(b) is the loop measured through the gate stack over the same material. It is a
+deep minor loop. A \SI{\pm4}{\volt} gate sweep delivers about
+\SI{0.77}{\mega\volt\per\centi\metre} to the HZO, roughly \SI{55}{\percent} of $F_c$, so
+what the gate can switch is set by the metal--ferroelectric--insulator--semiconductor
+voltage divider rather than by the material. Reading panel~3(b) as an HZO material loop
+--- which an earlier version of this work did --- understates $P_r$ by almost an order of
+magnitude and misattributes a stack property to the film.
+
+\subsection{Retained characteristics}
+
+Panel~4(a) is the retained transfer characteristic. After a \SI{\pm2}{\volt} write and
+settling, the two states are separated by \SI{0.387}{\volt} at a constant current of
+\SI{1e-2}{\micro\ampere\per\micro\metre} and by $5410\times$ in drain current at
+$V_G=0$. The subthreshold slope, fitted over more than two decades starting a decade
+above the branch minimum, is \SI{63.5}{\milli\volt\per\text{dec}} on the programmed
+branch. The ambipolar minima at $V_G\approx\SI{-0.25}{\volt}$ (erased) and
+$\SI{-0.55}{\volt}$ (programmed) are labelled rather than cropped: they are real, they
+set where the device can be read, and panel~8(d) turns them into a design constraint.
+
+Panel~4(b) shows that every analog state behaves as an ordinary transistor. The output
+characteristic is ohmic at low drain bias for the erased state, the programmed state and
+the intermediate ladder stops alike, with linear-region correlation coefficients of
+\numrange{0.958}{0.998}, and saturates cleanly. Stored polarization changes the channel
+conductance without changing the character of the device.
+
+\paragraph*{Drain-induced barrier lowering}
+Extracted at a fixed constant current of
+\SI{6.338e-3}{\micro\ampere\per\micro\metre}, the erased branch gives
+\SI{59.5}{\milli\volt\per\volt} --- an unremarkable short-channel value for a
+\SI{100}{\nano\metre} gate on a \SI{5}{\nano\metre} body. The programmed branch gives
+\SI{309}{\milli\volt\per\volt}, five times larger and not explicable as electrostatic
+barrier lowering at this geometry. The plausible mechanism is the drain field acting on
+the ferroelectric itself, a drain-induced polarization change rather than a short-channel
+effect. \emph{This run does not establish that.} Settling it needs the polarization
+probed at the drain end against $V_{DS}$, or a non-ferroelectric control, and neither was
+run. The erased value is reported as the device's DIBL; the programmed value is reported
+as an open question rather than omitted.
+
+\subsection{Write transients and energy}
+
+Panel~6 follows one train of fifteen \SI{2}{\volt}, \SI{100}{\nano\second} pulses.
+Panel~6(a) stitches the write and read segments onto one time axis: the polarization
+walks down a staircase, one step per pulse, and between pulses the gate conduction
+current sits at about \SI{23}{\pico\ampere}, so the \SI{1}{\nano\metre} interfacial oxide
+does not bleed the stored state away between writes.
+
+Panel~6(b) overlays the per-pulse polarization transients. The amount switched per pulse
+rises through the first third of the train, peaks, and then falls as the ferroelectric
+saturates. That kinetic saturation --- not any limit of the read --- is why the
+conductance ladder compresses at the top, and it is the mechanism behind the level
+crowding reported in Section~\ref{sec:levels}.
+
+Panel~6(c) gives the measured energy. Switching costs \SI{8.2}{\atto\joule} per pulse on
+average, peaking at \SI{11.0}{\atto\joule} in the middle of the train, and the complete
+fifteen-level write costs \SI{0.123}{\femto\joule}.
+
+\subsection{Synaptic behaviour}
+
+Panel~5(a) is the potentiation ladder with its measured cycle-to-cycle band, discussed in
+Section~\ref{sec:levels}. Panel~5(b) fits the conventional exponential-saturation
+nonlinearity model to the normalized ladder. It fits poorly, and the figure says so: the
+residual is systematic and one-sided because this device's response is sigmoidal --- an
+incubation of two to three pulses, then a fast swing --- rather than saturating from the
+first pulse. The nonlinearity parameter is reported alongside the \numrange{10}{90}
+percent pulse span, which describes this shape and the single parameter does not.
+
+Panel~5(c) closes the loop. Three alternating potentiation and depression trains give
+per-cycle windows of $11650\times$, $4185\times$ and $3577\times$, and the depression
+endpoint returns to \SI{96.2}{\percent} of the erased baseline. The window that is lost
+between cycles is lost almost entirely at the \emph{floor}: the erased minimum rises from
+\num{0.0040} to \SI{0.0121}{\micro\ampere\per\micro\metre} across the three cycles while
+the potentiated ceiling falls only from \num{46.9} to
+\SI{43.4}{\micro\ampere\per\micro\metre}. A single erase pulse does not fully switch a
+programmed device, because erase is opposed by the depolarization field.
+
+\emph{This is write repeatability, not endurance.} The Preisach model has no fatigue,
+wake-up or imprint term, so it is structurally incapable of producing an endurance
+result: cycling it further would return a flat line because the equations say so. No
+endurance figure is presented and none should be inferred.
+
+Temperature is reported in the supplementary set and is not monotonic: at the top of the
+ladder \SI{350}{\kelvin} sits about six times \emph{below} \SI{300}{\kelvin} while
+\SI{250}{\kelvin} sits slightly above it. Three temperatures, non-monotonic, do not
+support an Arrhenius fit, and none is presented.
+
+\subsection{Analog depth: eight levels, or sixteen}
+\label{sec:levels}
+
+Panel~5(a) is the central device measurement of this paper. Eleven complete repeats of
+the same fifteen-pulse train on one device --- a genuine cycle-to-cycle distribution
+rather than a corner envelope --- give a median standard deviation of \num{0.0215}
+decades, with the per-level value falling from \num{0.239} decades at the bottom of the
+ladder to \num{0.0131} at the top. The run was stopped by a two-hour job limit after
+eleven of the twenty queued repeats, so the standard deviation itself is known to about
+\SI{22}{\percent}, and that repeat count is quoted wherever the number is.
+
+At a three-sigma separation criterion, \textbf{eight of the fifteen stops are separable}.
+The failures are all at the top: levels nine to fifteen sit inside \num{0.114} decades
+because the potentiation curve saturates, while the noise stays roughly flat, so at level
+fifteen the spacing is \num{0.0085} decades against a standard deviation of \num{0.0131}
+--- the levels are closer together than the noise.
+
+The measured range is \num{3.79} decades wide, and the train's own stops are not the only
+places a level can be put. Placing targets greedily from the bottom, each three standard
+deviations above the last, the same range and the same measured noise support about
+\textbf{sixteen levels}. Reaching them requires write-verify circuitry and per-write
+iteration.
+
+\textbf{Both numbers are reported, with their protocols attached, and the network results
+in Section~\ref{sec:network} assume a write-verify array.} That is not a concession made
+to rescue a level count: Section~\ref{sec:variability} shows that write-verify is
+unavoidable on this device regardless of how many levels are claimed, because without
+per-device calibration the deployed accuracy collapses to \num{0.243}. The system pays
+for write-verify either way, so the higher level count costs nothing extra.
+
+\subsection{Retention and read disturb}
+
+Panel~9 is built around one rule: measure after the state has settled. Panel~9(a) shows
+why. A hold immediately after a write is dominated by a depolarization transient --- a
+roughly ninefold overshoot decaying away over about five time constants --- and only the
+plateau afterwards is retention. Fitting a single power law across both phases returns
+total data loss at ten years from a signal that is provably flat, and an unphysical
+negative activation energy. That is not a hypothetical: it is what this work reported
+before the two phases were separated.
+
+Panel~9(b) gives the retention itself, out to \SI{10}{\milli\second}. After settling at
+about \SI{50}{\micro\second}, the programmed state at \SI{300}{\kelvin} is flat to
+\SI{0.62}{\percent} across \num{2.3} decades; at \SI{400}{\kelvin} it is flat to
+\SI{0.96}{\percent} across \num{2.4} decades; and a mid-ladder analog state, LTP level
+eight, is flat to \SI{0.62}{\percent} --- the same bound as the fully programmed state,
+which is the case reviewers most often doubt.
+
+No ten-year extrapolation is given. The measurement spans \SI{10}{\milli\second}; ten
+years is eleven decades beyond it, and the plateau is flat to the solver's own
+resolution, so an extrapolated number would be reporting a fit's noise floor as physics.
+What the data supports is a bound: no decay resolvable above about \SI{1}{\percent} over
+the measured decades. No activation energy is extracted either --- both temperatures
+reach flat plateaus, the plateau \emph{levels} differ mainly through the temperature
+dependence of the drain current rather than through polarization loss, and the model
+contains no thermally activated retention term.
+
+Panel~9(c) is read disturb. Measured from the settled state, the retained current changes
+by \SI{0.0000}{\percent} over \num{9.9e5} equivalent reads at $V_\mathrm{read}=0$. This
+is a strong result and it has a simple mechanism: at zero gate bias the read does no work
+on the ferroelectric, so there is nothing to disturb it. The same run measured from the
+immediate post-write value would read \SI{-84.7}{\percent}, which is the depolarization
+transient and not disturb; both are drawn so the distinction is visible rather than
+asserted.
+
+\subsection{Integrate-and-fire operation}
+
+Panel~7 shows the device used as an integrator. In panel~7(a), successive identical
+pulses raise the zero-bias read current monotonically until it crosses a fixed threshold
+of \SI{0.1}{\micro\ampere\per\micro\metre} on the ninth pulse, at a contrast of
+$18.4\times$ the rest current --- taken against that run's own pre-train baseline.
+Against a different run's baseline the same measurement reads $30.6\times$, which is the
+error the same-run rule in Section~\ref{sec:rules} exists to prevent.
+
+Panel~7(b) measures the state variable directly. Across five programming amplitudes from
+\SIrange{1.5}{3.5}{\volt}, the polarization accumulated over a nine-pulse train reaches a
+fixed threshold in seven, six, five, four and four pulses respectively: pulse amplitude
+sets the integration rate, which is the transfer function an integrate-and-fire element
+needs. Panel~7(c) puts the three traces on one time axis --- gate drive, polarization,
+read current --- and makes the point that the polarization \emph{is} the state variable.
+
+Two limitations belong with this panel. First, with the depolarization time constant used
+here the device holds its state after firing rather than leaking back, so what is
+demonstrated is a single-shot integrate-and-fire event and not a repeating leaky cycle.
+Second, this project ran two dedicated count-to-fire sweeps, 224 files in total, and
+neither is usable. Both write with \SI{20}{\nano\second} pulses, and the programming
+study in panel~8 already establishes that pulses of \SI{30}{\nano\second} and shorter do
+not program at any amplitude; the polarization traces agree, moving by about
+\SI{0.01}{\percent} of $P_r$ across twelve pulses. Several amplitude families also read
+at $V_G=\SI{-0.5}{\volt}$, inside the gate-induced-drain-leakage branch, where the
+current is set by band-to-band generation at the drain edge and is nearly insensitive to
+the stored polarization. Those runs completed without error and produced flat, plausible
+looking ladders. They are reported here rather than quietly dropped, because a run that
+completes is not a result.
+
+\subsection{Design space}
+
+Panel~8 collects the parameter study. Panel~8(a) is the coordinate-descent trajectory:
+six turns, four orders of magnitude of improvement in the retained window, and the last
+two turns changing nothing, which is what termination looks like.
+
+Panel~8(b) is the interfacial oxide. Thinning it buys window and costs off-current, and
+the trade has the same shape whether each thickness is evaluated at a fixed
+\SI{4}{\volt} write or at its own sub-coercive operating point. One nanometre yields
+about seventy-five times the window of \SI{1.5}{\nano\metre}; below that the off-current
+penalty takes over.
+
+Panel~8(c) is the ferroelectric thickness, and it is a Pareto choice rather than an
+optimum. Seven nanometres gives the largest retained window of the set, at the lowest
+operating voltage in the set and the smallest gate charge --- so on this device the
+window-optimal thickness also happens to be the cheapest to write, which is not
+guaranteed and is the reason the figure plots all three quantities together.
+
+Panel~8(d) is the read bias. The retained window is largest near $V_G=0$ while the rest
+current is at its floor; at negative read bias the gate-induced drain leakage reopens and
+the window collapses. The superseded virgin-referenced dynamic range from an earlier
+version of this work is overlaid as a dashed line: it peaks in the leakage region,
+because that is where the leakage current is largest, not where the stored state is most
+readable. Plotting the two together documents the correction rather than hiding it, and
+it is the same conclusion the unusable count-to-fire runs reach from the other direction.
+
+\subsection{Comparison with a planar ablation}
+
+Panel~10(a) compares the nanosheet against a planar device built from the identical
+stack with the bottom gate removed --- an ablation, so gate control is the only variable.
+The planar device wins the headline number outright: its raw memory window is
+\SI{1.42}{\volt} against \SI{0.387}{\volt}, and its retained on/off ratio is
+$1.42\times10^4$ against $5.41\times10^3$. It loses the properties this application
+needs. Under one shared separation criterion the nanosheet resolves fourteen ladder stops
+against the planar device's ten, it programs at \SI{2.0}{\volt} against
+\SI{2.3}{\volt}, and it holds a steeper subthreshold slope. Retention is deliberately not
+an axis of the comparison: the planar figure is a \SI{100}{\micro\second} hold, and on
+the nanosheet \SI{100}{\micro\second} lies inside its own settling transient, so the two
+numbers do not measure the same thing.
+
+\subsection{Benchmark against published devices}
+
+Panel~10(b) places this device on a survey of fifteen recent ferroelectric analog-memory
+devices, plotting analog levels against energy per programming pulse. This work sits at
+the low-energy end of what is reported, at \SI{8.2}{\atto\joule} per pulse with eight
+open-loop levels and about sixteen under write-verify.
+
+The figure also reports something about the field. Only two of the fifteen surveyed
+devices state an energy per programming pulse at all; the rest give a level count and no
+energy, and they appear on the figure as a marginal rug rather than being dropped. The
+comparison a reader most wants to make is, for most published devices, not possible from
+what is published. Every point is traceable through
+\texttt{literature\_benchmark.csv}, which carries the digital object identifier and the
+sentence each number was read from, and points whose source could not be confirmed in the
+paper text are drawn as open markers.

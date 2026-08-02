@@ -208,10 +208,52 @@ def compose_panel(n: int) -> Path:
     return out
 
 
+# Figures produced by the network pipeline rather than by this generator.  They
+# are listed so the manifest covers every figure in the paper; they are NOT
+# re-implemented here, because two scripts drawing the same figure is how the
+# last set drifted.  Their PNG and reproducing CSV live beside them at the
+# source path and are copied into figures/ unchanged.
+EXTERNAL: dict[str, tuple[str, str, str]] = {
+    "K2": ("PYTHON_Modelling_Fefet_Codes/ecg detection/fig_k2_levels.py",
+           "Deployed accuracy depends on where the conductance levels sit, not on how "
+           "many there are: at 8 levels four placements span 0.336-0.491 while even "
+           "spacing gives 0.804.",
+           "normalized by g_max -- a global current scale cancels exactly"),
+    "K3a": ("PYTHON_Modelling_Fefet_Codes/ecg detection/fig_k3_variability.py d2d",
+            "Per-device calibration is not optional: median accuracy over the 20 corner "
+            "devices is 0.243 with none, 0.777 with a gain trim, 0.830 with full "
+            "write-verify.",
+            "normalized by each device's own g_max"),
+    "K3b": ("PYTHON_Modelling_Fefet_Codes/ecg detection/fig_k3_variability.py c2c",
+            "At the measured cycle-to-cycle sigma the 15-level deployment loses 0.001 "
+            "accuracy; quantizing to the 8 separable levels instead costs 0.036.",
+            "noise injected per conductance branch, not per weight"),
+    "K3c": ("PYTHON_Modelling_Fefet_Codes/ecg detection/fig_k3_variability.py ladder",
+            "What predicts accuracy after a gain trim is worst-level misplacement "
+            "(Spearman -0.85), not any readout-overlap statistic.",
+            "log-conductance residuals -- dimensionless"),
+    "K4": ("PYTHON_Modelling_Fefet_Codes/ecg detection/fig_k4_energy.py",
+           "The core costs 535.8 pJ/beat and the whole array is written once for "
+           "69.6 pJ, but the assumed ADC term is 183 nJ/beat -- 342x the core.",
+           "energies via norm.to_device_amps; ADC assumes 1 pJ/conversion"),
+}
+
+
 # --- manifest ------------------------------------------------------------
 def write_manifest() -> Path:
     panel_of = {f: n for n, (_, fids, _) in PANELS.items() for f in fids}
     rows = []
+    for fid, (script, claim, conv) in EXTERNAL.items():
+        rows.append({
+            "figure_id": fid,
+            "main_text_panel": "standalone",
+            "source_data": script,
+            "draw_function": "external -- not drawn by figs.py",
+            "claim_supported": claim,
+            "normalization": conv,
+            "png": f"figures/{fid}_*.png" if list(OUTDIR.glob(f"{fid}_*.png"))
+                   else "NOT COPIED",
+        })
     for fid in sorted(REGISTRY):
         s = REGISTRY[fid]
         rows.append({

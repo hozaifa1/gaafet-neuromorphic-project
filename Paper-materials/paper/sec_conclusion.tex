@@ -1,0 +1,52 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+A gate-all-around HZO ferroelectric FET was calibrated against published measurements and
+characterized as an analog synapse, then carried through to the accuracy and the energy of
+a spiking electrocardiogram classifier deployed on it. The device holds a retained on/off
+window of $5410\times$ at zero read bias with \SI{0.387}{\volt} of threshold separation and
+a \SI{63.5}{\milli\volt\per\text{dec}} subthreshold slope; fifteen identical
+\SI{2}{\volt}, \SI{100}{\nano\second} pulses move the channel current over \num{3.79}
+decades at about \SI{8}{\atto\joule} per pulse; the retained state is flat to better than
+\SI{1}{\percent} across the last two decades of a \SI{10}{\milli\second} hold, at both
+temperatures tested and for a mid-ladder state as well as a fully programmed one; and a
+zero-bias read leaves it unchanged over \num{9.9e5} equivalent reads.
+
+Three results are the substance of the work.
+
+\emph{Placement beats count.} At eight conductance levels, four different choices of which
+eight gave accuracies from \num{0.336} to \num{0.491}, while spacing the same eight evenly
+gave \num{0.804}. Separately, once each device is given a gain trim, what predicts its
+accuracy is how far its worst level sits from where it should be --- Spearman \num{-0.85},
+holding to about \num{0.6} decades of misplacement and collapsing by \num{0.9}. Two
+independent analyses, one conclusion.
+
+\emph{Interface charge controls placement, not ferroelectric thickness.} Perturbing fixed
+interface charge by \SI{10}{\percent} moves the levels by \num{1.31} decades; perturbing the
+ferroelectric thickness by \SI{0.3}{\nano\metre} moves them by \num{0.07}. This inverts the
+expected ordering and gives a fabrication target rather than an observation.
+
+\emph{Distinguishability is not the figure of merit.} Three separate measurements of
+whether one level can be told from the next --- ensemble overlap, post-gain-trim overlap,
+and three-sigma cycle-to-cycle separability --- and none of them predicts accuracy. What
+predicts accuracy is deployed-weight error.
+
+Deployed on the fifteen-level ladder, which assumes a write-verify array, the classifier
+reaches \num{0.8304} accuracy against \num{0.8571} in full precision, and the measured
+cycle-to-cycle noise costs \num{0.001} of that. Write-verify is not optional on this
+device: without per-device calibration, deployment onto twenty corner devices gives
+\num{0.243}.
+
+Finally, the scope. The computing core costs \SI{535.8}{\pico\joule} per heartbeat and the
+whole array is programmed once for \SI{69.6}{\pico\joule}, but the analog-to-digital
+conversion a complete chip would need comes to \SI{183}{\nano\joule} per beat under a
+standard assumption --- \num{342} times the core. The device is not the limiting element of
+a full system on this workload, and further reductions in write energy have little
+system-level value until that conversion overhead is addressed.
+
+The natural next steps follow from the limitations in Section~\ref{sec:limits}: a
+three-dimensional simulation to test the cross-section mapping against corner
+electrostatics, a fabricated stack to measure the endurance and long-term retention this
+model cannot produce, and an experiment to settle whether the anomalous programmed-state
+drain-induced barrier lowering reported in Section~\ref{sec:device} is a drain-induced
+polarization change or something else.

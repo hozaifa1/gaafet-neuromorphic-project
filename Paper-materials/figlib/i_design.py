@@ -48,8 +48,10 @@ def I1():
     ax.set_xticks(turn)
     ax.set_ylim(win.min() / 6, win.max() * 40)
     bold_labels(ax, "Coordinate-descent turn", "Retained ON/OFF window ($\\times$)")
-    note(ax, f"window improves {span:,.0f}$\\times$ over {len(turn)} turns;\n"
-             f"turns {int(turn[-2])} and {int(turn[-1])} change nothing")
+    fig.text(0.5, -0.02,
+             f"window improves {span:,.0f}$\\times$ over {len(turn)} turns;  "
+             f"turns {int(turn[-2])} and {int(turn[-1])} change nothing",
+             ha="center", fontweight="bold", fontsize=12)
 
     return fig, d
 
@@ -98,12 +100,13 @@ def I2():
                    labelpad=10, color=ERS)
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
-    ax.legend(h1 + h2, l1 + l2, loc="lower left", fontsize=10)
+    ax.legend(h1 + h2, l1 + l2, loc="upper center", bbox_to_anchor=(0.5, -0.18),
+              ncol=2, fontsize=10)
 
     sub = d[d["eval"] == "subcoercive"].sort_values("t_ox_nm")
     penalty = float(sub[sub.t_ox_nm == 1.0].window.iloc[0] / sub[sub.t_ox_nm == 1.5].window.iloc[0])
     note(ax, f"1.0 nm buys {penalty:.0f}$\\times$ more window than 1.5 nm",
-         xy=(0.03, 0.10), fontsize=12)
+         xy=(0.30, 0.32), fontsize=12)
 
     return fig, d
 
@@ -132,16 +135,19 @@ def I3():
     ax.scatter(d["v_op_V"], d["window"], s=area, c=colours, edgecolors="black",
                linewidths=2.0, zorder=3, alpha=0.9)
 
+    # points cluster on two V_op values, so labels are offset left/right rather
+    # than stacked vertically on top of each other
     for i, r in d.iterrows():
         ax.annotate(f"{r.t_fe_nm:g} nm", xy=(r.v_op_V, r.window),
-                    xytext=(0, 22 + 6 * (i % 2)), textcoords="offset points",
-                    ha="center", fontsize=13, fontweight="bold")
+                    xytext=(-58 if i % 2 == 0 else 58, 0), textcoords="offset points",
+                    ha="center", va="center", fontsize=13, fontweight="bold",
+                    arrowprops=dict(arrowstyle="-", lw=1.4, color=GREY))
     decade_ticks(ax)
 
     chosen = d.iloc[best]
     worst_v = d[d.v_op_V > chosen.v_op_V]
     gain = float(chosen.window / worst_v.window.max()) if len(worst_v) else float("nan")
-    ax.set_xlim(d.v_op_V.min() - 0.35, d.v_op_V.max() + 0.35)
+    ax.set_xlim(d.v_op_V.min() - 0.75, d.v_op_V.max() + 0.75)
     ax.set_ylim(d.window.min() / 4, d.window.max() * 12)
     bold_labels(ax, "Operating voltage V$_{op}$ (V)", "Retained ON/OFF window ($\\times$)")
     note(ax, f"marker area $\\propto$ gate charge\n"
@@ -188,8 +194,9 @@ def I5():
     ax.axvspan(vg.min(), vg[imin], color=GREY, alpha=0.20, lw=0)
 
     ax.plot(vg, window, "-", color=PGM, lw=3.2, label="true retained window")
-    ax.plot(old.vread_V, old.dr, "--", color=GREY, lw=2.2, marker="x", ms=9, mew=2.5,
-            label="superseded virgin-referenced DR")
+    keep = old.vread_V >= vg.min()
+    ax.plot(old.vread_V[keep], old.dr[keep], "--", color=GREY, lw=2.2, marker="x",
+            ms=9, mew=2.5, label="superseded virgin-referenced DR")
     ax2.plot(vg, i_ers, "-", color=ERS, lw=2.4, label="rest current (erased)")
 
     i0 = int(np.argmin(np.abs(vg)))

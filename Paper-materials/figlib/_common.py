@@ -85,9 +85,27 @@ def decade_ticks(ax, axis: str = "y") -> None:
     a.set_minor_formatter(NullFormatter())
 
 
-def note(ax, text: str, xy=(0.04, 0.94), **kw) -> None:
-    """A bold in-axes annotation.  The caller must build `text` with an f-string."""
-    kw.setdefault("ha", "left")
+def note(ax, text: str, xy=None, **kw) -> None:
+    """A bold caption strip UNDER the axes.  The caller builds `text` with an f-string.
+
+    Deliberately not drawn inside the axes.  An audit of the first full draw found
+    the same defect in fifteen of twenty-eight figures: a computed annotation
+    sitting on top of the curve, the legend or a marker.  Putting the numbers in a
+    strip below the frame cannot collide with data, and a reader looking for "what
+    does this figure say" finds them in the same place on every figure.
+
+    `xy` is accepted and ignored so that existing call sites keep working; pass
+    `inside=True` for the rare case that genuinely needs an in-axes label.
+    """
+    inside = kw.pop("inside", False)
+    kw.setdefault("fontsize", 12)
+    if inside:
+        kw.setdefault("ha", "left")
+        kw.setdefault("va", "top")
+        ax.text(*(xy or (0.04, 0.94)), text, transform=ax.transAxes,
+                fontweight="bold", **kw)
+        return
+    kw.setdefault("ha", "center")
     kw.setdefault("va", "top")
-    kw.setdefault("fontsize", 13)
-    ax.text(*xy, text, transform=ax.transAxes, fontweight="bold", **kw)
+    ax.annotate(text, xy=(0.5, -0.19), xycoords="axes fraction",
+                fontweight="bold", annotation_clip=False, **kw)

@@ -36,7 +36,7 @@ def _vpgm(name: str) -> float:
     m = re.search(r"_v(\d{3})_", name)
     if not m:
         raise ValueError(f"no amplitude token in {name}")
-    return int(m.group(1)) / 100.0
+    return int(m.group(1)) / 10.0
 
 
 def _train(kind: str) -> list[pd.DataFrame]:
@@ -95,9 +95,8 @@ def E1():
     axes[1].plot(t_us, qg, "-", color=ERS, lw=2.6)
     bold_labels(axes[1], "Time ($\\mu$s)", "Q$_G$ (fC / nanosheet)")
     leak = float(np.median(ig[~writing]))
-    axes[1].text(0.03, 0.90, f"gate conduction between pulses: "
-                             f"{leak * 1e12:.1f} pA median",
-                 transform=axes[1].transAxes, fontweight="bold", fontsize=12, va="top")
+    fig.text(0.5, -0.01, f"gate conduction between pulses: {leak * 1e12:.1f} pA median",
+             ha="center", fontweight="bold", fontsize=12)
 
     fig.subplots_adjust(hspace=0.08)
     out = pd.DataFrame({"t_us": t_us, "phase": d["phase"], "pulse": d["pulse"],
@@ -155,11 +154,10 @@ def E2():
     bold_labels(axes[1], "Pulse number",
                 "|$\\Delta$P$_y$| per pulse ($\\mu$C/cm$^2$)")
     peak = int(idx[np.argmax(np.abs(dps))])
-    axes[1].text(0.97, 0.95,
-                 f"peaks at pulse {peak}, then falls to "
-                 f"{np.abs(dps)[-1] / np.abs(dps).max():.2f} of the peak by pulse {n}",
-                 transform=axes[1].transAxes, ha="right", va="top",
-                 fontweight="bold", fontsize=12)
+    fig.text(0.5, -0.02,
+             f"switching per pulse peaks at pulse {peak}, then falls to "
+             f"{np.abs(dps)[-1] / np.abs(dps).max():.2f} of the peak by pulse {n}",
+             ha="center", fontweight="bold", fontsize=12)
 
     out = pd.concat(rows, ignore_index=True)
     out = out.merge(pd.DataFrame({"pulse": idx, "dPy_total_uC_cm2": dps}), on="pulse")

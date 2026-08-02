@@ -123,14 +123,20 @@ def F2():
             label="$(1-e^{-nA})/(1-e^{-NA})$ fit")
     ax.plot(n, gn, "o", color=PGM, ms=11, mec="black", mew=1.6, label="measured")
     bold_labels(ax, "Pulse number", "Normalized conductance")
-    ax.set_ylim(-0.08, 1.14)
-    ax.legend(loc="upper left")
-    note(ax, f"A$_{{LTP}}$ = {A:.2f},  R$^2$ = {ss:.3f}\n"
+    # The train is sigmoidal -- an incubation delay of two to three pulses, then a
+    # fast swing -- so the 10-90 % pulse span is quoted alongside A, which on its
+    # own is not a faithful descriptor of this shape.
+    lo = float(np.interp(0.1, gn, n))
+    hi = float(np.interp(0.9, gn, n))
+    ax.set_ylim(-0.10, 1.28)
+    ax.legend(loc="lower right")
+    note(ax, f"A$_{{LTP}}$ = {A:.3f},  R$^2$ = {ss:.3f}\n"
+             f"10--90 % span = {hi - lo:.1f} pulses\n"
              f"max residual {np.abs(resid).max():.3f}, "
              f"{int(np.sum(resid < 0))} of {len(n)} points below the fit",
-         xy=(0.30, 0.42), fontsize=12)
+         xy=(0.30, 0.40), fontsize=12)
 
-    ins = ax.inset_axes([0.62, 0.60, 0.34, 0.28])
+    ins = ax.inset_axes([0.10, 0.56, 0.31, 0.28])
     ins.axhline(0, color="black", lw=1.6)
     ins.bar(n, resid, color=ACC, edgecolor="black", lw=1.0)
     ins.set_xlabel("n", fontweight="bold", fontsize=11)
@@ -183,13 +189,20 @@ def F5():
                                   "G_uA_um": np.r_[s.G_ltp_uA_um, s.G_ltd_uA_um]}))
 
     out = pd.concat(rows, ignore_index=True)
-    stat = out.groupby("cycle").G_uA_um.agg(["min", "max"])
+    # Window per cycle is the potentiated ceiling over the DEPRESSED floor, which is
+    # rranalyze.rr3's definition.  Taking the minimum over both phases would use the
+    # start of potentiation instead -- a different, larger number for a different thing.
+    stat = pd.DataFrame({
+        "max": out[out.phase == "LTP"].groupby("cycle").G_uA_um.max(),
+        "min": out[out.phase == "LTD"].groupby("cycle").G_uA_um.min(),
+    })
     stat["window_x"] = stat["max"] / stat["min"]
     for _, r in stat.iterrows():
         ax.plot([0.4, 2 * npulse + 0.6], [r["min"]] * 2, ":", color=GREY, lw=1.4)
 
     ax.axvline(npulse + 0.5, color="black", lw=1.6, alpha=0.5)
     ax.set_xlim(0.4, 2 * npulse + 0.6)
+    ax.set_xticks(list(range(5, 2 * npulse + 1, 5)))
     ax.set_ylim(out.G_uA_um.min() / 6, out.G_uA_um.max() * 60)
     decade_ticks(ax)
     bold_labels(ax, "Cumulative pulse number  (potentiate $\\rightarrow$ depress)",
@@ -229,7 +242,7 @@ def F9():
              (300, "G_300K_uA_um", PGM, "s"),
              (350, "G_350K_uA_um", "#e07b00", "^")]
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.0, 5.2))
+    fig, axes = plt.subplots(1, 2, figsize=(13.0, 5.4))
     for ax in axes:
         for sp in ax.spines.values():
             sp.set_linewidth(2.0)
@@ -261,12 +274,13 @@ def F9():
     bold_labels(ax, "Pulse number", "I$_D$ / I$_D$(300 K)")
     ax.legend(loc="lower left", fontsize=12)
     top = d.iloc[-1]
-    ax.text(0.03, 0.97,
-            f"at the top level 350 K is "
-            f"{ref[-1] / top['G_350K_uA_um']:.1f}$\\times$ below 300 K,\n"
-            f"250 K is {top['G_250K_uA_um'] / ref[-1]:.2f}$\\times$ it "
-            f"-- not monotonic in T",
-            transform=ax.transAxes, ha="left", va="top", fontweight="bold", fontsize=11)
+    fig.text(0.5, -0.03,
+             f"at the top level 350 K is "
+             f"{ref[-1] / top['G_350K_uA_um']:.1f}$\\times$ below 300 K while "
+             f"250 K is {top['G_250K_uA_um'] / ref[-1]:.2f}$\\times$ it "
+             f"-- the ladder is not monotonic in temperature, so no activation energy "
+             f"is extracted",
+             ha="center", fontweight="bold", fontsize=11)
 
     out = d.copy()
     out["ratio_250_over_300"] = d["G_250K_uA_um"] / ref

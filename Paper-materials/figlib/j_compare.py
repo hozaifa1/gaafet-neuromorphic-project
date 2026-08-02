@@ -98,7 +98,7 @@ def J1():
 
     ang = np.linspace(0, 2 * np.pi, len(df), endpoint=False)
     close = np.r_[ang, ang[:1]]
-    fig, ax = plt.subplots(figsize=(8.0, 7.4), subplot_kw={"projection": "polar"})
+    fig, ax = plt.subplots(figsize=(8.8, 8.0), subplot_kw={"projection": "polar"})
     ax.plot(close, np.r_[ga, ga[:1]], "-o", color=PGM, lw=3.0, ms=9, label="GAA nanosheet")
     ax.fill(close, np.r_[ga, ga[:1]], color=PGM, alpha=0.18)
     ax.plot(close, np.r_[pa, pa[:1]], "-s", color=ERS, lw=3.0, ms=9,
@@ -108,18 +108,21 @@ def J1():
     ax.set_xticks(ang)
     ax.set_xticklabels([lab.replace(" ", "\n", 1) for lab in labels],
                        fontweight="bold", fontsize=11)
-    ax.set_ylim(0, 1.12)
+    ax.tick_params(axis="x", pad=26)          # keep labels clear of the outer ring
+    ax.set_ylim(0, 1.02)
     ax.set_yticks([0.25, 0.5, 0.75, 1.0])
     ax.set_yticklabels(["0.25", "0.50", "0.75", "1.0"], fontweight="bold", fontsize=10)
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.16), ncol=2, fontsize=12)
-    ax.text(0.5, -0.05,
-            "each axis normalized to the better of the two devices; outward is better",
-            transform=ax.transAxes, ha="center", fontweight="bold", fontsize=10)
-    ax.text(0.5, -0.09,
-            f"the level axis uses one shared readout-separation rule ($\\geq${SEP:g}$\\times$) "
-            f"so the two devices are comparable;\nthis device's headline open-loop count "
-            f"under its own measured cycle-to-cycle noise is smaller (figure F1)",
-            transform=ax.transAxes, ha="center", va="top", fontsize=9, fontweight="bold")
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.10), ncol=2, fontsize=12)
+    fig.text(0.5, 0.075,
+             "each axis normalized to the better of the two devices; outward is better",
+             ha="center", fontweight="bold", fontsize=11)
+    fig.text(0.5, 0.005,
+             f"the level axis uses one shared readout-separation rule "
+             f"($\\geq${SEP:g}$\\times$) so the two devices are comparable;\n"
+             f"this device's headline open-loop count under its own measured "
+             f"cycle-to-cycle noise is smaller (figure F1)",
+             ha="center", va="bottom", fontsize=10, fontweight="bold")
+    fig.subplots_adjust(bottom=0.26, top=0.90, left=0.16, right=0.84)
 
     df["GAA_normalized"] = ga
     df["planar_normalized"] = pa
@@ -148,7 +151,7 @@ def J5():
     v_pgm = None
     for f in node_files("t8_ltp", r"^p\d\d_write_"):
         d = parse_plt(f)
-        v_pgm = int(re.search(r"_v(\d{3})_", f.name).group(1)) / 100.0
+        v_pgm = int(re.search(r"_v(\d{3})_", f.name).group(1)) / 10.0
         q = norm.to_device_amps(d["gate_contact Charge"].to_numpy())
         e_j.append(v_pgm * (q[-1] - q[0]))
     e_pj = float(np.mean(e_j)) * 1e12
@@ -201,11 +204,12 @@ def J5():
     decade_ticks(ax, "y")
     ax.set_ylim(min(n_open, float(lit["n_levels"].min())) / 2.2, y_rug)
     bold_labels(ax, "Energy per programming pulse (pJ)", "Analog levels reported")
-    note(ax, f"{len(both)} of {len(lit)} surveyed devices report both quantities;\n"
-             f"{len(only_n)} report a level count only (left-pointing markers,\n"
-             f"placed at an arbitrary energy). Open markers: the source\n"
-             f"number could not be confirmed in the paper text.",
-         xy=(0.03, 0.30), fontsize=10)
+    fig.text(0.5, -0.10,
+             f"{len(both)} of {len(lit)} surveyed devices report both quantities; "
+             f"{len(only_n)} report a level count only (left-pointing markers, placed at an "
+             f"arbitrary energy).\nOpen markers: the source number could not be confirmed "
+             f"in the paper text.",
+             ha="center", fontweight="bold", fontsize=10)
 
     out = pd.concat([
         lit.assign(series="literature"),

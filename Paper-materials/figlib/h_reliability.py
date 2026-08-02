@@ -136,7 +136,7 @@ def H4():
                                   "plateau_spread_pct": spread}))
 
     ax.axhspan(0.99, 1.01, color=ACC, alpha=0.25, lw=0)
-    ax.set_ylim(0, 3.2)
+    ax.set_ylim(0, 3.6)
     bold_labels(ax, "Hold time (ms)", "I$_D$ / plateau value")
     note(ax, "\n".join(notes), xy=(0.03, 0.97), fontsize=11)
     ax.legend(loc="upper right", fontsize=11)
@@ -167,7 +167,14 @@ def H8():
 
     keep = n > 0
     n, g = n[keep], g[keep]
-    i0, g_plateau, spread = _split_settling(n, g)
+    # Settled window taken at 1e4 equivalent reads, matching rranalyze.rr9's
+    # t_settled: 1e4 reads at 100 ns each is 1 ms, a hundred depolarization time
+    # constants.  Letting the generic 1 % rule pick the boundary here would start
+    # the measurement inside the tail of the transient and report its remainder
+    # as disturb.
+    N_SETTLED = 1e4
+    i0 = int(np.argmax(n >= N_SETTLED))
+    g_plateau = float(g[i0])
     drift = (g[-1] / g[i0] - 1.0) * 100.0
     peak = float(g.max())
 
@@ -177,16 +184,17 @@ def H8():
     ax.axvspan(n[0], n[i0], color=GREY, alpha=0.22, lw=0)
     ax.plot(n[:i0 + 1], g[:i0 + 1], "-", color=GREY, lw=2.4)
     ax.plot(n[i0:], g[i0:], "-o", color=PGM, lw=3.0, ms=6, mec="black", mew=1.0)
+    ax.set_ylim(g.min() / 3.0, g.max() * 3.0)
     ax.axhline(g_plateau, color=ACC, lw=2.0, ls="--")
     decade_ticks(ax, "y")
 
     bold_labels(ax, "Equivalent reads at V$_{read}$ = 0",
                 "I$_D$ ($\\mu$A/$\\mu$m)")
-    note(ax, f"settled after {n[i0]:.0g} reads\n"
+    note(ax, f"measured from {n[i0]:.0g} reads onward\n"
              f"{drift:+.4f} % over {n[-1] - n[i0]:.1e} reads\n"
              f"apparent loss if read unsettled: "
              f"{(g_plateau / peak - 1) * 100:+.1f} % ($\\tau_P$ transient, not disturb)",
-         xy=(0.03, 0.36), fontsize=11)
+         xy=(0.30, 0.42), fontsize=11)
 
     out = pd.DataFrame({"equivalent_reads": n, "G_uA_um": g,
                         "phase": np.where(np.arange(len(g)) < i0, "settling", "plateau")})

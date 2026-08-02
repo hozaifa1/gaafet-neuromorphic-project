@@ -131,13 +131,13 @@ def D2():
 
     ax.set_xlim(0, float(s_all.Vds_V.max()) * 1.02)
     bold_labels(ax, "V$_{DS}$ (V)", "I$_D$ ($\\mu$A/$\\mu$m)")
-    ax.legend(loc="upper left", fontsize=11, ncol=2)
+    ax.legend(loc="lower right", fontsize=11, ncol=2)
     note(ax, f"read at V$_G$ = {vg_show:g} V\n"
              f"linear-region correlation r = {min(rvals):.3f}$-${max(rvals):.3f} "
              f"over V$_{{DS}}$ $\\leq$ 0.1 V",
          xy=(0.42, 0.30), fontsize=12)
 
-    ins = ax.inset_axes([0.60, 0.52, 0.36, 0.34])
+    ins = ax.inset_axes([0.09, 0.56, 0.32, 0.36])
     for k, state in enumerate(order):
         s = s_all[(s_all["state"] == state) & (s_all["Vds_V"] <= 0.1)].sort_values("Vds_V")
         if not s.empty:
