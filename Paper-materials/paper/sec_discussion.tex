@@ -7,14 +7,13 @@ The most transferable result here is Section~\ref{sec:interface}: analog level p
 this device is set by fixed interface charge and essentially not by ferroelectric
 thickness. A \SI{0.3}{\nano\metre} thickness tolerance moves the levels by \num{0.07}
 decades; \SI{10}{\percent} of interface charge moves them by \num{1.31}. Combined with the
-placement specification in Section~\ref{sec:variability} --- worst-level misplacement inside
-about \num{0.6} decades if only a gain trim is affordable --- this converts a device-level
+placement specification in Section~\ref{sec:variability} (worst-level misplacement inside
+about \num{0.6} decades if only a gain trim is affordable), this converts a device-level
 observation into a control target.
 
-It is worth being explicit that this ordering was not expected. Ferroelectric thickness
-sets the coercive voltage, so thickness control looks like the obvious lever, and a study
-that measured only thickness sensitivity would have concluded that the device was
-well-behaved while leaving the dominant term unmeasured.
+This ordering was not expected. Ferroelectric thickness sets the coercive voltage, so
+thickness control looks like the obvious lever. A study that measured only thickness
+sensitivity would have concluded the device was well-behaved and missed the dominant term.
 
 \subsection{Three figures of merit that do not work}
 
@@ -35,7 +34,7 @@ a safe basis for a hardware decision.
 \subsection{Why the level-count question has two answers}
 
 The device supports eight levels open-loop and about sixteen with write-verify, and this
-paper reports both with their protocols attached. The distinction is not a hedge --- it is
+paper reports both with their protocols attached. The distinction is not a hedge; it is
 the result. The train's own stops bunch at the top of a saturating curve, below the
 cycle-to-cycle floor, so counting pulses undercounts what the range can hold; placing
 targets across the same range with verification uses it fully.
@@ -54,15 +53,15 @@ Section~\ref{sec:energy} is the part of this work most likely to be quoted out o
 so it is stated plainly here as well. The computing core costs
 \SI{535.8}{\pico\joule} per heartbeat. The analog-to-digital conversion a real chip would
 need, under a standard \SI{1}{\pico\joule} per conversion assumption, comes to
-\SI{183}{\nano\joule} --- \num{342} times more. Device-level energy figures for
+\SI{183}{\nano\joule}, \num{342} times more. Device-level energy figures for
 compute-in-memory arrays are frequently reported without this term, and on this workload
 that omission would change the headline number by more than two orders of magnitude.
 
 This does not make the device uninteresting. Programming the whole array costs
 \num{0.13} of one inference and is paid once, which is a real and measured argument for
 non-volatile analog weights. It does mean that further work on this device's write energy
-has little system-level value until the conversion overhead is addressed, and that is a
-more useful thing for a reader to know than a smaller number would have been.
+has little system-level value until the conversion overhead is addressed, and that is more
+useful for a reader to know than a smaller headline number would have been.
 
 \subsection{Limitations}
 \label{sec:limits}
@@ -114,14 +113,14 @@ it has been demonstrated on one workload.
 
 Nine errors were found and corrected during this work, and several of them would have
 produced a publishable-looking wrong result rather than an obvious failure. Three separate
-measurements --- retention, read disturb and cycling --- initially showed dramatic
-degradation that was entirely the post-write depolarization transient being read as data
+measurements (retention, read disturb and cycling) initially showed dramatic
+degradation that was entirely the post-write depolarization transient, misread as data
 loss. Each looked like responsible bad news, which is exactly the kind of result that
 survives review.
 
 The rules in Section~\ref{sec:rules} are stated in the paper rather than kept in a
 laboratory notebook because they are the difference between those numbers and these. Two
-are worth repeating: form a ratio only from measurements taken in the same run, and treat a
+rules matter most: form a ratio only from measurements taken in the same run, and treat a
 simulation that completes without an error as an unverified claim rather than a result. In
 this work two runs completed cleanly with effectively no field anywhere, and 224 files were
 produced by sweeps whose write pulses were too short to program the device at any

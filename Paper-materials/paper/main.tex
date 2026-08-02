@@ -23,6 +23,7 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{siunitx}
+\usepackage[version=4]{mhchem}
 \usepackage[colorlinks=true,allcolors=blue]{hyperref}
 \usepackage{cite}
 
@@ -36,6 +37,8 @@
 
 \newcommand{\uAum}{\si{\micro\ampere\per\micro\metre}}
 \newcommand{\mVdec}{\si{\milli\volt\per\text{dec}}}
+
+\input{auto_captions}
 
 \begin{document}
 
@@ -67,8 +70,12 @@ electrocardiogram classification.
 \input{sec_network_results}
 \input{sec_discussion}
 \input{sec_conclusion}
-\input{figures}
 
+% The bibliography holds only the published devices plotted in the benchmark
+% figure -- data points, not narrative citations -- so they are pulled in
+% wholesale rather than cited inline.  Introduction and related work, when
+% written, will add their own \cite calls.
+\nocite{*}
 \bibliographystyle{IEEEtran}
 \bibliography{literature}
 

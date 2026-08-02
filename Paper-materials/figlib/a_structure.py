@@ -194,17 +194,23 @@ def A5():
                 arrowprops=dict(arrowstyle="<->", lw=2.0))
     ax.text(0, -t / 2 - 12, f"W = {w:g} nm", ha="center", va="top", fontweight="bold",
             fontsize=13)
-    ax.annotate("", xy=(-w / 2 - 8, -t / 2 - 6), xytext=(-w / 2 - 8, t / 2 + 6),
-                arrowprops=dict(arrowstyle="-", lw=2.0))
-    ax.plot([-w / 2 - 12, -w / 2 - 4], [t / 2] * 2, "-", color="black", lw=1.6)
-    ax.plot([-w / 2 - 12, -w / 2 - 4], [-t / 2] * 2, "-", color="black", lw=1.6)
-    ax.text(-w / 2 - 11, 0, f"T$_{{si}}$ = {t:g} nm", ha="right", va="center",
-            fontweight="bold", fontsize=13, rotation=90)
+    # T_si bar sits clear of the sheet: at the sketch's scale the 5 nm thickness is
+    # smaller than the gate outline is wide, so a bar drawn against the edge reads
+    # as crossing into it.
+    # 5 nm on this axis is a few pixels, so a double-headed arrow renders as a blob
+    # (the same reason L_ov lost its arrow in A1).  Two extension ticks and a plain
+    # bar read as a dimension without one.
+    x_bar = -w / 2 - 14
+    ax.plot([x_bar] * 2, [-t / 2, t / 2], "-", color="black", lw=2.6)
+    for sgn in (+1, -1):
+        ax.plot([x_bar - 4, -w / 2 - 2], [sgn * t / 2] * 2, "-", color="black", lw=1.2)
+    ax.text(x_bar - 6, 0, f"T$_{{si}}$ = {t:g} nm", ha="right", va="center",
+            fontweight="bold", fontsize=13)
     ax.text(0, t / 2 + dy + 8,
             f"gate wraps the perimeter\nTESW = 2(W + T$_{{si}}$) = {perim_nm:g} nm",
             ha="center", va="bottom", fontweight="bold", fontsize=13, color=PGM)
-    ax.set_xlim(-w / 2 - 34, w / 2 + dx + 10)
-    ax.set_ylim(-t / 2 - 30, t / 2 + dy + 34)
+    ax.set_xlim(-w / 2 - 66, w / 2 + dx + 10)
+    ax.set_ylim(-t / 2 - 22, t / 2 + dy + 30)
 
     # --- right: the simulated slab -------------------------------------------
     ax = axes[1]
@@ -245,6 +251,9 @@ def A5():
              f"an exact rescale of {norm.CORR:.4f}$\\times$\n"
              f"verified against a re-simulated node to a relative error of 1.8e-16",
              )
+
+    # the mapping itself, drawn between the two sketches
+    fig.text(0.505, 0.50, "$\\Rightarrow$", ha="center", va="center", fontsize=54)
 
     rows = [
         {"symbol": "W", "value": w, "units": "nm", "from": "norm.W_SHEET_NM"},

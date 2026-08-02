@@ -9,16 +9,26 @@ ladder it reaches \num{0.8304} accuracy, \num{0.7536} macro-F1 and a Cohen's kap
 That result is reproducible to four decimal places across a change that moved every
 absolute current in the device export by a factor of \num{0.6338}, because each weight is
 realized as $(G^+-G^-)/g_\mathrm{max}$ and a global scale cancels exactly. This was the
-predicted outcome and it is the check that the area-factor correction of
-Section~\ref{sec:norm} was a change of normalization and not of physics.
+predicted outcome. It is the check that the area-factor correction of
+Section~\ref{sec:norm} was a change of normalization, not of physics.
 
 \subsection{Level placement dominates level count}
 \label{sec:placement}
 
-Sweeping the number of conductance levels from two to fifteen gives a curve that is
-\emph{not} monotonic below eight levels. Two independent grid constructions were used ---
+\begin{figure}[t]
+\centering\includegraphics[width=\columnwidth]{K2_accuracy_vs_levels.png}
+\caption{Deployed accuracy against the number of conductance levels, for two grid
+constructions, with the spread over interior-level placement at fixed count. Accuracy is
+not monotonic in level count below eight levels, and the spread at fixed count is larger
+than the trend across counts.}
+\label{fig:k2}
+\end{figure}
+
+Sweeping the number of conductance levels from two to fifteen gives a curve
+(Fig.~\ref{fig:k2}) that is
+\emph{not} monotonic below eight levels. Two independent grid constructions were used:
 a subset of the stops the device actually reaches, and a geometrically spaced ideal grid
-over the same range --- and they agree, so the non-monotonicity is not an artefact of how
+over the same range. They agree, so the non-monotonicity is not an artefact of how
 the coarse grid was built.
 
 \begin{table}[t]
@@ -61,12 +71,22 @@ not a typical one.
 \subsection{Variability, and why write-verify is not optional}
 \label{sec:variability}
 
+\begin{figure}[t]
+\centering\includegraphics[width=\columnwidth]{K3a_accuracy_vs_calibration.png}
+\caption{Deployed accuracy across twenty corner devices as a function of how much
+per-device calibration is allowed: none, one gain scalar, or full per-level write-verify.
+The corners are a worst-case envelope rather than a distribution and are never injected as
+a single standard deviation.}
+\label{fig:k3a}
+\end{figure}
+
 Twenty perturbed devices were simulated at the corners of a box in interface trap density
 ($\pm\SI{20}{\percent}$), fixed interface charge ($\pm\SI{10}{\percent}$) and ferroelectric
-thickness ($\pm\SI{0.3}{\nano\metre}$). These are corners --- at least two axes off-nominal
-at once --- so they are a worst-case envelope and not a Gaussian distribution, and they are
+thickness ($\pm\SI{0.3}{\nano\metre}$). These are corners (at least two axes off-nominal
+at once), so they are a worst-case envelope and not a Gaussian distribution, and they are
 never injected as one. They are used the only way they legitimately can be: the locked
-network is deployed onto each corner device under three levels of per-device calibration.
+network is deployed onto each corner device under three levels of per-device calibration
+(Fig.~\ref{fig:k3a}).
 
 \begin{table}[t]
 \caption{Deployed accuracy across the twenty corner devices, by how much per-device
@@ -85,16 +105,24 @@ full write-verify per level & \num{0.8304} & \numrange{0.798}{0.860} \\
 \end{table}
 
 The full-calibration median equals the nominal device's accuracy to four decimal places,
-and every corner lands between \num{0.798} and \num{0.860}. A single gain trim --- a
-transimpedance adjustment, essentially free --- recovers about two thirds of the gap; the
+and every corner lands between \num{0.798} and \num{0.860}. A single gain trim (a
+transimpedance adjustment, essentially free) recovers about two thirds of the gap; the
 remaining \num{0.054} needs per-level placement. This is why Section~\ref{sec:levels}
 reports the fifteen-level claim as a write-verify claim without treating it as a
 concession: the array needs write-verify to work at all.
 
 \subsection{Overlap does not predict accuracy; misplacement does}
 
+\begin{figure}[t]
+\centering\includegraphics[width=\columnwidth]{K3c_accuracy_vs_shape_error.png}
+\caption{Accuracy after a gain trim against the level misplacement the trim leaves behind.
+This is the quantity that tracks accuracy (Spearman \num{-0.85}); the readout-overlap
+statistics do not.}
+\label{fig:k3c}
+\end{figure}
+
 Decomposing each corner device's ladder into a rigid shift in $\log G$ plus a residual
-shape error gives median shifts of \num{0.51} decades and a median residual scatter of
+shape error (Fig.~\ref{fig:k3c}) gives median shifts of \num{0.51} decades and a median residual scatter of
 \num{0.178} decades. The shift is what a gain trim removes. What remains is level
 misplacement, and that is what accuracy tracks: against the worst single-level residual,
 gain-trimmed accuracy has a Spearman correlation of \num{-0.85}, compared with
@@ -109,8 +137,8 @@ trim is affordable, interface-charge control must hold worst-level placement ins
 process team can act on.
 
 The corollary matters for how the ensemble is reported. After a per-device gain trim,
-thirteen of fourteen adjacent level pairs still overlap across the ensemble --- half-spread
-\num{0.36} decades against a spacing of \num{0.28} --- and yet several of those corners
+thirteen of fourteen adjacent level pairs still overlap across the ensemble (half-spread
+\num{0.36} decades against a spacing of \num{0.28}), and yet several of those corners
 deliver nominal accuracy. Ensemble overlap says that a \emph{shared} grid cannot uniquely
 address a level. It does not say the deployed weight is wrong enough to matter.
 
@@ -138,7 +166,7 @@ This is the opposite of the expected ordering. Ferroelectric thickness sets the 
 voltage, so it looks like the obvious lever, and it turns out to be almost irrelevant to
 where the analog levels land: a \SI{0.3}{\nano\metre} thickness tolerance costs
 \num{0.07} decades, while \SI{10}{\percent} of fixed interface charge costs \num{1.31}. An
-order-of-magnitude check agrees --- a charge change of
+order-of-magnitude check agrees: a charge change of
 \SI{0.7e12}{\per\square\centi\metre} across a \SI{1}{\nano\metre} oxide is about
 \SI{32}{\milli\volt} of threshold shift, roughly half a decade at
 \SI{63}{\milli\volt\per\text{dec}}, rising once the ferroelectric divider is included.
@@ -148,16 +176,24 @@ ferroelectric thickness control problem.} That is the most directly actionable r
 
 \subsection{Cycle-to-cycle noise costs essentially nothing}
 
-Injecting the measured cycle-to-cycle noise per conductance branch, the fifteen-level
+\begin{figure}[t]
+\centering\includegraphics[width=\columnwidth]{K3b_accuracy_vs_c2c.png}
+\caption{Accuracy against injected cycle-to-cycle noise, for the fifteen-level grid and
+for the eight-level grid the three-sigma separability criterion selects. The measured noise
+is marked. Noise is injected per conductance branch, not per weight.}
+\label{fig:k3b}
+\end{figure}
+
+Injecting the measured cycle-to-cycle noise per conductance branch (Fig.~\ref{fig:k3b}), the fifteen-level
 deployment loses \num{0.001} accuracy: \num{0.8304} becomes \num{0.8294}. The knee is at
 about \numrange{0.1}{0.2} decades of injected noise, so the device sits five to nine times
 below it, and the conclusion survives the \SI{22}{\percent} uncertainty in the measured
-standard deviation --- even at \num{0.05} decades, roughly two standard errors above the
+standard deviation: even at \num{0.05} decades, roughly two standard errors above the
 measurement, accuracy is still \num{0.8175}.
 
 Quantizing instead to the eight levels that pass the three-sigma separability test costs
-\num{0.036} accuracy. That is the wrong trade, and the reason is worth stating because it
-is a design-methodology point rather than a device one. The separability criterion returns
+\num{0.036} accuracy. That is the wrong trade, and the reason matters: it
+is a design-methodology point, not a device one. The separability criterion returns
 an \emph{integer}, derived from a three-sigma test on a standard deviation that is itself
 known to about \SI{22}{\percent}. An earlier pass on a partial download of the same run
 saw four complete repeats, put the standard deviation at \num{0.0358} and the usable count
@@ -171,9 +207,9 @@ levels costs \num{0.001}, so keep them.
 \subsection{Distinguishability is the wrong figure of merit}
 
 Three independent analyses in this work measure whether conductance levels can be told
-apart on readout --- the corner ensemble's level overlap, the overlap remaining after a
-per-device gain trim, and the three-sigma separability of the cycle-to-cycle run --- and
-\textbf{none of them predicts accuracy.} What predicts accuracy is how far the deployed
+apart on readout: the corner ensemble's level overlap, the overlap remaining after a
+per-device gain trim, and the three-sigma separability of the cycle-to-cycle run.
+\textbf{None of them predicts accuracy.} What predicts accuracy is how far the deployed
 weight ends up from the weight that was wanted: per-device level misplacement, and where
 the levels sit.
 
@@ -217,15 +253,25 @@ a retention factor is a uniform multiplicative gain applied after quantization, 
 spiking classifier with fixed thresholds responds to a small uniform gain in discrete
 spike-count steps rather than smoothly. Individual conditions also moved by at most four
 beats out of \num{336} between the pre- and post-correction runs, which is float32 rounding
-at quantization boundaries --- the levels are identical after normalization but not
-bit-identical, so a handful of weights land on the other side of a bucket edge. Worth
-knowing that the deployment is boundary-sensitive at the one-beat level; not worth reading
-anything into.
+at quantization boundaries: the levels are identical after normalization but not
+bit-identical, so a handful of weights land on the other side of a bucket edge. The
+deployment is boundary-sensitive at the one-beat level, which is worth knowing but not
+worth reading into.
 
 \subsection{Energy, and the scope of the claim}
 \label{sec:energy}
 
-Every count in the energy budget was taken from the deployed model rather than assumed.
+\begin{figure}[t]
+\centering\includegraphics[width=\columnwidth]{K4_energy_per_inference.png}
+\caption{Energy per heartbeat, with every count taken from the deployed network. The
+peripheral conversion bar is drawn on the same axis as the core compute rather than left
+to a caveat; the \SI{1}{\pico\joule} per conversion figure is the single assumption in the
+budget and is labelled as such.}
+\label{fig:k4}
+\end{figure}
+
+Every count in the energy budget was taken from the deployed model rather than assumed
+(Fig.~\ref{fig:k4}).
 The network has \num{261440} weights and therefore \num{522880} devices in differential
 pairs. Measured activity is \num{196.1} input spikes per beat
 (\SI{5.86}{\percent} line activity) and \num{3455.7} hidden spikes per beat

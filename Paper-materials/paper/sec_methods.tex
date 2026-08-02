@@ -3,6 +3,22 @@
 
 \subsection{Device structure}
 
+\begin{figure*}[t]
+\centering\includegraphics[width=\textwidth]{panel01.png}
+\caption{Structure and normalization. (a) The simulated cross-section to scale: a
+\SI{5}{\nano\metre} silicon nanosheet body gated on both faces through
+\SI{1}{\nano\metre} \ce{SiO2} and \SI{7}{\nano\metre} HZO, with a
+\SI{100}{\nano\metre} gate and \SI{15}{\nano\metre} source and drain overlaps. The
+marked point is where polarization and electric field are probed in every transient
+reported here. (b) The mapping from the two-dimensional slab to the nanosheet. Because
+the slab is gated on both faces, a slab of depth $A$ carries gate width $2A$; matching the
+nanosheet perimeter $2(W+T_\mathrm{si})=\SI{90}{\nano\metre}$ fixes
+$A=\SI{0.045}{\micro\metre}$. Runs executed at \num{0.071}; the correction is an exact
+post-multiplier, verified against a re-simulated node to \num{1.8e-16}. Computed values:
+\fignote{A1}.}
+\label{fig:panel1}
+\end{figure*}
+
 The simulated device is a silicon nanosheet of thickness $T_\mathrm{si}=\SI{5}{\nano\metre}$
 and width $W=\SI{40}{\nano\metre}$, gated through a \SI{1}{\nano\metre} interfacial
 \ce{SiO2} layer and a \SI{7}{\nano\metre} \ce{Hf}\ce{Zr}\ce{O_x} (HZO) ferroelectric,
@@ -10,14 +26,15 @@ with a \SI{5}{\nano\metre} TiN gate metal of work function \SI{4.35}{\electronvo
 The gate is \SI{100}{\nano\metre} long and overlaps the source and drain extensions by
 \SI{15}{\nano\metre} on each side. The body is doped
 $N_\mathrm{sub}=\SI{1e16}{\per\cubic\centi\metre}$ and the source and drain
-$N_\mathrm{sd}=\SI{5e19}{\per\cubic\centi\metre}$. Panel~1(a) shows the stack to scale,
+$N_\mathrm{sd}=\SI{5e19}{\per\cubic\centi\metre}$. Figure~\ref{fig:panel1}(a) shows the stack to scale,
 together with the position $(0,\,\SI{7}{\nano\metre})$ at which polarization and
 electric field are probed in every transient reported here.
 
 This geometry is the endpoint of a coordinate-descent search over read bias,
 $T_\mathrm{ox}$, $T_\mathrm{si}$, $N_\mathrm{sub}$, $T_\mathrm{fe}$ and gate length,
 each turn evaluated on the retained on/off window at the sub-coercive operating point.
-The trajectory is in panel~8(a) and the individual sweeps in panels~8(b)--(c).
+The trajectory is in Fig.~\ref{fig:panel8}(a) and the individual sweeps in
+Figs.~\ref{fig:panel8}(b)--(c).
 
 \subsection{Simulation setup}
 
@@ -27,8 +44,8 @@ in Section~\ref{sec:cal}. Transport uses the Philips unified mobility model with
 degradation. All transient drive is applied as instantaneous hops between short
 fixed-bias holds rather than finely stepped ramps.
 
-That last choice is not cosmetic. Under relative-error timestep control a
-non-converging deck does not fail --- it \emph{crawls}: the timestep walks down to
+That last choice is not cosmetic. Under relative-error timestep control, a
+non-converging deck does not fail. It \emph{crawls}: the timestep walks down to
 whatever minimum is specified and never recovers, so the run continues to produce
 output indefinitely. Three decks in this work hit that behaviour and produced log
 files of \SI{71}{\mega\byte}, \SI{143}{\mega\byte} and \SI{344}{\mega\byte}, the last
@@ -52,13 +69,13 @@ $F_c=\SI{1.4}{\mega\volt\per\centi\metre}$, $\varepsilon=33$,
 $D_\mathrm{it}=\SI{4e12}{\per\square\centi\metre}$ and
 $Q_f=\SI{7e12}{\per\square\centi\metre}$.
 
-Panel~2 shows the result three ways: the overlay itself, the same curves with the
+Figure~\ref{fig:panel2} shows the result three ways: the overlay itself, the same curves with the
 window and the current level divided out, and the residual.
 
 \paragraph*{What is calibrated, and what is not}
 The overlay applies a single free width scalar, fitted so that the erased branch's
 saturation current matches the measurement's. That scalar absorbs any constant error in
-normalization --- and it is large: the simulated saturation current is
+normalization, and it is large: the simulated saturation current is
 \SI{2.150e-4}{\ampere\per\micro\metre} against the measurement's
 \SI{1.523e-6}{\ampere\per\micro\metre}, a factor of 141. Consequently this work claims a
 calibrated memory window, threshold voltage, subthreshold slope, on/off ratio and
@@ -84,14 +101,14 @@ width $2A$. Matching the real nanosheet's gate perimeter,
 \end{equation}
 gives $2A = \SI{0.090}{\micro\metre}$ and therefore $A=\SI{0.045}{\micro\metre}$.
 All currents in this paper are reported per micrometre of gate perimeter under
-(\ref{eq:tesw}). Panel~1(b) draws the mapping.
+(\ref{eq:tesw}). Figure~\ref{fig:panel1}(b) draws the mapping.
 
 The runs were executed at $A=\SI{0.071}{\micro\metre}$, a value inherited from an
 earlier campaign and never re-derived from the geometry. Because $A$ is a post-multiplier,
 the correction is an exact rescale by $0.045/0.071=0.6338$ rather than a re-simulation.
 This was verified rather than asserted: one node was re-run at $A=\SI{0.045}{\micro\metre}$
 and divided by the same node at \num{0.071}, giving \num{0.633802816901} against an
-expected \num{0.633802816901} --- a relative error of \num{1.8e-16}, which is
+expected \num{0.633802816901}: a relative error of \num{1.8e-16}, which is
 double-precision epsilon. Every ratio, voltage, subthreshold slope, polarization and
 field quantity is unchanged by the correction; every absolute current, conductance,
 resistance, charge and energy scales by \num{0.6338}.
@@ -99,8 +116,8 @@ resistance, charge and energy scales by \num{0.6338}.
 \paragraph*{Limitation: this is a two-dimensional model}
 What the check above establishes is that the arithmetic of the mapping is exact. It does
 not establish that a flat double-gated slab behaves like a wrapped gate. A real
-gate-all-around nanosheet has corners, and the electrostatics at those corners --- and
-the edge fields along the sheet width --- are not represented in a cross-section, so
+gate-all-around nanosheet has corners, and the electrostatics at those corners, along with
+the edge fields along the sheet width, are not represented in a cross-section, so
 corner-enhanced inversion, corner-dependent field concentration in the ferroelectric,
 and any width-direction non-uniformity of switching are outside what this model can
 show. No three-dimensional gate-all-around simulation was performed. The effect is
@@ -111,7 +128,7 @@ and it is stated here so that it is not mistaken for one.
 One second-order consequence is worth naming. The area factor was held at
 \num{0.071} across the entire $T_\mathrm{si}$ sweep, while the true perimeter under
 (\ref{eq:tesw}) runs from \SI{90}{\nano\metre} to \SI{110}{\nano\metre} across that
-sweep --- a \SI{22}{\percent} spread the constant factor does not capture. Ratio metrics
+sweep, a \SI{22}{\percent} spread the constant factor does not capture. Ratio metrics
 cancel it; absolute currents from geometry sweeps do not, and are normalized by each
 device's own perimeter where they are used.
 
@@ -160,9 +177,9 @@ of them are the reason a result reported here differs from an earlier one.
 
 \item \textbf{A retained value must be read after the state has settled, and the delay
   must be stated.} Reading immediately after a write measures the depolarization
-  transient. Doing so produced three separate fabricated failures in this work --- a
-  retention collapse, a read-disturb collapse of \SI{-84.7}{\percent}, and an endurance
-  collapse --- each of which looked like responsible bad news. Measured after settling,
+  transient. Doing so produced three separate fabricated failures in this work: a
+  retention collapse, a read-disturb collapse of tens of percent, and an endurance
+  collapse, each of which looked like responsible bad news. Measured after settling,
   the same runs give a flat plateau, \SI{0.0000}{\percent} read disturb, and no
   degradation at all.
 
@@ -185,7 +202,7 @@ of them are the reason a result reported here differs from an earlier one.
   with a \SI{100}{\micro\second} depolarization time constant made a
   \SI{500}{\micro\second} write hold five time constants long, so the model relaxed back
   inside the same hold and the probe read \SI{2.3267e-7}{\coulomb\per\square\centi\metre}
-  erased against \SI{2.3238e-7}{\coulomb\per\square\centi\metre} programmed --- a
+  erased against \SI{2.3238e-7}{\coulomb\per\square\centi\metre} programmed, a
   \SI{0.1}{\percent} difference against a remanent polarization of
   \SI{3.2e-5}{\coulomb\per\square\centi\metre}. Nothing from those runs is used here.
 
@@ -214,7 +231,7 @@ this paper without that distinction.
 
 Energy per programming pulse is taken as $V_\mathrm{pgm}\,\Delta Q_G$, with $\Delta Q_G$
 read from the solver's own gate-charge trace across each write window. The apparently
-more direct route --- integrating $V_G I_G$ over the pulse --- is not usable at the
+more direct route (integrating $V_G I_G$ over the pulse) is not usable at the
 available time resolution. The gate current during a write is a switching spike followed
 by a flat conduction floor of about \SI{23}{\pico\ampere}, and the transient output is
 sampled every \SI{50}{\nano\second}, so the spike is one sample wide and its apparent

@@ -4,7 +4,7 @@ an analog synapse, and we carry the resulting device through to the accuracy and
 energy of a spiking electrocardiogram classifier deployed on it. The ferroelectric model
 is calibrated against published measurements of a comparable device; the calibration
 reproduces the memory window, threshold voltages, subthreshold slope and turn-on shape,
-and we state explicitly that it does not calibrate the absolute current level.
+but it does not calibrate the absolute current level.
 
 The device holds a retained window of $5410\times$ at zero read bias with a
 \SI{0.387}{\volt} threshold separation and a subthreshold slope of
@@ -22,7 +22,7 @@ Three results are the substance of the paper. First, \emph{where} conductance le
 matters more than how many there are: at eight levels, four different choices of which
 eight gave accuracies from \num{0.336} to \num{0.491}, while spacing the same eight
 evenly gave \num{0.804}. Second, level placement is controlled by interface charge, not
-by ferroelectric thickness --- perturbing fixed interface charge by \SI{10}{\percent}
+by ferroelectric thickness: perturbing fixed interface charge by \SI{10}{\percent}
 moves levels by \num{1.31} decades, while perturbing the ferroelectric thickness by
 \SI{0.3}{\nano\metre} moves them by \num{0.07}, which is the opposite of the expected
 ordering and tells a process team what to control. Third, being able to tell levels apart
@@ -39,7 +39,7 @@ We also state the system scope rather than leaving it to be discovered. The comp
 core costs \SI{535.8}{\pico\joule} per heartbeat and programming the entire array costs
 \SI{69.6}{\pico\joule} once. Under a standard \SI{1}{\pico\joule} per conversion
 assumption, the analog-to-digital converters a real chip would need come to
-\SI{183}{\nano\joule} per beat --- \num{342} times the core. On this workload the
+\SI{183}{\nano\joule} per beat, \num{342} times the core. On this workload the
 ferroelectric array is not the limiting element of a complete system.
 
 Finally, the device is modelled as a two-dimensional double-gate cross-section mapped to

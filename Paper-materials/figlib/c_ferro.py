@@ -68,7 +68,12 @@ def C1():
             if saturated:
                 e = b.E_MV_cm.to_numpy()
                 p = b.P_uC_cm2.to_numpy()
-                ext.setdefault("Pr", []).extend(abs(np.interp(0.0, e, p)) for _ in [0])
+                # np.interp REQUIRES increasing x and does not check: the up branch
+                # sweeps E downward, so interpolating it as-is silently returned the
+                # saturation value instead of the remanent one and put |P_r| at
+                # 35.99 instead of 31.99.  Sort first.
+                o = np.argsort(e)
+                ext.setdefault("Pr", []).append(abs(float(np.interp(0.0, e[o], p[o]))))
                 ext.setdefault("Fc", []).extend(abs(c) for c in _zero_cross(e, p))
                 ext.setdefault("Ps", []).append(float(np.abs(p).max()))
 
