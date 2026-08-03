@@ -49,3 +49,6 @@ Thumbs.db
 __pycache__/
 *.pyc
 .vercel
+
+# Karpathy autoresearch reference clone -- external repo, not project work
+autoresearch/

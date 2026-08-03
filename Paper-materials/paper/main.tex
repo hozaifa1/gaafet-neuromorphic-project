@@ -1,24 +1,17 @@
 % =====================================================================
-%  A calibrated 2D TCAD gate-all-around FeFET synapse, and what it does
-%  to a spiking ECG classifier.
+%  Final-year undergraduate thesis report.
+%  Department of Electrical and Electronic Engineering, University of Dhaka.
 %
-%  Target: IEEE Transactions on Electron Devices.
+%  Single column, 12 pt, A4.  Section order:
+%    1 Introduction, 2 Literature Review, 3 Methodology, 4 Device Results,
+%    5 Network Results, 6 Discussion, 7 Conclusion, References.
 %
-%  SCOPE OF THIS DRAFT
-%  -------------------
-%  By decision, this draft contains only work done in this project:
-%  methods, results, discussion, conclusion.  There is NO introduction
-%  and NO related-work section, and there are no narrative citations --
-%  those are to be written separately.  The only bibliography entries
-%  are the published devices plotted in the benchmark figure (J5),
-%  which are data points rather than narrative references; they are in
-%  literature.bib and are traceable through
-%  Paper-materials/literature_benchmark.csv.
-%
-%  Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+%  Build:  latexmk -pdf main.tex
 % =====================================================================
-\documentclass[journal,twoside]{IEEEtran}
+\documentclass[12pt,a4paper,oneside]{article}
 
+\usepackage[left=1.25in,right=1in,top=1in,bottom=1in]{geometry}
+\usepackage{setspace}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -42,41 +35,72 @@
 
 \begin{document}
 
-\title{A Calibrated Gate-All-Around FeFET Analog Synapse and Its
-Consequences for a Spiking ECG Classifier}
+% ---------------------------------------------------------------------
+% Title page
+% ---------------------------------------------------------------------
+\begin{titlepage}
+\centering
+\vspace*{1.2in}
 
-\author{%
-  \IEEEauthorblockN{[Author names]}%
-  \thanks{Manuscript submitted [date]. [Affiliations, funding, contact.]}%
-}
+{\large\bfseries
+FERROELECTRIC GATE-ALL-AROUND FETS FOR\\[0.35em]
+NEXT-GENERATION NEUROMORPHIC SYSTEMS:\\[0.35em]
+DEVICE MODELING AND SPIKING NETWORK\\[0.35em]
+IMPLEMENTATION\par}
 
-\maketitle
+\vspace{0.9in}
+
+{\large SUBMITTED BY:\par}
+\vspace{0.35in}
+
+\begin{tabular}{p{2.3in}p{2.3in}}
+\centering EXAM ROLL: 2326357   & \centering\arraybackslash EXAM ROLL: 2326356   \\[0.35em]
+\centering REG. NO: 2020615833  & \centering\arraybackslash REG. NO: 2020815831  \\[0.35em]
+\centering SESSION: 20-21       & \centering\arraybackslash SESSION: 20-21       \\
+\end{tabular}
+
+\vspace{0.9in}
+
+Year and Semester: 4th Year 1st Semester\par
+\vspace{0.25em}
+Date of Submission: 12th November 2025\par
+
+\vfill
+
+Department of Electrical and Electronic Engineering\par
+\vspace{0.25em}
+University of Dhaka\par
+\vspace{0.6in}
+\end{titlepage}
+
+\onehalfspacing
 
 \input{abstract}
 
-\begin{IEEEkeywords}
-Ferroelectric field-effect transistor, gate-all-around, hafnium zirconium
-oxide, analog synapse, spiking neural network, TCAD, write-verify,
-electrocardiogram classification.
-\end{IEEEkeywords}
+\vspace{1em}
+\noindent\textbf{Keywords:} ferroelectric field-effect transistor,
+gate-all-around, hafnium zirconium oxide, analog synapse, spiking neural
+network, TCAD, write-verify, electrocardiogram classification.
 
-% ---------------------------------------------------------------------
-% NOTE: Introduction and related work are deliberately absent from this
-% draft.  Section numbering below therefore begins at the methodology.
-% ---------------------------------------------------------------------
+\newpage
+\tableofcontents
+\newpage
 
+\input{sec_introduction}
+\input{sec_literature}
 \input{sec_methods}
 \input{sec_device_results}
 \input{sec_network_results}
 \input{sec_discussion}
 \input{sec_conclusion}
 
-% The bibliography holds only the published devices plotted in the benchmark
-% figure -- data points, not narrative citations -- so they are pulled in
-% wholesale rather than cited inline.  Introduction and related work, when
-% written, will add their own \cite calls.
+% The bibliography holds both the narrative citations of the introduction and
+% literature review and the published devices plotted in the benchmark figure
+% (J5).  The benchmark entries are data points rather than narrative
+% references, so they are pulled in wholesale.
 \nocite{*}
+\addcontentsline{toc}{section}{References}
 \bibliographystyle{IEEEtran}
-\bibliography{literature}
+\bibliography{literature,literature_narrative,literature_review}
 
 \end{document}

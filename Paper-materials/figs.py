@@ -104,18 +104,28 @@ REGISTRY: dict[str, Fig] = {}
 # fatigue term, so more cycling cannot produce an endurance result.  H8 (read
 # disturb, 0.0000 % over 9.9e5 equivalent reads) is evidence about the device.
 PANELS: dict[int, tuple[str, list[str], tuple[int, int]]] = {
+    # Single-column A4 thesis layout: every panel stacks its sub-figures in one
+    # column (ncol=1) so each spans the full printed text width instead of being
+    # squeezed into a multi-up strip.  Sub-figure ORDER is unchanged from the
+    # two-column set -- letters (a),(b),... are assigned in list order and the
+    # captions / body text key off that order.
     # A1 and A5 are both wide drawings; side by side they compose into a strip too
     # short to read at column width, so this one panel stacks.
     1: ("Structure and 2D-to-nanosheet mapping", ["A1", "A5"], (2, 1)),
-    2: ("Calibration against Liao 2022", ["B1", "B3", "B5"], (1, 3)),
-    3: ("Ferroelectric material and electrostatics", ["C1", "C2"], (1, 2)),
-    4: ("DC device characteristics", ["D1", "D2"], (1, 2)),
-    5: ("Synaptic behaviour", ["F1", "F2", "F5"], (1, 3)),
-    6: ("Write transients and energy", ["E1", "E2", "E6"], (1, 3)),
-    7: ("LIF neuron operation", ["G1", "G2", "G3"], (1, 3)),
-    8: ("Design space", ["I1", "I2", "I3", "I5"], (2, 2)),
-    9: ("Retention and reliability", ["H1", "H4", "H8"], (1, 3)),
-    10: ("Comparison and benchmark", ["J1", "J5"], (1, 2)),
+    2: ("Calibration against Liao 2022", ["B1", "B3", "B5"], (3, 1)),
+    3: ("Ferroelectric material and electrostatics", ["C1", "C2"], (2, 1)),
+    4: ("DC device characteristics", ["D1", "D2"], (2, 1)),
+    5: ("Synaptic behaviour", ["F1", "F2", "F5"], (3, 1)),
+    6: ("Write transients and energy", ["E1", "E2", "E6"], (3, 1)),
+    7: ("LIF neuron operation", ["G1", "G2", "G3"], (3, 1)),
+    # Design space was 4 sub-figures at 2x2; four stacked in one column overflows
+    # a page at legible size and 2x2 fails the 60% floor either way, so it is
+    # split into two floats of two sub-figures each (panel08, panel11), each
+    # still ncol=1.  Sub-figure order I1,I2,I3,I5 is preserved across the split.
+    8: ("Design space (search trajectory, interfacial oxide)", ["I1", "I2"], (2, 1)),
+    9: ("Retention and reliability", ["H1", "H4", "H8"], (3, 1)),
+    10: ("Comparison and benchmark", ["J1", "J5"], (2, 1)),
+    11: ("Design space (ferroelectric thickness, read bias)", ["I3", "I5"], (2, 1)),
 }
 
 
@@ -209,7 +219,10 @@ def compose_panel(n: int) -> Path:
                 fontsize=26, fontweight="bold", ha="right", va="bottom")
     for ax in axes[len(imgs):]:
         ax.set_axis_off()
-    fig.subplots_adjust(wspace=0.02, hspace=0.02, left=0.02, right=0.99, top=0.97, bottom=0.01)
+    # Stacked panels need a real gap between rows: the (b)/(c) letters sit above
+    # their own cell and collide with the axis label of the row above at hspace=0.02.
+    fig.subplots_adjust(wspace=0.02, hspace=0.02 if nrow == 1 else 0.12,
+                        left=0.02, right=0.99, top=0.97, bottom=0.01)
 
     out = PANELDIR / f"panel{n:02d}.png"
     fig.savefig(out, dpi=DPI, bbox_inches="tight", pad_inches=0.15)

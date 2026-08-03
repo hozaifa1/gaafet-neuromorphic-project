@@ -128,7 +128,7 @@ def J1():
 
 @figure(
     "J5",
-    claim="Recent ferroelectric analog memories report level counts from 16 to 128, and this "
+    claim="Recent ferroelectric analog memories report level counts from 16 to 140, and this "
           "device's open-loop count sits at the low end of that range -- but the counts are "
           "not measured under a common criterion, and only two of fifteen surveyed papers "
           "report energy per programming pulse at all, so the comparison a reader wants "
@@ -205,8 +205,8 @@ def J5():
     decade_ticks(ax, "x")
     bold_labels(ax, "Analog levels reported", None)
     note(ax, f"Devices reporting a level count, from a survey of {len(lit)} recent "
-             f"ferroelectric analog memories; {len(d)} of them state one. Open markers "
-             f"are counts that could not be confirmed in the paper text. Only "
+             f"ferroelectric analog memories; {len(d)} of them state one, and every "
+             f"plotted count was confirmed directly against its paper's text. Only "
              f"{n_energy} of {len(lit)} report energy per programming pulse, which is "
              f"why the comparison is drawn on level count; this device switches at "
              f"{e_pj * 1e6:.1f} aJ per pulse at {v_pgm:g} V. The counts here are "

@@ -3,8 +3,8 @@
 
 \subsection{Calibration quality}
 
-\begin{figure*}[t]
-\centering\includegraphics[width=\textwidth]{panel02.png}
+\begin{figure*}[p]
+\centering\includegraphics[height=0.9\textheight]{panel02.png}
 \caption{Calibration against published measurements of a comparable gate-all-around
 FeFET. (a) Overlay in the operating region, with the memory window and both threshold
 voltages computed from the plotted curves at the stated constant-current criterion. A
@@ -86,7 +86,7 @@ $V_G=0$. The subthreshold slope, fitted over more than two decades starting a de
 above the branch minimum, is \SI{63.5}{\milli\volt\per\text{dec}} on the programmed
 branch. The ambipolar minima at $V_G\approx\SI{-0.25}{\volt}$ (erased) and
 $\SI{-0.55}{\volt}$ (programmed) are labelled rather than cropped: they are real, they
-set where the device can be read, and Fig.~\ref{fig:panel8}(d) turns them into a design constraint.
+set where the device can be read, and Fig.~\ref{fig:panel11}(b) turns them into a design constraint.
 
 Figure~\ref{fig:panel4}(b) shows that every analog state behaves as an ordinary transistor. The output
 characteristic is ohmic at low drain bias for the erased state, the programmed state and
@@ -109,8 +109,8 @@ as an open question rather than omitted.
 
 \subsection{Write transients and energy}
 
-\begin{figure*}[t]
-\centering\includegraphics[width=\textwidth]{panel05.png}
+\begin{figure*}[p]
+\centering\includegraphics[height=0.9\textheight]{panel05.png}
 \caption{Synaptic behaviour. (a) The potentiation ladder with its measured cycle-to-cycle
 band. Filled markers are separable at three standard deviations, open markers are not; the
 levels and the noise come from the same eleven-repeat run. (b) The conventional
@@ -123,8 +123,8 @@ ceiling. This is write repeatability, not endurance. Computed values: \fignote{F
 \label{fig:panel5}
 \end{figure*}
 
-\begin{figure*}[t]
-\centering\includegraphics[width=\textwidth]{panel06.png}
+\begin{figure*}[p]
+\centering\includegraphics[height=0.9\textheight]{panel06.png}
 \caption{Write transients and energy, all from one fifteen-pulse train. (a) Polarization
 and gate charge stitched onto one time axis, with the write windows shaded.
 (b) Per-pulse polarization transients, colour-graded by pulse index, and the amount
@@ -247,8 +247,8 @@ asserted.
 
 \subsection{Integrate-and-fire operation}
 
-\begin{figure*}[t]
-\centering\includegraphics[width=\textwidth]{panel07.png}
+\begin{figure*}[p]
+\centering\includegraphics[height=0.9\textheight]{panel07.png}
 \caption{Integrate-and-fire operation. (a) Read current against pulse number at
 $V_G=0$, crossing a fixed threshold on the ninth pulse at $18.4\times$ the rest current,
 measured against this run's own baseline. (b) Membrane-state accumulation for five drive
@@ -290,21 +290,26 @@ completes is not a result.
 
 \subsection{Design space}
 
-\begin{figure*}[t]
-\centering\includegraphics[width=\textwidth]{panel08.png}
+\begin{figure*}[p]
+\centering\includegraphics[height=0.9\textheight]{panel08.png}
 \caption{Design space. (a) The coordinate-descent trajectory, six turns, with the value
 chosen at each turn. (b) Interfacial oxide thickness: retained window against off-current,
-in both evaluation contexts. (c) Ferroelectric thickness as a Pareto choice --- window
-against operating voltage, marker area proportional to gate charge. (d) Read bias: the
-true retained window and the rest current against $V_\mathrm{read}$, with the leakage
-region shaded, and the superseded virgin-referenced dynamic range overlaid as a dashed
-line to document the disagreement. Computed values: \fignote{I1}; \fignote{I2};
-\fignote{I3}.}
+in both evaluation contexts. Computed values: \fignote{I1}; \fignote{I2}.}
 \label{fig:panel8}
 \end{figure*}
 
-\begin{figure*}[t]
-\centering\includegraphics[width=\textwidth]{panel09.png}
+\begin{figure*}[p]
+\centering\includegraphics[height=0.9\textheight]{panel11.png}
+\caption{(a) Ferroelectric thickness as a Pareto choice --- window
+against operating voltage, marker area proportional to gate charge. (b) Read bias: the
+true retained window and the rest current against $V_\mathrm{read}$, with the leakage
+region shaded, and the superseded virgin-referenced dynamic range overlaid as a dashed
+line to document the disagreement. Computed values: \fignote{I3}.}
+\label{fig:panel11}
+\end{figure*}
+
+\begin{figure*}[p]
+\centering\includegraphics[height=0.9\textheight]{panel09.png}
 \caption{Retention and read disturb, all measured after settling. (a) A short hold, with
 the depolarization transient and the plateau separated and the wait time stated.
 (b) Long retention at two temperatures, for the fully programmed state and for a
@@ -326,13 +331,13 @@ the trade has the same shape whether each thickness is evaluated at a fixed
 about seventy-five times the window of \SI{1.5}{\nano\metre}; below that the off-current
 penalty takes over.
 
-Figure~\ref{fig:panel8}(c) is the ferroelectric thickness, and it is a Pareto choice rather than an
+Figure~\ref{fig:panel11}(a) is the ferroelectric thickness, and it is a Pareto choice rather than an
 optimum. Seven nanometres gives the largest retained window of the set, at the lowest
 operating voltage in the set and the smallest gate charge --- so on this device the
 window-optimal thickness also happens to be the cheapest to write, which is not
 guaranteed and is the reason the figure plots all three quantities together.
 
-Figure~\ref{fig:panel8}(d) is the read bias. The retained window is largest near $V_G=0$ while the rest
+Figure~\ref{fig:panel11}(b) is the read bias. The retained window is largest near $V_G=0$ while the rest
 current is at its floor; at negative read bias the gate-induced drain leakage reopens and
 the window collapses. The superseded virgin-referenced dynamic range from an earlier
 version of this work is overlaid as a dashed line: it peaks in the leakage region,
@@ -349,8 +354,9 @@ identical stack, on the axes a synapse is judged by; each axis is normalized to 
 of the two devices and the level axis uses one shared separation criterion. The planar
 device wins the raw window and loses the application-relevant axes. (b) Analog level count
 across a survey of fifteen recent published ferroelectric analog memories, with this work
-marked at both its open-loop and its write-verify count. Open markers are counts that
-could not be confirmed in the paper text. Computed values: \fignote{J1}; \fignote{J5}.}
+marked at both its open-loop and its write-verify count. Every plotted count was confirmed
+against its own paper's text; none of those papers states a separation criterion behind
+it. Computed values: \fignote{J1}; \fignote{J5}.}
 \label{fig:panel10}
 \end{figure*}
 
@@ -366,7 +372,7 @@ an axis of the comparison: the planar figure is a \SI{100}{\micro\second} hold, 
 the nanosheet \SI{100}{\micro\second} lies inside its own settling transient, so the two
 numbers do not measure the same thing.
 
-\subsection{Benchmark against published devices}
+\subsection{Reported level counts are not measured against a common criterion}
 
 Figure~\ref{fig:panel10}(b) places this device on a survey of fifteen recent ferroelectric
 analog-memory papers. The comparison we wanted to draw --- analog levels against energy per
@@ -379,16 +385,21 @@ where two points can be quoted as two points. This device switches at
 verify are \SI{48}{\atto\joule} and \SI{0.8}{\femto\joule}.
 
 On level count this device is not the leader and the figure says so. Ten of the fifteen
-papers state a count, and those run from sixteen to a hundred and twenty-eight against this
+papers state a count, and those run from sixteen to a hundred and forty against this
 work's eight open-loop and about sixteen under write-verify. Two things qualify that gap.
 The counts are not measured under a common criterion --- each is whatever its own paper
 called distinguishable, and this work's eight is a conservative open-loop count under its
 own measured cycle-to-cycle noise rather than a best case. More importantly, the network
 results in Section~\ref{sec:network} show that level count does not predict accuracy:
-placement does. A device reporting a hundred and twenty-eight levels has not thereby shown
+placement does. A device reporting a hundred and forty levels has not thereby shown
 that a classifier deployed on it will work.
 
 Every point is traceable through \texttt{literature\_benchmark.csv}, which carries the
-digital object identifier and the sentence each number was read from. Counts that could not
-be confirmed in the paper text are drawn as open markers; six of the fifteen rows carry
-that caveat and are listed in \texttt{literature\_benchmark\_notes.md}.
+digital object identifier and the sentence each number was read from. Six rows were
+originally recorded without a confirmed count; five have since been resolved against the
+source text and one paper states no count at all, so it carries no point on the figure.
+One of those five moved against this work: the highest count in the survey was recorded as
+a hundred and twenty-eight, inferred from a claim of more than seven bits, and the paper's
+own text gives a measured hundred and forty. Not one of the five states a separability
+criterion or a cycle-to-cycle statistic behind its count. The audit is in
+\texttt{literature\_benchmark\_notes.md}.
