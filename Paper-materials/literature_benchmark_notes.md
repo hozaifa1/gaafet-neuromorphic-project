@@ -69,7 +69,40 @@ DOI (below).
   metric was available. Ambiguous enough that I dropped it rather than
   mislabel a ratio as `n_levels`.
 
+## Verification round, 2026-08-03 — the medium rows resolved
+
+The six medium-confidence rows below were re-checked against the source text. Five are
+now resolved and carry `confidence = high`; the sixth stays medium. The confidence
+breakdown in the summary above is superseded: it is now **14 high, 1 medium, 0 low**.
+Note that the summary's "5 medium" count was itself wrong — the CSV had six medium rows,
+because `Gao2024_NanoLett` was never discussed in the weakest-rows list below.
+
+| row | route | verdict |
+|---|---|---|
+| `Song2024_AdvSci` | Europe PMC full text, PMC11040367 | **CORRECTED, 128 -> 140.** The 128 was arithmetic from the abstract's ">7-bit"; the body text states "we fabricated allowed us to confirm 140 levels". This raises the survey maximum and moves against this work. |
+| `Park2026_AMI` | Semantic Scholar abstract | CONFIRMED at 64: "64 well-resolved conductance states". |
+| `Kim2023_APLMater` | Crossref + Semantic Scholar abstract | CONFIRMED at 16: "16 states comprising four bits". |
+| `Kim2026_ACSNano` | Semantic Scholar abstract | CONFIRMED at 22: "22 programmable conductance states". |
+| `Bohuslavskyi2024_AdvElecMater` | Crossref + Semantic Scholar abstract | CONFIRMED at 20: "At least 20 reproducible analog states for temperatures below 100 K". |
+| `Gao2024_NanoLett` | Crossref + Semantic Scholar abstract; ACS full text 403s, no PMC record, no open-access copy | **UNSTATED.** The paper gives no level count. `n_levels` stays blank, so the row is dropped from J5 by `dropna` and plots no point. Stays medium: the abstract is the only reachable text, so a count buried in the body cannot be ruled out. |
+
+**The finding that matters more than any individual count: not one of the five states a
+separability criterion or a cycle-to-cycle statistic behind its number.** Park2026 says
+"well-resolved" and Bohuslavskyi says "reproducible" with "almost ideal linearity", but
+neither attaches a sigma, a read margin, or a repeat count. This is independent support
+for the argument in `sec_device_results.tex` that published level counts are not measured
+against a common criterion, and it is why this work's own eight-level count is reported
+under an explicit three-sigma test against noise measured over eleven repeats.
+
+Consequences applied: `n_levels` and `source_quote` updated for Song2024_AdvSci;
+`confidence` raised on the five; the J5 `claim=` string in `figlib/j_compare.py` now reads
+"16 to 140"; J5 and panel 10 regenerated; and the caption and body prose in
+`sec_device_results.tex` corrected, since no plotted point is an open marker any more.
+
 ## Rows I'd flag as the weakest of the 15 kept
+
+*(Written before the verification round above; the five medium rows named here have since
+been resolved. Kept for the record of what the original doubts were.)*
 
 - **Song2024_AdvSci** (medium) — the 48 aJ/spike energy and 1 us pulse width
   are solidly confirmed (independently, via a PMC listing of the same

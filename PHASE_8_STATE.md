@@ -51,7 +51,31 @@ count, the interface-charge-over-thickness ranking, and a trained SNN deployed o
 measured ladder with the ADC term stated. Both new sections are written on that footing.
 Saved to memory as `project_gaa_fefet_prior_art.md`.
 
-## In flight when paused — CHECK THESE FIRST
+## Everything above is committed as `b1ec83c`
+
+Final serialized build after deleting the aux files: **57 pages, zero errors, zero
+undefined references, zero undefined citations.** `figs.py --lint` clean. J5 and panel 10
+regenerated against the corrected CSV. Both humanizer passes finished (the literature
+review went from 17 em dashes to none, matching the rest of the manuscript; no number,
+citation key, ref or label changed in either pass).
+
+The benchmark correction landed in full: `literature_benchmark.csv` now reads 140 for
+`Song2024_AdvSci`, fourteen rows are high confidence and one (`Gao2024_NanoLett`, which
+states no count) stays medium and carries no point on the figure. The four prose edits in
+`sec_device_results.tex` were applied by hand after the agent doing them was cut off.
+
+## What is left
+
+1. Read the built PDF end to end at final size. I have verified the title page, the panel
+   scaling and the build, but not read all 57 pages as a reader would.
+2. `Paper-materials/literature_benchmark_notes.md` was NOT updated — it still says
+   "5 medium" and does not discuss `Gao2024_NanoLett`, and it does not record the
+   verification round or the 128 -> 140 correction. The prose in `sec_device_results.tex`
+   now points at that file, so it should be brought into line.
+3. Consider whether the abstract should mention the literature review's framing. It
+   currently reads as a journal abstract and is unchanged from before the reformat.
+
+## Superseded — kept for the record
 
 1. **`benchmark-apply` agent.** Applying verified corrections to
    `Paper-materials/literature_benchmark.csv`: `Song2024_AdvSci` n_levels **128 -> 140**
