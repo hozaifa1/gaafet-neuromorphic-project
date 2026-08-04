@@ -1,0 +1,48 @@
+{
+  "n_weights": 261440,
+  "n_fefets": 522880,
+  "input_spikes_per_beat": 196.0625,
+  "hidden_spikes_per_beat": 3455.7053571428573,
+  "line_activity_input": 0.058561081242532856,
+  "line_activity_hidden": 0.019353188604070662,
+  "reads_dense": 291767040,
+  "reads_event": 6557068.571428572,
+  "E_read_dense_J": 4.622258614819164e-09,
+  "E_read_event_J": 1.038789943245327e-10,
+  "E_neuron_J": 4.3196316964285715e-10,
+  "E_peripheral_J": 1.8302399999999999e-07,
+  "E_write_total_J": 6.956918399999999e-11,
+  "E_core_event_J": 5.358421639673898e-10,
+  "rows": [
+    [
+      "device write (whole array, ONE-TIME)",
+      6.956918399999999e-11
+    ],
+    [
+      "device read (event-driven)",
+      1.038789943245327e-10
+    ],
+    [
+      "device read (fully clocked)",
+      4.622258614819164e-09
+    ],
+    [
+      "neuron membrane",
+      4.3196316964285715e-10
+    ],
+    [
+      "peripheral ADC (assumed 1 pJ/conv)",
+      1.8302399999999999e-07
+    ]
+  ],
+  "assumptions": {
+    "E_ADC_per_conversion_J": 1e-12,
+    "n_columns": 164,
+    "t_read_s": 1e-07,
+    "V_read_V": 0.05,
+    "C_mem_F": 1e-12,
+    "V_swing_V": 0.5,
+    "E_write_per_pulse_J": 8.87e-18,
+    "write_pulses_per_device": 15
+  }
+}

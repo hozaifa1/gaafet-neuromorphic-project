@@ -1,0 +1,1 @@
+Crosses threshold on pulse 9 at V$_{pgm}$ = 2 V; the dashed line is the 0.1 $\mu$A/$\mu$m read threshold.

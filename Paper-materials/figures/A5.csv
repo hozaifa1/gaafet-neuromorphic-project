@@ -1,0 +1,7 @@
+symbol,value,units,from
+W,40.0,nm,norm.W_SHEET_NM
+T_si,5.0,nm,norm.T_SI_NOMINAL_NM
+TESW = 2(W+T_si),90.0,nm,norm.W_EFF_UM
+A (correct),0.045,um,norm.AREAFACTOR_CORRECT
+A (as executed),0.071,um,norm.AREAFACTOR_USED
+rescale factor,0.6338028169014085,-,norm.CORR

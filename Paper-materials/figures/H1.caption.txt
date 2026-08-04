@@ -1,0 +1,1 @@
+settling: t < 32 $\mu$s = 3 $\tau_P$ plateau 4.66 $\mu$A/$\mu$m $\pm$1 % band drift on the plateau -0.82 %

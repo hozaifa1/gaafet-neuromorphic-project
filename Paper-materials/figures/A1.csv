@@ -1,0 +1,9 @@
+layer,material,thickness_nm,source
+gate metal,TiN,5.0,sde_opt.cmd
+ferroelectric,HZO,7.0,sde_opt.cmd
+interfacial oxide,SiO$_2$,1.0,sde_opt.cmd
+nanosheet body,Si,5.0,sde_opt.cmd
+gate length,-,100.0,sde_opt.cmd L_GATE
+S/D overlap,-,15.0,sde_opt.cmd L_OV
+S/D extension,-,50.0,sde_opt.cmd L_SD
+probe height,-,7.0,"Pos(0,0.007) in every .plt"

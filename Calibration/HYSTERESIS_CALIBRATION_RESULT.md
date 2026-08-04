@@ -78,9 +78,21 @@ breakthroughs got the curves matching across the operating range + the V-shape:
 3. **Full ±3.5 V reads** (ERS up −3.5→+3.5, PGM down +3.5→−3.5) → saturation
    extends to +3.5 V matching all the dots.
 
-**Validated metrics (`pub_figure.py` → plots/pub_calibration.png):**
-MW = **1.30 V (= Liao exactly)**; I_on = 4.8 µA/sheet (= Liao ~5e-6); I_on/I_off
-~ 2×10⁷; V_t,PGM = −0.93, V_t,ERS = +0.36 V. SS = 45–75 mV/dec (sub-thermal —
+**Validated metrics (`pub_figure.py` → plots/pub_calibration.png).** These are now
+**computed by the script from the plotted curves**, not asserted in the annotation
+text, and every one of them is quoted **with its extraction criterion**:
+
+> constant-current V_t at **I_ref = 1e-8 A per nanosheet**:
+> MW = **1.296 V** (Liao quotes 1.30 V); V_t,PGM = −0.934 V, V_t,ERS = +0.362 V;
+> I_on = 4.8 µA/sheet (= Liao ~5e-6); I_on/I_off ~ 1.8×10⁷.
+
+**State the criterion or the number is ambiguous.** `autocal/metrics.py` extracts V_t at
+`IREF = 1e-7 A/µm`, which after the figure's current scale is ≈1e-9 A/sheet — a decade
+deeper in subthreshold — and reports **MW = 1.218 V** for this same node. Both extractions
+are correct; they are different criteria, and quoting either without saying which is what
+made them look like a contradiction. (Reconciled 2026-08-01, Phase 6. This is the Phase-5
+"a window number must state its read delay" rule one level up: a window number must also
+state its extraction criterion.) SS = 45–75 mV/dec (sub-thermal —
 ferroelectric negative-capacitance steepening; steeper than Liao's ~120-160,
 report as an NC feature). post-PGM branch matches fully incl. descending tail +
 deep min; post-ERS turn-on/saturation/deep-min match.

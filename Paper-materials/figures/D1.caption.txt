@@ -1,0 +1,1 @@
+V$_t$ at I$_{cc}$ = 0.01 $\mu$A/$\mu$m SS = 85.5 / 63.5 mV/dec (erased / programmed), steepest fit spanning $\geq$2 decades

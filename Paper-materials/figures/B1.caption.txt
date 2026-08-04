@@ -1,0 +1,1 @@
+V$_t$ at I$_{cc}$ = 1e-08 A/sheet: +0.363 V erased, -0.932 V programmed one free width scalar (0.0065) fitted on the erased saturation above 2.5 V

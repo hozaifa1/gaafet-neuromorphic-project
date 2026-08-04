@@ -1,0 +1,1 @@
+V$_{pgm}$ = 2 V, 15 pulses peak 11.0 aJ at pulse 8, last pulse 8.9 aJ whole train 123.1 aJ = 0.1231 fJ

@@ -39,6 +39,12 @@ def _extract_block(text, keyword):
             depth -= 1
             if depth == 0:
                 return text[open_brace + 1 : i]
+    if keyword == "Data":
+        # A job killed mid-write leaves the final Data block unterminated. That is
+        # a truncated file, not a corrupt one: every complete row before the cut is
+        # still valid. Return what is there and let the row-count check downstream
+        # drop the ragged tail, so one dead node cannot take out a whole analysis.
+        return text[open_brace + 1:]
     raise ValueError(f"'{keyword}' block not closed")
 
 
@@ -67,9 +73,10 @@ def parse_plt(path):
     if values.size == 0:
         return pd.DataFrame(columns=names)
     if values.size % ncols != 0:
-        raise ValueError(
-            f"{path}: {values.size} values not divisible by {ncols} columns"
-        )
+        # truncated final row (see _extract_block): keep the complete rows
+        values = values[: values.size - (values.size % ncols)]
+        if values.size == 0:
+            return pd.DataFrame(columns=names)
 
     df = pd.DataFrame(values.reshape(-1, ncols), columns=names)
     df.index.name = "row"

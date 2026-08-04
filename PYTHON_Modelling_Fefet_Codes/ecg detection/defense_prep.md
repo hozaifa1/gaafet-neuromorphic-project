@@ -84,13 +84,14 @@ Real devices aren't perfect, so we stress-test using the device's **own measured
 - All of these degrade **gracefully** — meaning **slowly and safely, with no sudden cliff.** That's what "robust" means here.
 
 ## Step 10 — Energy (why it's efficient)
-- Because it's **spike-based (sparse)** and computes **in-memory (no shuttling data back and forth)**, the core computation costs only about **0.6 nanojoules per heartbeat** (a nanojoule is a billionth of a joule — extremely small).
-- **Honest caveat:** this is the **core computing** cost only — it doesn't include the supporting circuits (analog-to-digital converters, etc.) that a full chip would need. We say this openly.
+- Because it's **spike-based (sparse)** and computes **in-memory (no shuttling data back and forth)**, the core computation costs only about **0.54 nanojoules per heartbeat** (a nanojoule is a billionth of a joule — extremely small). Measured, not assumed: only **1.94 %** of the hidden neurons fire in any given timestep, so the array is read event-driven, 103.9 pJ; the neuron membranes cost 432 pJ.
+- **Writing the whole array once costs 69.6 picojoules** — about **one eighth of a single inference.** Because the FeFET is non-volatile, that is paid once and never again. This is the concrete answer to "why a ferroelectric weight."
+- **Honest caveat, and it is a big one:** that 0.54 nJ is the **core computing** cost. The supporting circuits a full chip needs — mainly the analog-to-digital converters on each column — come to roughly **183 nanojoules per beat** under a standard 1 pJ-per-conversion assumption, i.e. **342× the core.** We put that in the figure rather than in a footnote. The device is not the bottleneck of a full system, and we do not claim it is.
 
 ## Step 11 — The comparison story (our Gate-All-Around device vs a planar device)
 - We compare our **Gate-All-Around** device (the gate wraps all around the channel) to a **planar** device (a flat, single-gate version). We made them **identical in every way except we removed the bottom gate** — a fair, controlled comparison (an "ablation" at the device level).
 - **The planar device actually WINS the basic transistor contest:**
-  - bigger **memory window** (1.42 volts vs our 0.336 volts),
+  - bigger **memory window** (1.42 volts vs our 0.387 volts),
   - bigger **on/off current ratio** (how much more current flows on vs off),
   - similar or slightly better **subthreshold slope** (how sharply it switches on — sharper is better),
   - even slightly better **retention.**

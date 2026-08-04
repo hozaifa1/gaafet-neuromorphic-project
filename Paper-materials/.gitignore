@@ -1,0 +1,12 @@
+figures/*.png
+figures/*.pdf
+panels/*.png
+panels/*.pdf
+paper/main.pdf
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.fls
+paper/*.fdb_latexmk

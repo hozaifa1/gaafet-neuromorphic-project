@@ -1,0 +1,1 @@
+V$_t$ at 100 nA/$\mu$m; I$_{on}$ at 0.4 V overdrive

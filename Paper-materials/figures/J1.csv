@@ -1,0 +1,6 @@
+axis,GAA,planar,unit,GAA_normalized,planar_normalized
+Subthreshold slope,0.015748031496062992,0.01926782273603083,1 / (mV/dec),0.8173228346456692,1.0
+Memory window,0.387,1.4245,V,0.27167427167427166,1.0
+Retained ON/OFF,5409.777464370942,14227.0,x,0.38024723865684557,1.0
+Analog levels ($\geq$1.5$\times$ apart),14.0,10.0,count,1.0,0.7142857142857143
+Low programming voltage,0.5,0.4347826086956522,1 / V,1.0,0.8695652173913044

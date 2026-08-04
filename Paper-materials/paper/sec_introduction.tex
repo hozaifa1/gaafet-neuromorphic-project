@@ -1,0 +1,131 @@
+\section{Introduction}
+\label{sec:intro}
+
+Continuous physiological monitoring at the edge, a wearable or implanted device
+classifying an electrocardiogram beat by beat, runs on a joule budget with no wall
+socket behind it. That budget is spent less on arithmetic than on moving data to
+where the arithmetic happens. Horowitz puts an off-chip DRAM access at about
+\SI{10}{\pico\joule} per bit, \SI{0.6}{\nano\joule} for eight bytes, and notes that
+even with improved I/O this stays large compared with a core processor operation,
+because requests and data still have to cross the processor and memory chips
+\cite{Horowitz2014_ISSCC}. Sze et al.\ state the consequence for neural networks:
+DRAM accesses require up to several orders of magnitude more energy than
+computation, so for deep network inference the bottleneck is memory access rather
+than the arithmetic \cite{Sze2017_ProcIEEE}. Purpose-built digital accelerators such
+as Eyeriss reduce this cost by keeping data resident in local register files and
+reusing it across many operations \cite{Chen2016_JSSC}, but the asymmetry between a
+compute operation and a memory access does not disappear; it is amortized, not
+removed.
+
+Analog in-memory computing removes most of that movement by performing the
+multiply-accumulate inside the memory array itself. A resistive-memory macro reaches
+\num{65.2} to \num{74.0}~TOPS/W depending on precision \cite{Wan2022_Nature}; a
+64-core phase-change-memory chip reaches \num{63.1}~TOPS of peak throughput at
+\num{9.76}~TOPS/W in its low-precision read mode \cite{LeGallo2023_NatElectron}; and
+a multi-level-cell ferroelectric crossbar in 28~nm reaches \num{885.4}~TOPS/W
+\cite{Soliman2023_NatComm}. None of that is free. Analog weights carry device-level
+nonidealities that a digital cell does not, and the circuitry needed to read an
+analog level back out competes with the array for the energy budget: in one measured
+compute-in-memory macro the analog-to-digital converter alone occupies about
+\SI{90}{\percent} of the computing time \cite{Fu2024_JSSC}, and the
+crossbar-plus-converter power in the ferroelectric macro above is measured, not
+modelled, at \SI{153.6}{\micro\watt} \cite{Soliman2023_NatComm}. This thesis's own
+accounting in Section~\ref{sec:energy} lands on the same problem from the device
+side: the computing core of the deployed classifier costs \SI{535.8}{\pico\joule}
+per heartbeat, and the analog-to-digital conversion a complete chip would need,
+under a standard \SI{1}{\pico\joule}-per-conversion assumption, costs \num{342}
+times that. How useful an analog synapse is depends on the system built around it,
+and that system's cost is set upstream of the device itself. This thesis states that
+before reporting the device rather than after, because the device number on its own
+does not support a system claim.
+
+A ferroelectric field-effect transistor (FeFET) stores its state as remanent
+polarization in a hafnium-zirconium-oxide (\ce{Hf}\ce{Zr}\ce{O_x}, HZO) gate
+dielectric rather than as trapped charge. A train of gate pulses can set its channel
+conductance to one of many stable levels, and that level is read non-destructively
+at zero or near-zero gate bias. Published FeFET analog synapses report five-bit
+precision with a $45\times$ tunable conductance range \cite{Jerry2017_IEDM} and,
+with a superlattice gate stack designed to linearize the weight update, seven-bit
+precision at \SI{94.1}{\percent} accuracy on an online-trained MNIST task
+\cite{Aabrar2022_TED}. Gate-all-around (nanosheet) geometry is the industry's answer
+to the electrostatic control a scaled channel needs. Wrapping the gate around all
+faces of the channel rather than three gives lower subthreshold swing, tighter
+drain-induced barrier lowering and better short-channel immunity than a FinFET at
+equal effective width
+\cite{Panigrahy2024_IEEEAccess,Sreenivasulu2024_IEEEAccess}. Pairing a ferroelectric
+gate stack with that geometry is a reasonable engineering choice on both counts: the
+ferroelectric supplies non-volatile analog state, and the gate-all-around channel
+supplies the electrostatic control needed to read that state cleanly at a scaled
+node.
+
+That pairing is not new, and this thesis does not claim it is. Stacked-nanosheet
+gate-all-around FeFETs have been fabricated: a germanium-silicon-channel device
+reaching a \SI{1.8}{\volt} memory window at a \SI{2}{\volt} write voltage and
+endurance beyond $10^{11}$ cycles \cite{Chen2023_VLSI}, an interfacial-layer-free
+follow-on of the same device family \cite{Hsieh2024_TED}, and a double-HZO
+three-dimensional gate-all-around nanosheet device built specifically to homogenize
+the corner field \cite{Liao2022_VLSI}. Gate-all-around nanowire cross-sections with a
+ferroelectric gate stack have also been demonstrated, both silicon-compatible
+\cite{Lee2021_JEDS} and on a vertical III-V channel \cite{Persson2022_EDL}. Closest to
+the device studied here, Lin and Su modelled a stacked-nanosheet FeFET explicitly as
+a synapse: a Monte Carlo study, under a nucleation-limited-switching ferroelectric
+model and under cycle-to-cycle variation, of the same device concept and the same
+application this thesis targets \cite{Lin2024_OJNano,Lin2023_SNW}. A ferroelectric
+gate-all-around device, and even a ferroelectric gate-all-around synapse, is
+therefore already published work.
+
+What Lin and Su's published study does not report (and, so far as this review found,
+neither does the wider fabricated-device literature cited above) is a device
+calibrated against a measured transfer characteristic, a measured write-energy
+budget, a measured cycle-to-cycle repeat statistic, or a trained network deployed
+onto one. This thesis supplies those for one device. Section~\ref{sec:method}
+calibrates a Preisach ferroelectric model against published measurements of a
+comparable gate-all-around FeFET: the memory window, both threshold voltages, the
+subthreshold slope and the turn-on shape are fitted; the absolute current level is
+not, and Section~\ref{sec:norm} states that boundary rather than leaving it implicit.
+The model carries no wake-up, fatigue or imprint term, so no cycling-endurance claim
+is made anywhere in this thesis; Section~\ref{sec:limits} states that plainly as
+well. Section~\ref{sec:device} measures a fifteen-level potentiation ladder at about
+\SI{9}{\atto\joule} per switching pulse, with eight of those levels separable
+open-loop under the device's own measured cycle-to-cycle noise and roughly sixteen
+achievable across the same range under write-verify.
+
+Section~\ref{sec:network} carries that ladder through to three results that this
+thesis takes to be its substance rather than an illustration of it. First, where the
+levels sit matters more than how many there are: at a fixed count of eight, four
+different placements of the interior levels gave accuracies from \num{0.336} to
+\num{0.491}, while spacing the same eight levels evenly gave \num{0.804}
+(Section~\ref{sec:placement}). Second, level placement on this device is set by
+fixed interface charge rather than by ferroelectric thickness: a \SI{10}{\percent}
+perturbation of interface charge moves levels by \num{1.31} decades, while a
+\SI{0.3}{\nano\metre} perturbation of the ferroelectric thickness moves them by only
+\num{0.07}. That is the reverse of the ordering a thickness-first intuition would
+predict, and it is the most directly actionable number in this thesis for a process
+engineer (Section~\ref{sec:interface}). Third, being able to tell levels apart is
+not the same as the network working: three independent measures of readout
+separability all fail to track deployed accuracy, while the deployed weight's own
+placement error does, with a Spearman correlation of \num{-0.85}.
+
+The network is a spiking recurrent classifier for single-lead electrocardiogram
+beats. Its architecture and MIT-BIH task originate with Yuan et al.'s
+memristor-based system, which reports \SI{95.83}{\percent} on the same four-class
+problem with its own software synapses \cite{Yuan2023_NatComm}. Deployed here on the
+measured fifteen-level ladder by post-training quantization from one fixed
+checkpoint, it reaches \num{0.8304} accuracy against \num{0.8571} in this thesis's
+own full-precision baseline. Matching Yuan et al.'s figure is not the target; the
+comparison this thesis draws is between its own deployed and full-precision numbers,
+on its own device.
+
+The remainder of the thesis is organized as follows. Section~\ref{sec:lit} reviews,
+in more detail than this introduction allows, the ferroelectric-memory and
+neuromorphic-computing literature that motivates the device and network choices made
+here. Section~\ref{sec:method} describes the device structure, the TCAD simulation
+setup, the calibration procedure and the extraction rules used to turn simulator
+output into the numbers quoted throughout. Section~\ref{sec:device} reports the
+device's DC characteristics, its write energy and its analog behaviour, including
+the eight-versus-sixteen level result. Section~\ref{sec:network} deploys the
+measured device onto the spiking classifier and reports the three results summarized
+above, together with a full system energy budget. Section~\ref{sec:discussion} draws
+out what a process engineer and a system designer should take from those results and
+states plainly the limitations of a two-dimensional, Preisach-model, single-workload
+study (Section~\ref{sec:limits}). Section~\ref{sec:conclusion} closes the thesis.

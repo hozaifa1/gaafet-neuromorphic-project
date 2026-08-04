@@ -109,6 +109,9 @@ def main():
         (f"D2D_s{args.d2d}", lambda: quantize_with_noise(model, fp_state, a300, d2d=args.d2d)),
         (f"C2C_s{args.c2c}", lambda: quantize_with_noise(model, fp_state, a300, c2c=args.c2c)),
         ("D2D+C2C",      lambda: quantize_with_noise(model, fp_state, a300, d2d=args.d2d, c2c=args.c2c)),
+        # RR-4 also shows mid-analog levels settle 94x post-write against 9x for the
+        # saturated state, so a pessimistic case is worth keeping even though the
+        # settled plateau itself is flat.
         ("retention_-10pct", lambda: quantize_with_noise(model, fp_state, a300, retention=0.90)),
     ]
     for name, setup in conds:

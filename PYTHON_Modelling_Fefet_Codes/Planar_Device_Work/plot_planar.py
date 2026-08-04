@@ -6,8 +6,9 @@ single-gate ablation, which is the load-bearing reason to prefer GAA. The other
 device metrics (transfer, memory window, retention) are also drawn standalone so
 every gathered number can be visually verified.
 
-All GAA reference currents are scaled by CORR=0.090/0.071 (the documented Areafactor/
-W_um inconsistency fix) so both devices are on one native per-um-width convention.
+Both devices are read on ONE width convention: current per micron of gate width
+(planar Areafactor=1 -> per um of its single gate; GAA per um of gate perimeter,
+W_eff=2(W+T_si)=90 nm).  The GAA side is defined in Device_Optimization/norm.py.
 
 Outputs -> plots/fig_*.png
 """
@@ -22,7 +23,10 @@ HERE = Path(__file__).resolve().parent
 GAA = HERE.parent / "Device_Optimization" / "csv_export" / "raw"
 PLOTS = HERE / "plots"; PLOTS.mkdir(exist_ok=True)
 VDS = 0.05
-CORR = 0.090 / 0.071
+import sys
+sys.path.insert(0, str(HERE.parent / "Device_Optimization"))
+import norm                      # the one width convention
+CORR = norm.CORR_PLANAR_COMPARE  # = 1.0; GAA CSVs are already per-um-of-gate-width
 OPV = 2.3
 
 plt.rcParams.update({
@@ -170,11 +174,11 @@ def _lif_waveform(base, node, W, corr):
     return spikes, mem_t, mem_i, rest, Vhi
 
 
-# W_um and CORR per device (native per-um convention): planar Areafactor=1 already per-um;
-# GAA csv used /0.090 so match that, then CORR to the consistent convention.
+# Raw-.plt readers: planar runs Areafactor=1 (already per um); the GAA .plt needs the
+# full norm.py conversion (W_eff = gate perimeter, Areafactor 0.071 -> 0.045).
 _PLN = dict(base=HERE / "outputs" / "lifret2", node="lifret2_v023", W=1.0, corr=1.0, vpgm=2.3)
 _GAA = dict(base=HERE.parent / "Device_Optimization" / "outputs" / "t8_ltp",
-            node="t8_ltp_v020", W=0.090, corr=CORR, vpgm=2.0)
+            node="t8_ltp_v020", W=norm.W_EFF_UM, corr=norm.CORR, vpgm=2.0)
 
 
 def _spike_panel(dev, color, title, fname):

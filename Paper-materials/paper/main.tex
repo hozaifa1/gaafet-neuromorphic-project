@@ -1,0 +1,106 @@
+% =====================================================================
+%  Final-year undergraduate thesis report.
+%  Department of Electrical and Electronic Engineering, University of Dhaka.
+%
+%  Single column, 12 pt, A4.  Section order:
+%    1 Introduction, 2 Literature Review, 3 Methodology, 4 Device Results,
+%    5 Network Results, 6 Discussion, 7 Conclusion, References.
+%
+%  Build:  latexmk -pdf main.tex
+% =====================================================================
+\documentclass[12pt,a4paper,oneside]{article}
+
+\usepackage[left=1.25in,right=1in,top=1in,bottom=1in]{geometry}
+\usepackage{setspace}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage[version=4]{mhchem}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage{cite}
+
+\graphicspath{{../panels/}{../figures/}}
+
+\sisetup{
+  detect-all,
+  range-units = single,
+  per-mode = symbol,
+}
+
+\newcommand{\uAum}{\si{\micro\ampere\per\micro\metre}}
+\newcommand{\mVdec}{\si{\milli\volt\per\text{dec}}}
+
+\input{auto_captions}
+
+\begin{document}
+
+% ---------------------------------------------------------------------
+% Title page
+% ---------------------------------------------------------------------
+\begin{titlepage}
+\centering
+\vspace*{1.2in}
+
+{\large\bfseries
+FERROELECTRIC GATE-ALL-AROUND FETS FOR\\[0.35em]
+NEXT-GENERATION NEUROMORPHIC SYSTEMS:\\[0.35em]
+DEVICE MODELING AND SPIKING NETWORK\\[0.35em]
+IMPLEMENTATION\par}
+
+\vspace{0.9in}
+
+{\large SUBMITTED BY:\par}
+\vspace{0.35in}
+
+\begin{tabular}{p{2.3in}p{2.3in}}
+\centering EXAM ROLL: 2326357   & \centering\arraybackslash EXAM ROLL: 2326356   \\[0.35em]
+\centering REG. NO: 2020615833  & \centering\arraybackslash REG. NO: 2020815831  \\[0.35em]
+\centering SESSION: 20-21       & \centering\arraybackslash SESSION: 20-21       \\
+\end{tabular}
+
+\vspace{0.9in}
+
+Year and Semester: 4th Year 1st Semester\par
+\vspace{0.25em}
+Date of Submission: 12th November 2025\par
+
+\vfill
+
+Department of Electrical and Electronic Engineering\par
+\vspace{0.25em}
+University of Dhaka\par
+\vspace{0.6in}
+\end{titlepage}
+
+\onehalfspacing
+
+\input{abstract}
+
+\vspace{1em}
+\noindent\textbf{Keywords:} ferroelectric field-effect transistor,
+gate-all-around, hafnium zirconium oxide, analog synapse, spiking neural
+network, TCAD, write-verify, electrocardiogram classification.
+
+\newpage
+\tableofcontents
+\newpage
+
+\input{sec_introduction}
+\input{sec_literature}
+\input{sec_methods}
+\input{sec_device_results}
+\input{sec_network_results}
+\input{sec_discussion}
+\input{sec_conclusion}
+
+% The bibliography holds both the narrative citations of the introduction and
+% literature review and the published devices plotted in the benchmark figure
+% (J5).  The benchmark entries are data points rather than narrative
+% references, so they are pulled in wholesale.
+\nocite{*}
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{IEEEtran}
+\bibliography{literature,literature_narrative,literature_review}
+
+\end{document}

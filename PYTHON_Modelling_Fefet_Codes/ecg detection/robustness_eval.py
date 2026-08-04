@@ -109,8 +109,13 @@ def main():
         (f"D2D_s{args.d2d}", lambda: quantize_with_noise(model, fp_state, a300, d2d=args.d2d)),
         (f"C2C_s{args.c2c}", lambda: quantize_with_noise(model, fp_state, a300, c2c=args.c2c)),
         ("D2D+C2C",      lambda: quantize_with_noise(model, fp_state, a300, d2d=args.d2d, c2c=args.c2c)),
-        # MEASURED retention: leak_retention.csv drifts -2.94% from peak (17.5us) to 100us -> factor 0.971
-        ("retention_MEASURED_-2.9pct", lambda: quantize_with_noise(model, fp_state, a300, retention=0.971)),
+        # MEASURED retention (RR-4, 2026-08-01). The old 0.971 came from
+        # leak_retention.csv's -2.94 % drift between 17.5 us and 100 us -- but that
+        # window sits INSIDE the post-write settling transient, which relaxes with
+        # tau_P = 10 us and is not retention loss at all. Measured out to 10 ms, the
+        # state settles by ~5 tau_P and is then flat to 0.62-0.96 % over the
+        # remaining 2.3 decades. 0.9904 is that measured plateau bound.
+        ("retention_MEASURED_-0.96pct", lambda: quantize_with_noise(model, fp_state, a300, retention=0.9904)),
         # pessimistic long-term extrapolation (retention beyond the 100us characterized window)
         ("retention_stress_-10pct", lambda: quantize_with_noise(model, fp_state, a300, retention=0.90)),
     ]

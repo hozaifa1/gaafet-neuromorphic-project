@@ -1,0 +1,1 @@
+Switching per pulse peaks at pulse 8, then falls to 0.77 of the peak by pulse 15.

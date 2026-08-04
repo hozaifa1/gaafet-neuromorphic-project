@@ -37,7 +37,8 @@ Calibration/autocal/
 *.swp
 Thumbs.db
 .DS_Store
-Device_Optimization/csv_export/iv_curves/
+# csv_export/iv_curves/ is now tracked: it is the derived, human-readable
+# form of the .plt sim output and the provenance for every paper figure.
 
 # Large binary files
 *.pdf
@@ -48,3 +49,6 @@ Device_Optimization/csv_export/iv_curves/
 __pycache__/
 *.pyc
 .vercel
+
+# Karpathy autoresearch reference clone -- external repo, not project work
+autoresearch/

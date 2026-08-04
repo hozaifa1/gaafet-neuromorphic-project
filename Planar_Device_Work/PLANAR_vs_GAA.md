@@ -14,11 +14,11 @@ arbitrary voltage, so the window comparison below is genuinely apples-to-apples.
 | Gating | both faces | top only | the one variable changed |
 | **SS erased** | 79.6 mV/dec | 75.1 mV/dec | planar slightly steeper |
 | **SS programmed** | 63.0 mV/dec | 51.9 mV/dec | planar slightly steeper |
-| Vth erased / programmed | +0.001 / -0.325 V | +0.020 / -1.405 V | — |
-| Vth memory window | 0.326 V | 1.424 V | planar ~4x larger |
+| Vth erased / programmed | +0.049 / -0.306 V | +0.020 / -1.405 V | — |
+| Vth memory window | 0.355 V | 1.424 V | planar ~4x larger |
 | ON/OFF current window @Vg=0 | 3137x | 14227x | planar ~4.5x larger |
-| R_off / R_on | 4.2e+06 / 1.3e+03 Ohm | 6.1e+06 / 4.3e+02 Ohm | — |
-| g_min / g_max | 2.38e-07 / 7.48e-04 S | 1.65e-07 / 2.35e-03 S | — |
+| R_off / R_on | 8.4e+06 / 2.7e+03 Ohm | 6.1e+06 / 4.3e+02 Ohm | — |
+| g_min / g_max | 1.19e-07 / 3.74e-04 S | 1.65e-07 / 2.35e-03 S | — |
 | **Analog LTP levels** | 15 | 10 | GAA finer-grained |
 | dVth / pulse | -18.3 mV | -27.1 mV | — |
 | **Op V_pgm** | +2.0 V | +2.3 V | close -- same FE stack |

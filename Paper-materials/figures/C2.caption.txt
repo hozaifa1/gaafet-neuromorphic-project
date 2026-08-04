@@ -1,0 +1,1 @@
+The $\pm$4 V gate sweep reaches 0.773 MV/cm, 0.55 of the material coercive field F$_c$ = 1.400 MV/cm measured in C1.

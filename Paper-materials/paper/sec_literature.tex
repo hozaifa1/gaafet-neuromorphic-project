@@ -1,0 +1,317 @@
+\section{Literature Review}
+\label{sec:lit}
+
+\subsection{Analog synaptic devices}
+
+An analog synapse needs a physical quantity that can be set to many stable values, read
+without disturbing it, and moved between values at low energy. Five device families are
+built around that requirement. They differ in how the state is stored, in what caps the
+number of levels, and in how they fail.
+
+Filamentary and non-filamentary oxide memristors (RRAM) set the weight by ion migration
+that modulates an interfacial barrier or an oxygen-vacancy filament, and the two-terminal
+structure this needs is simple enough to pack into dense crossbars: a
+\ce{TiN}/\ce{TiOx}/\ce{HfO2}/\ce{TiN} array with $32\times36$ cells resolves eight stable
+and distinguishable resistance states \cite{Hu2025_Sensors}. The same simplicity is what
+the family pays for. The filament forms and ruptures by a stochastic nucleation
+process each cycle, so cycle-to-cycle read noise and forming-voltage variability are
+reported across the RRAM literature as a standing problem rather than an occasional one,
+and a device-to-device separability statistic tied to a stated criterion, rather than a
+level count simply asserted for a given pulsing protocol, is correspondingly hard to
+find.
+
+Phase-change memory (PCM) stores the weight as the amorphous-to-crystalline volume ratio
+in a chalcogenide alloy, and of the five families it has the most mature manufacturing
+record: a 128~Mb \ce{Ge2Sb2Te5} chip has been fabricated at a memory yield of
+\SI{99.99999}{\percent} \cite{Xie2025_AdvSci}, and a 64-core mixed-signal in-memory
+compute chip built on the same material reaches \num{63.1}~TOPS of throughput at
+\num{9.76}~TOPS/W with accuracy comparable to a software implementation on convolutional
+and LSTM layers \cite{LeGallo2023_NatElectron}. Programming energy has been pushed low: a
+graphene-nanoribbon edge contact with a cross-sectional area of about \SI{1}{\nano\metre
+\squared} cuts the write power to about \SI{53.7}{\femto\joule} per pulse
+\cite{Wang2022_AdvSci_PCM}. The known failure mode is conductance drift, which follows a
+power law $G(t)=G(t_0)(t/t_0)^{-\nu}$ with a phase- and material-dependent exponent
+$\nu$, and a second, structural asymmetry between a gradual SET and an abrupt RESET drives
+weight-update asymmetry severe enough that in-situ trained accuracy has generally trailed
+software training, which is why differential $G^+-G^-$ synapse pairs are the standard
+mitigation \cite{Ambrogio2018_Nature}. PCM is also the exception to the separability
+problem that runs through this survey. Joshi et al.\ demonstrate 11 iteratively
+programmed conductance levels and report the statistic behind that count directly: a
+standard deviation below \SI{1.2}{\micro\siemens} for every level, measured across
+\num{10000} devices per level \cite{Joshi2020_NatComm}. That is a measured population
+statistic tied to an explicit criterion, not an asserted number, and it is close to
+singular in this literature for being so. The same devices, mapped into a differential
+configuration at two PCM cells per weight, reach \SI{93.7}{\percent} on CIFAR-10 and
+\SI{71.6}{\percent} top-1 on ImageNet after training-weight transfer \cite{Joshi2020_NatComm}.
+
+Electrochemical RAM (ECRAM) sets the channel conductance non-volatilely by
+electrochemically controlled intercalation of a mobile ionic species (protons, in the
+device that gives this family its best-verified numbers) into the channel material,
+under fields of order \SI{1}{\volt\per\nano\metre} \cite{Onen2022_Science}. Because the
+write and read paths are electrically separate, potentiation and depression are reported
+as close to linear and symmetric, with low-voltage switching and low power dissipation
+\cite{Fuller2017_AdvMat}. ECRAM's strongest reported figure is energy: proton transfer during a
+\SI{5}{\nano\second} write pulse costs about \SI{15}{\atto\joule}
+\cite{Onen2022_Science}, roughly three orders of magnitude below PCM's best verified
+figure, and a separate CMOS-compatible device confirms the same \SI{5}{\nano\second}
+switching speed while reaching \SI{96}{\percent} accuracy on an MNIST simulation built
+from its own measured device characteristics, with a projected switching energy near
+\SI{1}{\femto\joule} at a larger $100\times100$~nm$^2$ device geometry
+\cite{Tang2018_IEDM}. Endurance is also strong: an ionic floating-gate array endures
+more than one billion write-read operations at write-read frequencies above
+\SI{1}{\mega\hertz} \cite{Fuller2019_Science}. What ECRAM has not produced, across two
+dedicated literature passes for this review, is a verified separability criterion behind
+any of its level-count claims. The strongest verified numbers are a dynamic-range ratio
+of $20\times$ with no discrete count attached \cite{Onen2022_Science} and a device that
+demonstrates ``up to 1000 discrete states'' \cite{Tang2018_IEDM} with no accompanying
+$\sigma/\mu$ or read-margin statistic, an asserted number in the same sense as most of
+the RRAM literature above.
+
+A ferroelectric FET stores its state as remanent polarization, and because the
+switching mechanism is domain nucleation and growth rather than ion transport it is
+reported at low programming energy: an HZO-gated device coupled to a two-dimensional
+\ce{ReS2} channel switches at \SI{2.0}{\femto\joule} per event
+\cite{Huo2026_NatComm}. The known failure modes are interfacial: instabilities and
+depolarization fields at the two-dimensional-channel/ferroelectric junction degrade both
+the retained polarization and long-term retention in that same device
+\cite{Huo2026_NatComm}, and an ANN and CNN built from it reach \SI{97.33}{\percent} on
+iris recognition and successful polarization-resolved butterfly classification
+respectively \cite{Huo2026_NatComm}. Level counts in the FeFET literature are taken up in
+Section~\ref{sec:lit:gaa} below, where they belong with the programming schemes that
+produce them; as with the families above, they are stated for a given pulsing protocol
+rather than against a measured separation criterion.
+
+Ferroelectric tunnel junctions (FTJ) store the weight in tunnelling electroresistance
+rather than channel conductance: polarization reversal changes the effective tunnelling
+barrier at a metal/ferroelectric/metal or metal/ferroelectric/semiconductor junction, and
+the on/off ratio this produces is reported rather than a discrete level count.
+Reliability issues are the same interface story as the FeFET case: retention instability
+from the depolarization field, and endurance weakened by the field concentrated at the
+ferroelectric/dielectric interface during program/erase cycling
+\cite{You2026_AdvSci}. Where FTJ synapses have been carried through to a network
+demonstration, forming-gas annealing that passivates interfacial defects gives
+sufficiently linear and symmetric potentiation and depression that a pattern-recognition
+simulation on a \ce{HfOx} crossbar reaches about \SI{90}{\percent} accuracy
+\cite{Nguyen2025_NanoConverg}.
+
+Read across all five families, the pattern is consistent: a level count is usually stated
+for a fixed pulsing protocol, and a measured spread tied to an explicit separability
+criterion is the exception rather than the rule. Joshi et al.'s PCM result (eleven
+levels, a standard deviation under \SI{1.2}{\micro\siemens}, measured across ten thousand
+devices per level \cite{Joshi2020_NatComm}) is worth naming as the exception precisely
+because it is rare enough to make the general point credible rather than convenient: most
+of this literature reports a number, not the statistic that would justify calling it a
+level. Section~\ref{sec:device} follows Joshi et al.'s example rather than the majority
+pattern, reporting a conservative eight-level count under its own explicit three-sigma
+separation criterion.
+
+\subsection{Ferroelectric \ce{HfO2} and HZO}
+
+Ferroelectricity in doped \ce{HfO2} was reported by B\"oscke et al.\ in 2011: a
+\SI{10}{\nano\metre} film with less than \SI{4}{\percent} \ce{SiO2} doping crystallizes
+under electrode encapsulation into a phase mixture with a remanent polarization above
+\SI{10}{\micro\coulomb\per\square\centi\metre} at a coercive field of
+\SI{1}{\mega\volt\per\centi\metre} \cite{Boescke2011_APL}. That the effect appears in
+\ce{HfO2} rather than a perovskite mattered for reasons beyond novelty. Perovskite
+ferroelectrics such as \ce{PbZrTiO3} lose polarization as film thickness scales down and
+are, in their own right, incompatible with complementary-metal-oxide-semiconductor
+processing \cite{Liao2023_FundamentalResearch}; \ce{HfO2} is already a qualified
+high-$\kappa$ gate dielectric, ferroelectric down to a few nanometres, and compatible with
+a back-end-of-line thermal budget. A TiN-capped \ce{Hf0.5Zr0.5O2} (HZO) capacitor
+crystallized by stress rather than by high-temperature annealing reaches a switching
+polarization of \SI{45}{\micro\coulomb\per\square\centi\metre} at a ferroelectric
+saturation voltage near \SI{1.5}{\volt} \cite{Kim2017_APL}.
+
+The polar phase responsible is the orthorhombic $Pca2_1$ structure, distinguished from
+the related non-polar $Pmn2_1$ orthorhombic phase by symmetry and by its response to
+shear strain \cite{Chen2023_APL}. It is stabilised by dopant choice, capping-layer stress,
+grain size and anneal condition, and interface engineering has pushed the polar phase down
+to a film as thin as \SI{1.5}{\nano\metre} \cite{Shi2023_NatCommun}. In the
+\SIrange{5}{10}{\nano\metre} range relevant to a gate stack, reported remanent
+polarization runs from about \SI{10}{\micro\coulomb\per\square\centi\metre} in the
+earliest films \cite{Boescke2011_APL} up to $2P_r\approx\SI{42}{\micro\coulomb\per\square
+\centi\metre}$ in an interlayer-engineered capacitor \cite{Hsain2023_Nanotechnology}, at
+coercive fields of order \SI{1}{\mega\volt\per\centi\metre}. At the thin end of that
+range the film's own electrostatics start to compete with switching: in \SI{5}{\nano
+\metre} HZO, depolarization fields drive a stable paraelectric phase to coexist with a
+metastable ferroelectric one, which is what produces a pinched hysteresis loop rather than
+a saturated one \cite{Siannas2022_CommPhys}.
+
+None of this is fixed once a device is written. Wake-up, fatigue and imprint are the
+three reliability effects that determine what a written state looks like after the write
+pulse is over, and each has a distinct mechanism, magnitude and timescale.
+
+Wake-up is the polarization increase seen over the first cycles of operation, and its
+mechanism has been imaged directly: operando plasmon-enhanced spectroscopy, sensitive to
+under \SI{1}{\percent} oxygen-vacancy variation, tracks vacancy migration in
+\SI{5}{\nano\metre} HZO during the pre-wake-up stage in real time \cite{Jan2023_AFM}. It
+is a transient effect, not a permanent one: devices wake up for up to $10^3$ bipolar
+pulsed-field cycles \cite{Fields2021_JAP}. Beyond that cycle count the same mechanism
+runs in reverse. A critical field of about \SI{0.8}{\mega\volt\per\centi\metre} separates
+wake-up from fatigue by governing a reversible transition between polar and antipolar
+phases \cite{Cheng2022_NatCommun}, and oxygen-vacancy concentration and redistribution
+are the correlated driver of both switching speed and endurance more generally
+\cite{Lee2023_NanoConvergence}. Fatigue is reported with a magnitude and a cycle count
+together: it drives the polarization toward zero
+by $10^8$ cycles \cite{Fields2021_JAP}, and an independent measurement on an
+alumina-interlayer capacitor corroborates an endurance limit beyond $10^8$ cycles at a
+cycling field of \SI{3.5}{\mega\volt\per\centi\metre}, with $2P_r$ held near
+\SI{42}{\micro\coulomb\per\square\centi\metre} up to that point
+\cite{Hsain2023_Nanotechnology}. Doping is a reported partial fix: (La,Y)- and
+(La,Gd)-co-doped hafnium zirconate capacitors are fatigue-free, with remanent
+polarization at or above \SI{15}{\micro\coulomb\per\square\centi\metre}, out to $10^{11}$
+cycles \cite{Popovici2022_ACSAEM}.
+
+Imprint is an asymmetric shift of the hysteresis loop along the voltage axis, typically
+attributed to asymmetric charge trapping that builds an internal bias field. It is the
+least well documented of the three effects in the verified literature. Its mechanism has
+been isolated by
+bake-time- and bake-temperature-dependent current-peak splitting in a La-doped HZO
+capacitor, and the authors extract an activation energy consistent with oxygen-vacancy
+redistribution driving what they term a wake-up reversal \cite{Lee2023_IEEETED}; the
+magnitude that activation energy corresponds to, in volts of threshold shift or percent of
+$P_r$, is not established by a source this review can verify, and no number is asserted
+here for it.
+
+Depolarization and charge trapping are a second pair of effects from the same
+interface, and they overlap. In a metal-ferroelectric-insulator-semiconductor stack,
+incomplete screening
+of the ferroelectric's bound charge by the interfacial layer produces a depolarization
+field that opposes the stored polarization; combined with charge trapping at the
+ferroelectric/interfacial-oxide interface, the two effects are strongly coupled and can
+mask each other in a threshold-voltage or capacitance-voltage measurement
+\cite{Toprasertpong2022_ApplPhysA}. Uncorrected, that combination sets the
+retention floor: a device engineered to isolate the two contributions on the same
+polarization-voltage and current-voltage measurement reaches a memory window of about
+\SI{0.8}{\volt} at \SI{85}{\celsius}, extrapolated to ten years
+\cite{Higashi2021_IEEETED}. The same depolarization physics that pins the memory window
+in that stack produces the pinched, unsaturated loop in thin HZO noted above
+\cite{Siannas2022_CommPhys}. One mechanism appears as two different symptoms,
+depending on how thick the film is and what it is stacked against.
+
+\subsection{FeFET synapses and the gate-all-around architecture}
+\label{sec:lit:gaa}
+
+Published FeFET analog synapses cluster around what identical-pulse and
+linearity-engineered programming schemes can each deliver. Under domain
+nucleation-limited switching driven by trains of identical pulses, a five-bit synapse
+(32 conductance states across a $45\times$ tunable range) is reported at a
+\SI{75}{\nano\second} update pulse \cite{Jerry2017_IEDM}. Redesigning the gate stack as a
+ferroelectric/dielectric superlattice to linearize the weight-update profile pushes this
+to seven bits, 128 states, with \SI{94.1}{\percent} accuracy on an online-trained MNIST
+task and endurance beyond $10^{10}$ cycles \cite{Aabrar2022_TED}. At array scale, a
+multi-level-cell FeFET crossbar built in a 28~nm high-$\kappa$/metal-gate process reaches
+\num{885.4}~TOPS/W and \SI{96.6}{\percent} handwriting-recognition and
+\SI{91.5}{\percent} image-classification accuracy \cite{Soliman2023_NatComm}. None of
+these three reports states a separability criterion behind its level count in the sense
+Section~\ref{sec:levels} below will use one; each states a count achieved under a
+specific pulsing or verification protocol, which is a weaker claim.
+
+Gate-all-around, nanosheet-channel geometry is the industry's response to the same
+electrostatic-control problem an analog FeFET synapse also has to solve: a channel that
+is fully surrounded by gate holds its threshold and subthreshold behaviour against drain
+bias and channel-length variation better than one gated on three sides. A dual-$\kappa$
+spacer multi-channel nanosheet device reports a subthreshold swing of
+\SI{62}{\milli\volt\per\text{dec}}, drain-induced barrier lowering of
+\SI{14}{\milli\volt\per\volt} and an on/off ratio near $10^5$
+\cite{Panigrahy2024_IEEEAccess}. A benchmarking study against single-channel FinFETs
+at equal effective width finds that a multi-bridge-channel nanosheet reduces propagation
+delay by \SI{31}{\percent} over a nanowire predecessor and a further \SI{12}{\percent}
+over that, with a \SI{56}{\percent} ring-oscillator frequency gain, and improves
+on-current, on/off ratio, subthreshold swing and DIBL at the same time
+\cite{Sreenivasulu2024_IEEEAccess}.
+
+The pairing of a ferroelectric gate stack with a gate-all-around channel is already
+published work, on both counts. Stacked two-nanosheet gate-all-around \ce{Ge0.98Si0.02}
+FeFETs reach a \SI{1.8}{\volt} memory window at a \SI{2}{\volt} write voltage and
+endurance beyond $10^{11}$ cycles at a \SI{400}{\celsius} thermal budget
+\cite{Chen2023_VLSI}, an interfacial-layer-free follow-on of the same device family
+reproduces those figures with a \ce{Ge0.95Si0.05} channel \cite{Hsieh2024_TED}, and a
+three-dimensional double-HZO gate-all-around nanosheet device built specifically to
+homogenize the corner field reports a memory window of \SIrange{0.9}{1.3}{\volt}
+depending on interlayer choice, at a program/erase voltage of
+\SI{\pm3.5}{\volt} and endurance beyond $10^{11}$ cycles \cite{Liao2022_VLSI}.
+Gate-all-around nanowire cross-sections carry the same pairing: a stacked, sub-5-nm HZO
+nanowire FeFET with an internal metal gate reaches a minimum subthreshold swing of
+\SI{49.3}{\milli\volt\per\text{dec}} \cite{Lee2021_JEDS}, and a vertical III-V nanowire
+gate-all-around channel on silicon has also been integrated with an HZO gate stack
+\cite{Persson2022_EDL}. As reported, these six devices are characterized on memory-window,
+retention, endurance and read-current metrics; none of their published abstracts states a
+conductance-level count, a linearity or symmetry figure, or any other analog-synapse
+characterization, so they should be read as ferroelectric gate-all-around \emph{memory}
+demonstrations rather than as ferroelectric gate-all-around \emph{synapse}
+demonstrations.
+
+The one exception is also the closest prior work to the device studied in this thesis.
+Lin and Su model a stacked-nanosheet FeFET explicitly as a synapse: Monte Carlo
+simulation under a nucleation-limited-switching ferroelectric model, considering
+cycle-to-cycle variation, of the intrinsic conductance response under identical-pulse
+stimulation \cite{Lin2024_OJNano,Lin2023_SNW}. Increasing the number of stacked channel
+tiers improves the maximum-to-minimum conductance ratio and the per-state noise margin
+without a footprint penalty, and a companion study attributes the same tier-count benefit
+to reduced variability in threshold voltage, memory window and synapse conductance
+response, sourced from random ferroelectric-dielectric phase distribution rather than
+switching stochasticity \cite{Lin2023_SNW}. What this pair of papers does not report,
+so far as their published text states, is a discrete conductance-level count, a
+programming energy, or a neural network trained and deployed on the resulting response.
+A ferroelectric gate-all-around synapse is accordingly published work; a ferroelectric
+gate-all-around synapse calibrated to a measured device, with a measured write-energy
+budget, a measured cycle-to-cycle statistic and a deployed network, is not.
+
+\subsection{Spiking networks for biosignal classification}
+
+The architecture and task this thesis's own network adopts originate with Yuan et al.,
+whose neuromorphic system processes physiological signals through a leaky-and-adaptive
+spiking neural network (LSNN) with VO$_2$-memristor spike encoding. On a curated MIT-BIH
+set of 2000 heartbeats (1000 normal, 500 ventricular-ectopic, 250 supraventricular-ectopic
+and 250 fusion beats, split randomly into 1664 training and 336 test beats), a
+$3\times100\times4$ LSNN with 60 leaky-integrate-and-fire (LIF) and 40 adaptive-LIF (ALIF)
+hidden neurons reaches \SI{95.83}{\percent} on the four-class arrhythmia task and
+\SI{99.79}{\percent} on a separate epileptic-seizure-detection task
+\cite{Yuan2023_NatComm}. The mixed LIF/ALIF population is not incidental: an LIF-only
+network of the same size underperforms the mixed network by about \SI{15}{\percent} on a
+two-class version of the task and about \SI{18}{\percent} on the four-class version
+\cite{Yuan2023_NatComm}, which is why the adaptive population is part of the architecture
+this thesis carries forward rather than a detail dropped in translation.
+
+Accuracy figures in this literature are not directly comparable across papers, and the
+class count has to travel with each one. A neuromorphic classifier trained on a
+different, much larger clinical resource (45{,}152 patients, twelve-lead recordings)
+reaches \SI{94.4}{\percent} overall accuracy on a four-class task, but the four classes
+are atrial fibrillation, sinus rhythm, and left- and right-bundle-branch block rather than
+the AAMI normal/ventricular/supraventricular/fusion scheme, and the split is strict
+inter-patient rather than the pooled random split used above \cite{Kolhar2025_SciRep}.
+Despite both papers reporting ``four classes,'' the two accuracies are not measurements of
+the same problem and should not be placed on the same axis. A two-class SNN on joint ECG
+and phonocardiogram signals, evaluated on a patient-wise inter-patient split of the
+PhysioNet/CinC 2016 challenge set, reaches \SI{89.74}{\percent} with a reported energy
+consumption of \SI{209.6}{\micro\joule} per classification \cite{Ran2025_Sensors}. That
+is a binary task, and correspondingly not comparable to either four-class number
+above.
+
+Deployment onto physical neuromorphic hardware is thin in the ECG-specific literature
+this review located. The one Loihi energy figure surfaced in this search, \SI{23.6}{\pico
+\joule} per spike, traces back to Intel's own published chip specification, cited by an
+unrelated transparent-healthcare paper rather than measured on an ECG classification
+workload \cite{Sungheetha2026_SciRep}; no source verified for this review reports an
+ECG-specific spiking classifier measured on Loihi, SpiNNaker, TrueNorth or a comparable
+neuromorphic chip.
+
+On what a trained network loses when quantised onto a small number of analog conductance
+levels, the verified literature offers mechanism rather than a number. Nonlinear or
+asymmetric weight updates are reported to introduce gradient distortion and to degrade
+learning accuracy in neuromorphic systems built on multi-level conductance devices
+\cite{Kumar2026_Nanomaterials}, and device variability, retention drift and non-ideal
+conductance updates are named as the limiting factors behind the still-small number of
+demonstrated multi-level systems in two-dimensional-material devices
+\cite{Kazmi2026_NanoMicroLett}. Neither source, nor any other reached by this review,
+attaches a quantised-accuracy-loss percentage to a stated level count, and none addresses
+whether that loss depends on how the levels are spaced rather than merely how many of
+them there are. That question is left open by the literature surveyed here.
+
+What this review leaves open, across all four subsections, is what Section~\ref{sec:method}
+takes up next: a device calibrated against a measured transfer characteristic rather than
+against its own simulation, a measured write-energy and cycle-to-cycle noise budget rather
+than a modelled one, level placement examined as a quantity distinct from level count, and
+a trained network actually deployed onto the resulting conductance ladder rather than onto
+an idealized one.
