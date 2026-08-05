@@ -178,8 +178,8 @@ def draw(fid: str) -> tuple[Path, int]:
     png = OUTDIR / f"{fid}.png"
     pdf = OUTDIR / f"{fid}.pdf"
     csv = OUTDIR / f"{fid}.csv"
-    fig.savefig(png, dpi=DPI, bbox_inches="tight", pad_inches=0.2)
-    fig.savefig(pdf, bbox_inches="tight", pad_inches=0.2)
+    fig.savefig(png, dpi=DPI, bbox_inches="tight", pad_inches=0.35)
+    fig.savefig(pdf, bbox_inches="tight", pad_inches=0.35)
     plt.close(fig)
     df.to_csv(csv, index=False)
     if _common.NOTES.get(fid):
