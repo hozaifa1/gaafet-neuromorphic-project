@@ -140,7 +140,7 @@ def G2():
     amps = sorted(segs)
 
     fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.4))
-    fig.subplots_adjust(wspace=0.34, left=0.18, right=0.96, top=0.92, bottom=0.22)
+    fig.subplots_adjust(wspace=0.34, left=0.16, right=0.94, top=0.92, bottom=0.20)
     for ax in axes:
         for sp in ax.spines.values():
             sp.set_linewidth(2.2)
@@ -173,8 +173,8 @@ def G2():
     axes[0].axhline(DP_FIRE, color=ACC, lw=2.4, ls="--")
     axes[0].set_xlim(0.4, 9.6)
     axes[0].set_xticks([1, 3, 5, 7, 9])
-    axes[0].set_xlabel("Pulse number", fontweight="bold", fontsize=20, labelpad=4)
-    axes[0].set_ylabel("|$\\Delta$P$_y$| ($\\mu$C/cm$^2$)", fontweight="bold", fontsize=20, labelpad=8)
+    axes[0].set_xlabel("Pulse number", fontweight="bold", fontsize=18, labelpad=6)
+    axes[0].set_ylabel("|$\\Delta$P$_y$| ($\\mu$C/cm$^2$)", fontweight="bold", fontsize=18, labelpad=8)
     axes[0].legend(loc="upper left", fontsize=11, title="V$_{pgm}$", frameon=True, facecolor="white", framealpha=0.9, edgecolor="black")
 
     ax = axes[1]
@@ -191,8 +191,8 @@ def G2():
     ax.set_xlim(min(amps) - 0.15, max(amps) + 0.15)
     ax.set_xticks(amps)
     ax.set_ylim(0, n_max + 3.0)
-    ax.set_xlabel("Programming amplitude V$_{pgm}$ (V)", fontweight="bold", fontsize=20, labelpad=4)
-    ax.set_ylabel("Pulses to reach threshold", fontweight="bold", fontsize=20, labelpad=8)
+    ax.set_xlabel("Programming voltage V$_{pgm}$ (V)", fontweight="bold", fontsize=18, labelpad=6)
+    ax.set_ylabel("Pulses to reach threshold", fontweight="bold", fontsize=18, labelpad=8)
     note(ax, "An open marker with an arrow means the threshold was not reached "
              "within the pulses that were run.")
 
