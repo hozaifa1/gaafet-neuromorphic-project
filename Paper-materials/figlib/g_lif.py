@@ -139,8 +139,8 @@ def G2():
         segs.setdefault(_amp(f.name), []).append(f)
     amps = sorted(segs)
 
-    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.2))
-    fig.subplots_adjust(wspace=0.34, left=0.18, right=0.96, top=0.92, bottom=0.14)
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.4))
+    fig.subplots_adjust(wspace=0.34, left=0.18, right=0.96, top=0.92, bottom=0.22)
     for ax in axes:
         for sp in ax.spines.values():
             sp.set_linewidth(2.2)
@@ -171,8 +171,10 @@ def G2():
         rows.append(pd.DataFrame({"V_pgm_V": a, "pulse": pulses, "abs_dPy_uC_cm2": dp}))
 
     axes[0].axhline(DP_FIRE, color=ACC, lw=2.4, ls="--")
-    bold_labels(axes[0], "Pulse number",
-                "|$\\Delta$P$_y$| ($\\mu$C/cm$^2$)")
+    axes[0].set_xlim(0.4, 9.6)
+    axes[0].set_xticks([1, 3, 5, 7, 9])
+    axes[0].set_xlabel("Pulse number", fontweight="bold", fontsize=20, labelpad=4)
+    axes[0].set_ylabel("|$\\Delta$P$_y$| ($\\mu$C/cm$^2$)", fontweight="bold", fontsize=20, labelpad=8)
     axes[0].legend(loc="upper left", fontsize=11, title="V$_{pgm}$", frameon=True, facecolor="white", framealpha=0.9, edgecolor="black")
 
     ax = axes[1]
@@ -186,8 +188,11 @@ def G2():
         ax.plot([a], [n_max + 1], "o", color=PGM, mfc="white", mew=2.4, ms=12)
         ax.annotate("", xy=(a, n_max + 2.2), xytext=(a, n_max + 1.2),
                     arrowprops=dict(arrowstyle="->", lw=2.2, color=PGM))
+    ax.set_xlim(min(amps) - 0.15, max(amps) + 0.15)
+    ax.set_xticks(amps)
     ax.set_ylim(0, n_max + 3.0)
-    bold_labels(ax, "Programming amplitude V$_{pgm}$ (V)", "Pulses to reach threshold")
+    ax.set_xlabel("Programming amplitude V$_{pgm}$ (V)", fontweight="bold", fontsize=20, labelpad=4)
+    ax.set_ylabel("Pulses to reach threshold", fontweight="bold", fontsize=20, labelpad=8)
     note(ax, "An open marker with an arrow means the threshold was not reached "
              "within the pulses that were run.")
 
