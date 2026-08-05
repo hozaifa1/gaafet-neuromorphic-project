@@ -150,8 +150,7 @@ def plot(rep_fp, rows, spread_rows=None):
     ax.set_xticks(LEVELS); ax.set_xticklabels([str(v) for v in LEVELS])
     ax.minorticks_off()
     ax.set_ylim(0, 1.0)
-    ax.legend(prop={"weight": "bold", "size": 10}, loc="center left",
-              bbox_to_anchor=(0.02, 0.72), ncol=1)
+    ax.legend(prop={"weight": "bold", "size": 10}, loc="lower center", bbox_to_anchor=(0.5, 1.02), ncol=2)
     fs.bold_labels(ax, "FeFET conductance levels per synapse", "Test score")
     fs.finish(fig, os.path.join(kc.OUT, "K2_accuracy_vs_levels.png"))
     fs.save_csv(os.path.join(kc.OUT, "K2_accuracy_vs_levels.csv"),

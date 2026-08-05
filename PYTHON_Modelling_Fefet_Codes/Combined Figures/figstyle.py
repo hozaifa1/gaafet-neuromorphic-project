@@ -21,27 +21,27 @@ rcParams.update({
     "font.weight": "bold",
     "axes.labelweight": "bold",
     "axes.titleweight": "bold",
-    "axes.linewidth": 2.0,
+    "axes.linewidth": 2.5,
     "axes.edgecolor": "black",
     "xtick.direction": "in",
     "ytick.direction": "in",
-    "xtick.major.width": 2.0,
-    "ytick.major.width": 2.0,
-    "xtick.minor.width": 1.3,
-    "ytick.minor.width": 1.3,
-    "xtick.major.size": 6.5,
-    "ytick.major.size": 6.5,
-    "xtick.minor.size": 3.5,
-    "ytick.minor.size": 3.5,
-    "xtick.top": False,      # no ticks on top
-    "ytick.right": False,    # no ticks on right
-    "font.size": 15,
-    "axes.labelsize": 17,
-    "xtick.labelsize": 14,
-    "ytick.labelsize": 14,
-    "legend.fontsize": 13,
+    "xtick.major.width": 2.2,
+    "ytick.major.width": 2.2,
+    "xtick.minor.width": 1.5,
+    "ytick.minor.width": 1.5,
+    "xtick.major.size": 7.5,
+    "ytick.major.size": 7.5,
+    "xtick.minor.size": 4.0,
+    "ytick.minor.size": 4.0,
+    "xtick.top": True,      # ticks on top inward
+    "ytick.right": True,    # ticks on right inward
+    "font.size": 18,
+    "axes.labelsize": 24,
+    "xtick.labelsize": 20,
+    "ytick.labelsize": 20,
+    "legend.fontsize": 16,
     "legend.frameon": False,
-    "savefig.dpi": 220,
+    "savefig.dpi": 600,
     "figure.constrained_layout.use": False,
 })
 
@@ -50,29 +50,34 @@ GREEN_WHITE = LinearSegmentedColormap.from_list("green_white", ["#ffffff", "#2e8
 
 
 def new_ax(figsize=(8.0, 5.4)):
-    """A styled axes: box on, inward L/B ticks, no T/R ticks, bold."""
+    """A styled axes: box on, inward L/B/T/R ticks, bold."""
     fig, ax = plt.subplots(figsize=figsize)
     for sp in ax.spines.values():
-        sp.set_linewidth(2.0); sp.set_color("black")
+        sp.set_linewidth(2.5); sp.set_color("black")
     ax.tick_params(axis="both", which="both", direction="in",
-                   top=False, right=False, labelsize=12, width=2.0)
+                   top=True, right=True, labelsize=20, width=2.2)
     ax.minorticks_on()
-    ax.tick_params(axis="both", which="minor", top=False, right=False, direction="in")
+    ax.tick_params(axis="both", which="minor", top=True, right=True, direction="in", width=1.5)
     for lbl in ax.get_xticklabels() + ax.get_yticklabels():
         lbl.set_fontweight("bold")
+        lbl.set_fontsize(20)
     return fig, ax
 
 
 def bold_labels(ax, xlabel=None, ylabel=None):
-    if xlabel: ax.set_xlabel(xlabel, fontweight="bold", fontsize=17, labelpad=8)
-    if ylabel: ax.set_ylabel(ylabel, fontweight="bold", fontsize=17, labelpad=8)
+    if xlabel: ax.set_xlabel(xlabel, fontweight="bold", fontsize=24, labelpad=15)
+    if ylabel: 
+        ax.set_ylabel(ylabel, fontweight="bold", fontsize=24)
+        ax.yaxis.set_label_coords(-0.25, 0.5)
+    ax.tick_params(axis="both", which="major", pad=12)
     for lbl in ax.get_xticklabels() + ax.get_yticklabels():
         lbl.set_fontweight("bold")
+        lbl.set_fontsize(20)
 
 
 def finish(fig, path):
     # generous tight bbox => axis titles/ticklabels are never clipped
-    fig.savefig(path, bbox_inches="tight", pad_inches=0.3)
+    fig.savefig(path, bbox_inches="tight", pad_inches=0.6)
     plt.close(fig)
 
 

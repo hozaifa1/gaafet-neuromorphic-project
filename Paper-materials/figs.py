@@ -178,8 +178,8 @@ def draw(fid: str) -> tuple[Path, int]:
     png = OUTDIR / f"{fid}.png"
     pdf = OUTDIR / f"{fid}.pdf"
     csv = OUTDIR / f"{fid}.csv"
-    fig.savefig(png, dpi=DPI, bbox_inches="tight", pad_inches=0.3)
-    fig.savefig(pdf, bbox_inches="tight", pad_inches=0.3)
+    fig.savefig(png, dpi=DPI, bbox_inches="tight", pad_inches=0.4)
+    fig.savefig(pdf, bbox_inches="tight", pad_inches=0.4)
     plt.close(fig)
     df.to_csv(csv, index=False)
     if _common.NOTES.get(fid):
@@ -226,7 +226,10 @@ def compose_panel(n: int) -> Path:
 
     out = PANELDIR / f"panel{n:02d}.png"
     fig.savefig(out, dpi=DPI, bbox_inches="tight", pad_inches=0.15)
-    fig.savefig(out.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0.15)
+    try:
+        fig.savefig(out.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0.15)
+    except Exception:
+        pass
     plt.close(fig)
     return out
 

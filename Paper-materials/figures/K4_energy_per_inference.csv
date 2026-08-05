@@ -1,0 +1,6 @@
+component,energy_J
+"device write (whole array, ONE-TIME)",6.956918399999999e-11
+device read (event-driven),1.038789943245327e-10
+device read (fully clocked),4.622258614819164e-09
+neuron membrane,4.3196316964285715e-10
+peripheral ADC (assumed 1 pJ/conv),1.8302399999999999e-07

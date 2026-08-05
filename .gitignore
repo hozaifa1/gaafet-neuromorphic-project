@@ -52,3 +52,10 @@ __pycache__/
 
 # Karpathy autoresearch reference clone -- external repo, not project work
 autoresearch/
+
+# Agent configuration and memory files
+.agents/
+CLAUDE.md
+MEMORY.md
+skills-lock.json
+.gemini/

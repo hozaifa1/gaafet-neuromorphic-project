@@ -66,7 +66,7 @@ def D1():
         ax.plot([vt], [I_CC_UA_UM], "v", color=colour, ms=13, mec="black", mew=1.6, zorder=5)
     ax.annotate("", xy=(vt_ers, I_CC_UA_UM), xytext=(vt_pgm, I_CC_UA_UM),
                 arrowprops=dict(arrowstyle="<->", lw=2.4, color=ACC))
-    ax.text((vt_ers + vt_pgm) / 2, I_CC_UA_UM * 2.4,
+    ax.text((vt_ers + vt_pgm) / 2, I_CC_UA_UM * 5.0,
             f"$\\Delta$V$_t$ = {mw:.3f} V", ha="center", fontweight="bold",
             fontsize=13, color=ACC)
 
@@ -79,7 +79,7 @@ def D1():
     # the ambipolar / GIDL upturn, named rather than cropped out
     for vm, colour in ((vmin_ers, ERS), (vmin_pgm, PGM)):
         ax.axvline(vm, color=colour, lw=1.4, ls="--", alpha=0.55)
-    ax.text(min(vmin_ers, vmin_pgm) - 0.05, i_pgm.max() * 0.3,
+    ax.text(min(vmin_ers, vmin_pgm) - 0.05, i_pgm.max() * 0.05,
             "ambipolar / GIDL\nminima", ha="right", fontweight="bold", fontsize=11)
 
     decade_ticks(ax)
@@ -131,7 +131,7 @@ def D2():
 
     ax.set_xlim(0, float(s_all.Vds_V.max()) * 1.02)
     bold_labels(ax, "V$_{DS}$ (V)", "I$_D$ ($\\mu$A/$\\mu$m)")
-    ax.legend(loc="lower right", fontsize=10, ncol=2)
+    ax.legend(loc="upper left", fontsize=12, ncol=2)
     note(ax, f"read at V$_G$ = {vg_show:g} V\n"
              f"linear-region correlation r = {min(rvals):.3f}$-${max(rvals):.3f} "
              f"over V$_{{DS}}$ $\\leq$ 0.1 V",

@@ -118,15 +118,17 @@ def E2():
     segs = _train("write")
     n = len(segs)
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.0, 5.2))
+    fig, axes = plt.subplots(1, 2, figsize=(13.5, 5.4))
+    fig.subplots_adjust(wspace=0.32)
     for ax in axes:
         for sp in ax.spines.values():
-            sp.set_linewidth(2.0)
-        ax.tick_params(axis="both", which="both", direction="in", top=False, right=False,
-                       width=2.0, labelsize=12)
+            sp.set_linewidth(2.5)
+        ax.tick_params(axis="both", which="both", direction="in", top=True, right=True,
+                       width=2.2, labelsize=20)
         ax.minorticks_on()
         for lbl in ax.get_xticklabels() + ax.get_yticklabels():
             lbl.set_fontweight("bold")
+            lbl.set_fontsize(20)
 
     rows, dps = [], []
     for k, s in enumerate(segs):
