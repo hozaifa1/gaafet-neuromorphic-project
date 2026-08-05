@@ -140,7 +140,7 @@ def G2():
     amps = sorted(segs)
 
     fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.2))
-    fig.subplots_adjust(wspace=0.34, left=0.15, right=0.96, top=0.92, bottom=0.14)
+    fig.subplots_adjust(wspace=0.34, left=0.18, right=0.96, top=0.92, bottom=0.14)
     for ax in axes:
         for sp in ax.spines.values():
             sp.set_linewidth(2.2)
@@ -172,7 +172,7 @@ def G2():
 
     axes[0].axhline(DP_FIRE, color=ACC, lw=2.4, ls="--")
     bold_labels(axes[0], "Pulse number",
-                "|$\\Delta$P$_y$| since the start of the train ($\\mu$C/cm$^2$)")
+                "|$\\Delta$P$_y$| ($\\mu$C/cm$^2$)")
     axes[0].legend(loc="upper left", fontsize=11, title="V$_{pgm}$", frameon=True, facecolor="white", framealpha=0.9, edgecolor="black")
 
     ax = axes[1]
