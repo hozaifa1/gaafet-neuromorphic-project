@@ -119,66 +119,64 @@ def I2():
           "thickness is also the cheapest one to write.",
     source="sweeps/tfe_sweep.csv -- T_fe in {5, 7, 10, 12} nm, each at its own sub-coercive "
            "operating point",
-    convention="window is a ratio; V_pgm in V; Q_gate in fC/um",
+    convention="window is a ratio; V_op is a voltage; gate charge scales with Areafactor but "
+               "is used here only as a relative marker area",
 )
 def I3():
-    """T_fe: 3-subplot panel showing window, V_pgm and Q_gate against T_fe."""
-    d = load_sweep("tfe_sweep").sort_values("t_fe_nm")
-    chosen = d[d.t_fe_nm == 7.0].iloc[0]
+    """T_fe Pareto: window against operating voltage, marker area = gate charge."""
+    d = load_sweep("tfe_sweep").sort_values("t_fe_nm").reset_index(drop=True)
+    q = d["qg_C"].to_numpy()
+    area = 420.0 * q / q.max()
 
-    fig, axes = plt.subplots(1, 3, figsize=(12.0, 5.2))
-    fig.subplots_adjust(wspace=0.32, left=0.10, right=0.96, top=0.92, bottom=0.14)
-    for ax in axes:
-        for sp in ax.spines.values():
-            sp.set_linewidth(2.2)
-        ax.tick_params(axis="both", which="both", direction="in", top=True, right=True,
-                       width=2.0, labelsize=16, pad=6)
-        ax.minorticks_on()
-        for lbl in ax.get_xticklabels() + ax.get_yticklabels():
-            lbl.set_fontweight("bold")
-            lbl.set_fontsize(16)
-
-    ax = axes[0]
+    fig, ax = new_ax(figsize=(8.2, 5.6))
     ax.set_yscale("log")
-    ax.plot(d.t_fe_nm, d.window, "-o", color=PGM, lw=3.0, ms=10, mec="black", mew=1.4)
-    ax.axvline(chosen.t_fe_nm, color=ACC, lw=2.2, ls=":")
-    bold_labels(ax, "T$_{fe}$ (nm)", "Retained window ($\\times$)")
+    best = int(d["window"].idxmax())
+    colours = [ACC if i == best else ERS for i in range(len(d))]
+    ax.scatter(d["v_op_V"], d["window"], s=area, c=colours, edgecolors="black",
+               linewidths=2.0, zorder=3, alpha=0.9)
+
+    # points cluster on two V_op values, so labels are offset left/right rather
+    # than stacked vertically on top of each other
+    for i, r in d.iterrows():
+        ax.annotate(f"{r.t_fe_nm:g} nm", xy=(r.v_op_V, r.window),
+                    xytext=(-58 if i % 2 == 0 else 58, 0), textcoords="offset points",
+                    ha="center", va="center", fontsize=13, fontweight="bold",
+                    arrowprops=dict(arrowstyle="-", lw=1.4, color=GREY))
     decade_ticks(ax)
 
-    ax = axes[1]
-    ax.plot(d.t_fe_nm, d.v_pgm_V, "-s", color=ERS, lw=3.0, ms=10, mec="black", mew=1.4)
-    ax.axvline(chosen.t_fe_nm, color=ACC, lw=2.2, ls=":")
-    bold_labels(ax, "T$_{fe}$ (nm)", "V$_{pgm}$ (V)")
-
-    ax = axes[2]
-    ax.plot(d.t_fe_nm, d.q_gate_fC_um, "-^", color="#7b1fa2", lw=3.0, ms=10,
-            mec="black", mew=1.4)
-    ax.axvline(chosen.t_fe_nm, color=ACC, lw=2.2, ls=":")
-    bold_labels(ax, "T$_{fe}$ (nm)", "Q$_{gate}$ (fC/$\\mu$m)")
-
-    for ax in axes:
-        ax.set_xticks(d.t_fe_nm)
-
-    note(axes[0], f"7 nm gives peak window ({chosen.window:,.0f}$\\times$)\n"
-                  f"at lowest V$_{{pgm}}$ ({chosen.v_pgm_V:g} V)",
-         xy=(0.04, 0.96), fontsize=11)
+    chosen = d.iloc[best]
+    worst_v = d[d.v_op_V > chosen.v_op_V]
+    gain = float(chosen.window / worst_v.window.max()) if len(worst_v) else float("nan")
+    ax.set_xlim(d.v_op_V.min() - 0.45, d.v_op_V.max() + 0.45)
+    ax.set_ylim(d.window.min() / 1.8, d.window.max() * 2.2)
+    bold_labels(ax, "Operating voltage V$_{op}$ (V)", "Retained ON/OFF window ($\\times$)")
+    note(ax, f"marker area $\\propto$ gate charge\n"
+             f"{chosen.t_fe_nm:g} nm: {gain:.1f}$\\times$ the window of the best "
+             f"higher-voltage point,\nat {chosen.v_op_V:g} V and the smallest gate charge "
+             f"({chosen.qg_C / q.max():.2f} of the largest)")
 
     return fig, d
 
 
 @figure(
     "I5",
-    claim="Reading at zero gate bias achieves >5,000x retained window while avoiding the "
-          "ambipolar/GIDL leakage region at negative V_G entirely. V_read = 0 V is optimal.",
-    source="sweeps/vread_sweep.csv combined with raw/idvg_fine.csv",
-    convention="window is a ratio; rest current in uA/um",
+    claim="Read bias is a design variable, and zero is the right choice: the retained window "
+          "is largest near V_G = 0 while the rest current is at its floor, and the gate-induced "
+          "drain leakage that reopens at negative read bias is what the earlier "
+          "virgin-referenced dynamic range was actually measuring.",
+    source="raw/memory_window_iv.csv (RR-0, node iv_fe07b) for the true retained window and "
+           "rest current -- both branches read in the SAME run, so the ratio is legitimate. "
+           "The superseded virgin-referenced `dr` column is overlaid from "
+           "sweeps/vread_sweep.csv and is a DIFFERENT measurement; the two are drawn "
+           "together to document the disagreement, and no quantity is formed from both.",
+    convention="window is a ratio; rest current is norm.to_uA_per_um (W_eff = 90 nm)",
 )
 def I5():
-    """V_read choice: window and rest current as a function of read gate bias."""
-    d = load_raw("idvg_fine")
-    vg = d["V_G_V"].to_numpy()
-    i_ers = d["I_D_erased_uA_um"].to_numpy()
-    i_pgm = d["I_D_programmed_uA_um"].to_numpy()
+    """Read-bias design map -- and the correction to the superseded deck figure."""
+    iv = load_raw("memory_window_iv").sort_values("Vg_V").reset_index(drop=True)
+    vg = iv["Vg_V"].to_numpy()
+    i_ers = iv["Id_erased_uA_um"].to_numpy()          # conduction current, not TotalCurrent
+    i_pgm = iv["Id_programmed_uA_um"].to_numpy()
     window = i_pgm / i_ers
 
     old = load_sweep("vread_sweep").sort_values("vread_V")
