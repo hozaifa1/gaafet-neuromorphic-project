@@ -191,6 +191,7 @@ def E6():
     cum = np.cumsum(e_fj)
 
     fig, ax = new_ax(figsize=(8.6, 5.6))
+    fig.subplots_adjust(left=0.16, right=0.86, top=0.92, bottom=0.14)
     ax2 = ax.twinx()
     ax2.tick_params(axis="y", direction="in", width=2.0, labelsize=16, pad=6)
     for lbl in ax2.get_yticklabels():

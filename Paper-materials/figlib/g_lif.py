@@ -83,6 +83,7 @@ def G1():
     contrast = float(crossed.ratio_to_own_baseline.iloc[0]) if n_fire else float("nan")
 
     fig, ax = new_ax(figsize=(8.6, 5.6))
+    fig.subplots_adjust(left=0.16, right=0.95, top=0.94, bottom=0.14)
     ax.set_yscale("log")
     ax.axhline(base, color=GREY, lw=2.0, ls=":")
     ax.axhline(I_FIRE_UA_UM, color=ACC, lw=2.6, ls="--")
@@ -105,7 +106,7 @@ def G1():
     ax.set_xlim(0.4, s.pulse.max() + 0.6)
     ax.set_ylim(min(base, s.I_uA_um.min()) / 6, s.I_uA_um.max() * 8)
     bold_labels(ax, "Pulse number", "Read current at V$_G$ = 0 ($\\mu$A/$\\mu$m)")
-    ax.legend(loc="lower right", fontsize=11)
+    ax.legend(loc="lower right", fontsize=11, frameon=True, facecolor="white", framealpha=0.9, edgecolor="black")
     note(ax, f"V$_{{pgm}}$ = {v:g} V, 100 ns pulses\n"
              f"rest current {base:.3g} $\\mu$A/$\\mu$m (dotted)\n"
              f"threshold {I_FIRE_UA_UM:g} $\\mu$A/$\\mu$m (dashed), a design choice\n"
@@ -139,7 +140,7 @@ def G2():
     amps = sorted(segs)
 
     fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.2))
-    fig.subplots_adjust(wspace=0.32, left=0.10, right=0.96, top=0.92, bottom=0.14)
+    fig.subplots_adjust(wspace=0.34, left=0.15, right=0.96, top=0.92, bottom=0.14)
     for ax in axes:
         for sp in ax.spines.values():
             sp.set_linewidth(2.2)
