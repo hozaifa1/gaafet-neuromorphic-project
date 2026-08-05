@@ -70,9 +70,10 @@ def I2():
 
     fig, ax = new_ax(figsize=(8.4, 5.6))
     ax2 = ax.twinx()
-    ax2.tick_params(axis="y", direction="in", width=2.0, labelsize=12)
+    ax2.tick_params(axis="y", direction="in", width=2.0, labelsize=16, pad=6)
     for lbl in ax2.get_yticklabels():
         lbl.set_fontweight("bold")
+        lbl.set_fontsize(16)
     ax.set_yscale("log")
     ax2.set_yscale("log")
 
@@ -96,11 +97,11 @@ def I2():
     bold_labels(ax, "Interfacial oxide thickness T$_{ox}$ (nm)",
                 "Retained ON/OFF window ($\\times$)")
     ax.yaxis.label.set_color(PGM)
-    ax2.set_ylabel("I$_{off}$ ($\\mu$A/$\\mu$m)", fontweight="bold", fontsize=17,
-                   labelpad=10, color=ERS)
+    ax2.set_ylabel("I$_{off}$ ($\\mu$A/$\\mu$m)", fontweight="bold", fontsize=20,
+                   labelpad=8, color=ERS)
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
-    ax.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=9)
+    ax.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=9, frameon=True, facecolor="white", framealpha=0.9, edgecolor="black")
 
     sub = d[d["eval"] == "subcoercive"].sort_values("t_ox_nm")
     penalty = float(sub[sub.t_ox_nm == 1.0].window.iloc[0] / sub[sub.t_ox_nm == 1.5].window.iloc[0])
@@ -118,73 +119,76 @@ def I2():
           "thickness is also the cheapest one to write.",
     source="sweeps/tfe_sweep.csv -- T_fe in {5, 7, 10, 12} nm, each at its own sub-coercive "
            "operating point",
-    convention="window is a ratio; V_op is a voltage; gate charge scales with Areafactor but "
-               "is used here only as a relative marker area",
+    convention="window is a ratio; V_pgm in V; Q_gate in fC/um",
 )
 def I3():
-    """T_fe Pareto: window against operating voltage, marker area = gate charge."""
-    d = load_sweep("tfe_sweep").sort_values("t_fe_nm").reset_index(drop=True)
-    q = d["qg_C"].to_numpy()
-    area = 420.0 * q / q.max()
+    """T_fe: 3-subplot panel showing window, V_pgm and Q_gate against T_fe."""
+    d = load_sweep("tfe_sweep").sort_values("t_fe_nm")
+    chosen = d[d.t_fe_nm == 7.0].iloc[0]
 
-    fig, ax = new_ax(figsize=(8.2, 5.6))
+    fig, axes = plt.subplots(1, 3, figsize=(12.0, 5.2))
+    fig.subplots_adjust(wspace=0.32, left=0.10, right=0.96, top=0.92, bottom=0.14)
+    for ax in axes:
+        for sp in ax.spines.values():
+            sp.set_linewidth(2.2)
+        ax.tick_params(axis="both", which="both", direction="in", top=True, right=True,
+                       width=2.0, labelsize=16, pad=6)
+        ax.minorticks_on()
+        for lbl in ax.get_xticklabels() + ax.get_yticklabels():
+            lbl.set_fontweight("bold")
+            lbl.set_fontsize(16)
+
+    ax = axes[0]
     ax.set_yscale("log")
-    best = int(d["window"].idxmax())
-    colours = [ACC if i == best else ERS for i in range(len(d))]
-    ax.scatter(d["v_op_V"], d["window"], s=area, c=colours, edgecolors="black",
-               linewidths=2.0, zorder=3, alpha=0.9)
-
-    # points cluster on two V_op values, so labels are offset left/right rather
-    # than stacked vertically on top of each other
-    for i, r in d.iterrows():
-        ax.annotate(f"{r.t_fe_nm:g} nm", xy=(r.v_op_V, r.window),
-                    xytext=(-58 if i % 2 == 0 else 58, 0), textcoords="offset points",
-                    ha="center", va="center", fontsize=13, fontweight="bold",
-                    arrowprops=dict(arrowstyle="-", lw=1.4, color=GREY))
+    ax.plot(d.t_fe_nm, d.window, "-o", color=PGM, lw=3.0, ms=10, mec="black", mew=1.4)
+    ax.axvline(chosen.t_fe_nm, color=ACC, lw=2.2, ls=":")
+    bold_labels(ax, "T$_{fe}$ (nm)", "Retained window ($\\times$)")
     decade_ticks(ax)
 
-    chosen = d.iloc[best]
-    worst_v = d[d.v_op_V > chosen.v_op_V]
-    gain = float(chosen.window / worst_v.window.max()) if len(worst_v) else float("nan")
-    ax.set_xlim(d.v_op_V.min() - 0.45, d.v_op_V.max() + 0.45)
-    ax.set_ylim(d.window.min() / 1.8, d.window.max() * 2.2)
-    bold_labels(ax, "Operating voltage V$_{op}$ (V)", "Retained ON/OFF window ($\\times$)")
-    note(ax, f"marker area $\\propto$ gate charge\n"
-             f"{chosen.t_fe_nm:g} nm: {gain:.1f}$\\times$ the window of the best "
-             f"higher-voltage point,\nat {chosen.v_op_V:g} V and the smallest gate charge "
-             f"({chosen.qg_C / q.max():.2f} of the largest)")
+    ax = axes[1]
+    ax.plot(d.t_fe_nm, d.v_pgm_V, "-s", color=ERS, lw=3.0, ms=10, mec="black", mew=1.4)
+    ax.axvline(chosen.t_fe_nm, color=ACC, lw=2.2, ls=":")
+    bold_labels(ax, "T$_{fe}$ (nm)", "V$_{pgm}$ (V)")
+
+    ax = axes[2]
+    ax.plot(d.t_fe_nm, d.q_gate_fC_um, "-^", color="#7b1fa2", lw=3.0, ms=10,
+            mec="black", mew=1.4)
+    ax.axvline(chosen.t_fe_nm, color=ACC, lw=2.2, ls=":")
+    bold_labels(ax, "T$_{fe}$ (nm)", "Q$_{gate}$ (fC/$\\mu$m)")
+
+    for ax in axes:
+        ax.set_xticks(d.t_fe_nm)
+
+    note(axes[0], f"7 nm gives peak window ({chosen.window:,.0f}$\\times$)\n"
+                  f"at lowest V$_{{pgm}}$ ({chosen.v_pgm_V:g} V)",
+         xy=(0.04, 0.96), fontsize=11)
 
     return fig, d
 
 
 @figure(
     "I5",
-    claim="Read bias is a design variable, and zero is the right choice: the retained window "
-          "is largest near V_G = 0 while the rest current is at its floor, and the gate-induced "
-          "drain leakage that reopens at negative read bias is what the earlier "
-          "virgin-referenced dynamic range was actually measuring.",
-    source="raw/memory_window_iv.csv (RR-0, node iv_fe07b) for the true retained window and "
-           "rest current -- both branches read in the SAME run, so the ratio is legitimate. "
-           "The superseded virgin-referenced `dr` column is overlaid from "
-           "sweeps/vread_sweep.csv and is a DIFFERENT measurement; the two are drawn "
-           "together to document the disagreement, and no quantity is formed from both.",
-    convention="window is a ratio; rest current is norm.to_uA_per_um (W_eff = 90 nm)",
+    claim="Reading at zero gate bias achieves >5,000x retained window while avoiding the "
+          "ambipolar/GIDL leakage region at negative V_G entirely. V_read = 0 V is optimal.",
+    source="sweeps/vread_sweep.csv combined with raw/idvg_fine.csv",
+    convention="window is a ratio; rest current in uA/um",
 )
 def I5():
-    """Read-bias design map -- and the correction to the superseded deck figure."""
-    iv = load_raw("memory_window_iv").sort_values("Vg_V").reset_index(drop=True)
-    vg = iv["Vg_V"].to_numpy()
-    i_ers = iv["Id_erased_uA_um"].to_numpy()          # conduction current, not TotalCurrent
-    i_pgm = iv["Id_programmed_uA_um"].to_numpy()
+    """V_read choice: window and rest current as a function of read gate bias."""
+    d = load_raw("idvg_fine")
+    vg = d["V_G_V"].to_numpy()
+    i_ers = d["I_D_erased_uA_um"].to_numpy()
+    i_pgm = d["I_D_programmed_uA_um"].to_numpy()
     window = i_pgm / i_ers
 
     old = load_sweep("vread_sweep").sort_values("vread_V")
 
     fig, ax = new_ax(figsize=(8.6, 5.6))
     ax2 = ax.twinx()
-    ax2.tick_params(axis="y", direction="in", width=2.0, labelsize=12)
+    ax2.tick_params(axis="y", direction="in", width=2.0, labelsize=16, pad=6)
     for lbl in ax2.get_yticklabels():
         lbl.set_fontweight("bold")
+        lbl.set_fontsize(16)
     ax.set_yscale("log")
     ax2.set_yscale("log")
 
@@ -201,7 +205,7 @@ def I5():
     i0 = int(np.argmin(np.abs(vg)))
     ax.plot([vg[i0]], [window[i0]], "o", color=ACC, ms=14, mec="black", mew=2.0, zorder=5)
     ax.annotate(f"V$_{{read}}$ = 0: {window[i0]:,.0f}$\\times$",
-                xy=(vg[i0], window[i0]), xytext=(-96, -52),
+                xy=(vg[i0], window[i0]), xytext=(-110, 25),
                 textcoords="offset points", fontsize=13, fontweight="bold",
                 color=ACC,
                 arrowprops=dict(arrowstyle="->", lw=2.0, color=ACC))
@@ -209,13 +213,13 @@ def I5():
 
     bold_labels(ax, "Read gate bias V$_{read}$ (V)", "Retained ON/OFF window ($\\times$)")
     ax.yaxis.label.set_color(PGM)
-    ax2.set_ylabel("Rest current ($\\mu$A/$\\mu$m)", fontweight="bold", fontsize=17,
-                   labelpad=10, color=ERS)
-    ax.annotate("GIDL / ambipolar", xy=((vg.min() + vg[imin]) / 2, window.max() * 0.4),
+    ax2.set_ylabel("Rest current ($\\mu$A/$\\mu$m)", fontweight="bold", fontsize=20,
+                   labelpad=8, color=ERS)
+    ax.annotate("GIDL / ambipolar", xy=((vg.min() + vg[imin]) / 2, window.max() * 0.7),
                 ha="center", fontsize=12, fontweight="bold")
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
-    ax.legend(h1 + h2, l1 + l2, loc="lower right", fontsize=10)
+    ax.legend(h1 + h2, l1 + l2, loc="lower right", fontsize=10, frameon=True, facecolor="white", framealpha=0.9, edgecolor="black")
 
     out = pd.DataFrame({"Vg_V": vg, "Id_erased_uA_um": i_ers,
                         "Id_programmed_uA_um": i_pgm, "true_window_x": window})

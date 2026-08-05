@@ -1,2 +1,1 @@
-Dashed line: the 0.05 $\mu$C/cm$^2$ state threshold.
 An open marker with an arrow means the threshold was not reached within the pulses that were run.

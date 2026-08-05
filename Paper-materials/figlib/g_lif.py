@@ -138,17 +138,17 @@ def G2():
         segs.setdefault(_amp(f.name), []).append(f)
     amps = sorted(segs)
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.5, 5.8))
-    fig.subplots_adjust(wspace=0.32)
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.2))
+    fig.subplots_adjust(wspace=0.32, left=0.10, right=0.96, top=0.92, bottom=0.14)
     for ax in axes:
         for sp in ax.spines.values():
-            sp.set_linewidth(2.5)
+            sp.set_linewidth(2.2)
         ax.tick_params(axis="both", which="both", direction="in", top=True, right=True,
-                       width=2.2, labelsize=20)
+                       width=2.0, labelsize=16, pad=6)
         ax.minorticks_on()
         for lbl in ax.get_xticklabels() + ax.get_yticklabels():
             lbl.set_fontweight("bold")
-            lbl.set_fontsize(20)
+            lbl.set_fontsize(16)
 
     rows, reach = [], []
     for k, a in enumerate(amps):
@@ -172,9 +172,7 @@ def G2():
     axes[0].axhline(DP_FIRE, color=ACC, lw=2.4, ls="--")
     bold_labels(axes[0], "Pulse number",
                 "|$\\Delta$P$_y$| since the start of the train ($\\mu$C/cm$^2$)")
-    axes[0].legend(loc="upper left", fontsize=11, title="V$_{pgm}$",
-                   title_fontproperties={"weight": "bold", "size": 11})
-    note(axes[0], f"Dashed line: the {DP_FIRE:g} $\\mu$C/cm$^2$ state threshold.")
+    axes[0].legend(loc="upper left", fontsize=11, title="V$_{pgm}$", frameon=True, facecolor="white", framealpha=0.9, edgecolor="black")
 
     ax = axes[1]
     n_max = max(r[2] for r in reach)
@@ -231,24 +229,26 @@ def G3():
     crossed = lad[(lad.pulse > 0) & (lad.I_uA_um >= I_FIRE_UA_UM)]
     n_fire = int(crossed.pulse.min()) if len(crossed) else None
 
-    fig, axes = plt.subplots(3, 1, figsize=(9.2, 8.2), sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(8.6, 8.2), sharex=True)
+    fig.subplots_adjust(hspace=0.12, left=0.18, right=0.95, top=0.95, bottom=0.10)
     for ax in axes:
         for sp in ax.spines.values():
-            sp.set_linewidth(2.0)
+            sp.set_linewidth(2.2)
         ax.tick_params(axis="both", which="both", direction="in", top=False, right=False,
-                       width=2.0, labelsize=12)
+                       width=2.0, labelsize=16, pad=6)
         ax.minorticks_on()
         for lbl in ax.get_xticklabels() + ax.get_yticklabels():
             lbl.set_fontweight("bold")
+            lbl.set_fontsize(16)
         ax.fill_between(t_us, 0, 1, where=(d["phase"] == "write"),
                         transform=ax.get_xaxis_transform(), color=ACC, alpha=0.12, lw=0)
 
     axes[0].plot(t_us, vg, "-", color=GREY, lw=2.4)
-    axes[0].set_ylabel("V$_G$ (V)", fontweight="bold", fontsize=15, labelpad=8)
+    axes[0].set_ylabel("V$_G$ (V)", fontweight="bold", fontsize=20, labelpad=8)
     axes[0].set_ylim(-0.4, a + 0.6)
 
     axes[1].plot(t_us, py, "-", color=PGM, lw=2.6)
-    axes[1].set_ylabel("P$_y$ ($\\mu$C/cm$^2$)", fontweight="bold", fontsize=15, labelpad=8)
+    axes[1].set_ylabel("P$_y$ ($\\mu$C/cm$^2$)", fontweight="bold", fontsize=20, labelpad=8)
 
     axes[2].set_yscale("log")
     axes[2].plot(t_us, idd, "-", color=ERS, lw=2.2)

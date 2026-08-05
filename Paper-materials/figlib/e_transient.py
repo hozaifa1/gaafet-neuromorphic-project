@@ -70,15 +70,17 @@ def E1():
     vg = d[VG].to_numpy()
     ig = np.abs(norm.to_device_amps(d[IG].to_numpy()))
 
-    fig, axes = plt.subplots(2, 1, figsize=(9.2, 6.6), sharex=True)
+    fig, axes = plt.subplots(2, 1, figsize=(8.6, 6.4), sharex=True)
+    fig.subplots_adjust(hspace=0.12, left=0.14, right=0.95, top=0.95, bottom=0.12)
     for ax in axes:
         for sp in ax.spines.values():
-            sp.set_linewidth(2.0)
+            sp.set_linewidth(2.2)
         ax.tick_params(axis="both", which="both", direction="in", top=False, right=False,
-                       width=2.0, labelsize=12)
+                       width=2.0, labelsize=16, pad=6)
         ax.minorticks_on()
         for lbl in ax.get_xticklabels() + ax.get_yticklabels():
             lbl.set_fontweight("bold")
+            lbl.set_fontsize(16)
 
     writing = d["phase"].to_numpy() == "write"
     for ax in axes:
@@ -86,7 +88,7 @@ def E1():
                         color=ACC, alpha=0.13, lw=0)
 
     axes[0].plot(t_us, py, "-", color=PGM, lw=2.6)
-    axes[0].set_ylabel("P$_y$ ($\\mu$C/cm$^2$)", fontweight="bold", fontsize=16, labelpad=8)
+    axes[0].set_ylabel("P$_y$ ($\\mu$C/cm$^2$)", fontweight="bold", fontsize=20, labelpad=8)
     dP = py[-1] - py[0]
     note(axes[0], f"$\\Delta$P over the train = {dP:+.3f} $\\mu$C/cm$^2$; "
                   f"shaded bands are the V$_G$ = {vg.max():g} V write windows.")
@@ -96,7 +98,6 @@ def E1():
     leak = float(np.median(ig[~writing]))
     note(axes[1], f"Median gate conduction between pulses: {leak * 1e12:.1f} pA.")
 
-    fig.subplots_adjust(hspace=0.08)
     out = pd.DataFrame({"t_us": t_us, "phase": d["phase"], "pulse": d["pulse"],
                         "Vg_V": vg, "Py_uC_cm2": py, "Qg_fC": qg,
                         "abs_Ig_A": ig})
@@ -118,17 +119,17 @@ def E2():
     segs = _train("write")
     n = len(segs)
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.5, 5.4))
-    fig.subplots_adjust(wspace=0.32)
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.2))
+    fig.subplots_adjust(wspace=0.32, left=0.10, right=0.96, top=0.92, bottom=0.14)
     for ax in axes:
         for sp in ax.spines.values():
-            sp.set_linewidth(2.5)
+            sp.set_linewidth(2.2)
         ax.tick_params(axis="both", which="both", direction="in", top=True, right=True,
-                       width=2.2, labelsize=20)
+                       width=2.0, labelsize=16, pad=6)
         ax.minorticks_on()
         for lbl in ax.get_xticklabels() + ax.get_yticklabels():
             lbl.set_fontweight("bold")
-            lbl.set_fontsize(20)
+            lbl.set_fontsize(16)
 
     rows, dps = [], []
     for k, s in enumerate(segs):
@@ -191,9 +192,10 @@ def E6():
 
     fig, ax = new_ax(figsize=(8.6, 5.6))
     ax2 = ax.twinx()
-    ax2.tick_params(axis="y", direction="in", width=2.0, labelsize=12)
+    ax2.tick_params(axis="y", direction="in", width=2.0, labelsize=16, pad=6)
     for lbl in ax2.get_yticklabels():
         lbl.set_fontweight("bold")
+        lbl.set_fontsize(16)
 
     ax.bar(idx, e_fj * 1e3, color=[LEVELS(k / (len(idx) - 1)) for k in range(len(idx))],
            edgecolor="black", lw=1.3, zorder=2)
@@ -203,8 +205,8 @@ def E6():
     ax.axhline(0, color="black", lw=1.4)
     ax.set_xticks(idx[::2])
     bold_labels(ax, "Pulse number", "Switching energy per pulse (aJ)")
-    ax2.set_ylabel("Cumulative energy (aJ)", fontweight="bold", fontsize=17,
-                   labelpad=10, color=PGM)
+    ax2.set_ylabel("Cumulative energy (aJ)", fontweight="bold", fontsize=20,
+                   labelpad=8, color=PGM)
     peak = int(idx[np.argmax(e_fj)])
     note(ax, f"V$_{{pgm}}$ = {v_pgm:g} V, {len(idx)} pulses\n"
              f"peak {e_fj.max() * 1e3:.1f} aJ at pulse {peak}, "

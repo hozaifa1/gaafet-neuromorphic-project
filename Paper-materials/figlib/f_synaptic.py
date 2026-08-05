@@ -207,9 +207,9 @@ def F5():
     ax.set_xticks(list(range(5, 2 * npulse + 1, 5)))
     ax.set_ylim(out.G_uA_um.min() / 6, out.G_uA_um.max() * 60)
     decade_ticks(ax)
-    bold_labels(ax, "Cumulative pulse number  (potentiate $\\rightarrow$ depress)",
+    bold_labels(ax, "Cumulative pulse number",
                 "I$_D$ ($\\mu$A/$\\mu$m)")
-    ax.legend(loc="lower left", ncol=3, fontsize=11)
+    ax.legend(loc="lower left", ncol=3, fontsize=11, frameon=True, facecolor="white", framealpha=0.9, edgecolor="black")
     note(ax, "window per cycle: " +
              ", ".join(f"{r.window_x:,.0f}$\\times$" for _, r in stat.iterrows()) +
              f"\nceiling moves {stat['max'].iloc[-1] / stat['max'].iloc[0]:.2f}$\\times$, "
@@ -244,17 +244,17 @@ def F9():
              (300, "G_300K_uA_um", PGM, "s"),
              (350, "G_350K_uA_um", "#e07b00", "^")]
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.5, 5.6))
-    fig.subplots_adjust(wspace=0.32)
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.2))
+    fig.subplots_adjust(wspace=0.32, left=0.10, right=0.96, top=0.92, bottom=0.14)
     for ax in axes:
         for sp in ax.spines.values():
-            sp.set_linewidth(2.5)
+            sp.set_linewidth(2.2)
         ax.tick_params(axis="both", which="both", direction="in", top=True, right=True,
-                       width=2.2, labelsize=20)
+                       width=2.0, labelsize=16, pad=6)
         ax.minorticks_on()
         for lbl in ax.get_xticklabels() + ax.get_yticklabels():
             lbl.set_fontweight("bold")
-            lbl.set_fontsize(20)
+            lbl.set_fontsize(16)
 
     ax = axes[0]
     ax.set_yscale("log")
@@ -276,7 +276,7 @@ def F9():
     ax.axhline(1.0, color="black", lw=2.0, ls="--")
     decade_ticks(ax)
     bold_labels(ax, "Pulse number", "I$_D$ / I$_D$(300 K)")
-    ax.legend(loc="lower left", fontsize=12)
+    ax.legend(loc="upper right", fontsize=11, frameon=True, facecolor="white", framealpha=0.9, edgecolor="black")
     top = d.iloc[-1]
     note(ax,
              f"At the top level 350 K is "

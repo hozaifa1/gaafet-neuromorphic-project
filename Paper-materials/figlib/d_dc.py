@@ -79,8 +79,8 @@ def D1():
     # the ambipolar / GIDL upturn, named rather than cropped out
     for vm, colour in ((vmin_ers, ERS), (vmin_pgm, PGM)):
         ax.axvline(vm, color=colour, lw=1.4, ls="--", alpha=0.55)
-    ax.text(min(vmin_ers, vmin_pgm) - 0.05, i_pgm.max() * 0.05,
-            "ambipolar / GIDL\nminima", ha="right", fontweight="bold", fontsize=11)
+    ax.text(min(vmin_ers, vmin_pgm) + 0.08, i_pgm.max() * 0.04,
+            "ambipolar / GIDL minima", ha="left", fontweight="bold", fontsize=11)
 
     decade_ticks(ax)
     ax.set_ylim(min(i_ers.min(), i_pgm.min()) / 4, max(i_ers.max(), i_pgm.max()) * 30)

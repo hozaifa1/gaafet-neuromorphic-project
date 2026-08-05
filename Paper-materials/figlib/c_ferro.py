@@ -123,17 +123,17 @@ def C2():
                              sat[sat.branch == br].sort_values("t_s").E_MV_cm.to_numpy(),
                              sat[sat.branch == br].sort_values("t_s").P_uC_cm2.to_numpy())]))
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.5, 5.6))
-    fig.subplots_adjust(wspace=0.32)
+    fig, axes = plt.subplots(1, 2, figsize=(12.0, 5.2))
+    fig.subplots_adjust(wspace=0.32, left=0.10, right=0.96, top=0.92, bottom=0.14)
     for ax in axes:
         for sp in ax.spines.values():
-            sp.set_linewidth(2.5)
+            sp.set_linewidth(2.2)
         ax.tick_params(axis="both", which="both", direction="in", top=True, right=True,
-                       width=2.2, labelsize=20)
+                       width=2.0, labelsize=16, pad=6)
         ax.minorticks_on()
         for lbl in ax.get_xticklabels() + ax.get_yticklabels():
             lbl.set_fontweight("bold")
-            lbl.set_fontsize(20)
+            lbl.set_fontsize(16)
         ax.axhline(0, color="black", lw=1.2)
         ax.axvline(0, color="black", lw=1.2)
 
